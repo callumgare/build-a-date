@@ -257,8 +257,10 @@ h1 {
   grid-auto-flow: column;
   justify-content: safe center;
   gap: clamp(12px, 3vw, 20px);
-  padding: 5px 5px 18px;
-  margin: 0 -5px;
+  /* Room for a hovered card as it grows and tilts (docs/card-layout.md
+     § "Tilting on hover"), which the scrolling would otherwise clip. */
+  padding: 16px 14px 24px;
+  margin: 0 -14px;
   overflow-x: auto;
   overflow-y: hidden;
   overscroll-behavior-inline: contain;

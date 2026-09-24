@@ -1,6 +1,6 @@
 'use client'
 
-import { AnimatePresence, LayoutGroup, motion, useReducedMotion } from 'motion/react'
+import { AnimatePresence, animate, LayoutGroup, motion, useReducedMotion } from 'motion/react'
 import Link from 'next/link'
 import {
   type MouseEvent as ReactMouseEvent,
@@ -22,6 +22,7 @@ import FlyingCard from './FlyingCard'
 import { frameFor } from './frames'
 import InstallHint from './InstallHint'
 import Stars from './Stars'
+import { type Box, hoverScale, leanOf, randomTilt, untiltedBox } from './tilt'
 
 function readSelection(cardsById: Map<string, DateCard>): string[] {
   const seen = new Set<string>()
@@ -67,8 +68,8 @@ export default function DeckBuilder({
   const [saveError, setSaveError] = useState<string | null>(null)
   const [activeTags, setActiveTags] = useState<Set<string>>(() => new Set())
   const [linkCopied, setLinkCopied] = useState(false)
-  const [flight, setFlight] = useState<{ id: string; from: DOMRect } | null>(null)
-  const [notesOpen, setNotesOpen] = useState<{ id: string; from: DOMRect } | null>(null)
+  const [flight, setFlight] = useState<{ id: string; from: Box } | null>(null)
+  const [notesOpen, setNotesOpen] = useState<{ id: string; from: Box } | null>(null)
   // Ratings and notes as they stand after any changes made on this visit.
   const [notesById, setNotesById] = useState(
     () =>
@@ -118,7 +119,7 @@ export default function DeckBuilder({
     return () => window.removeEventListener('hashchange', restoreSelection)
   }, [cardsById])
 
-  function selectCard(id: string, from: DOMRect) {
+  function selectCard(id: string, from: Box) {
     if (!reduceMotion) setFlight({ id, from })
     setSelectedIds((currentIds) => (currentIds.includes(id) ? currentIds : [...currentIds, id]))
   }
@@ -129,7 +130,7 @@ export default function DeckBuilder({
     if (availableCards.length === 0) return
     const card = availableCards[Math.floor(Math.random() * availableCards.length)]
     const deckCard = deckCardElement(card.id)
-    if (deckCard) selectCard(card.id, deckCard.getBoundingClientRect())
+    if (deckCard) selectCard(card.id, cardBox(deckCard))
     else setSelectedIds((currentIds) => [...currentIds, card.id])
   }
 
@@ -142,11 +143,18 @@ export default function DeckBuilder({
     return document.querySelector(`[data-card-id="${CSS.escape(id)}"], [data-deck-card-id="${CSS.escape(id)}"]`)
   }
 
+  // Where the card would be sitting straight, and how far it leans right now
+  // (it may be hovered, or part way back from it), so the animations that
+  // lift it out of place can size it right and turn it level themselves.
+  function cardBox(element: Element) {
+    return untiltedBox(element, leanOf(getComputedStyle(element).transform))
+  }
+
   function openNotes(id: string) {
     const element = cardElement(id)
     if (!element) return
     setRevealedId(null)
-    setNotesOpen({ id, from: element.getBoundingClientRect() })
+    setNotesOpen({ id, from: cardBox(element) })
   }
 
   // A click on either half of a card does what's written on that side
@@ -289,10 +297,11 @@ export default function DeckBuilder({
                     data-revealed={revealedId === card.id}
                     layout
                     layoutId={`card-${card.id}`}
+                    onPointerEnter={tiltCard}
                     transition={transition}
                     onClick={(event) => clickCard(card.id, event, actions)}
                     onPointerMove={showHoveredSide}
-                    onPointerLeave={clearHoveredSide}
+                    onPointerLeave={leaveCard}
                   >
                     <Card
                       card={card}
@@ -364,7 +373,7 @@ export default function DeckBuilder({
                 const actions: SideActions = {
                   primary: () => {
                     const deckCard = deckCardElement(card.id)
-                    if (deckCard) selectCard(card.id, deckCard.getBoundingClientRect())
+                    if (deckCard) selectCard(card.id, cardBox(deckCard))
                   },
                   notes: () => openNotes(card.id),
                 }
@@ -379,13 +388,14 @@ export default function DeckBuilder({
                     data-revealed={revealedId === card.id}
                     layout
                     layoutId={`card-${card.id}`}
+                    onPointerEnter={tiltCard}
                     initial={reduceMotion ? false : { opacity: 0, scale: 0.96 }}
                     animate={{ opacity: 1, scale: 1 }}
                     exit={reduceMotion ? undefined : { opacity: 0, scale: 0.96 }}
                     transition={transition}
                     onClick={(event) => clickCard(card.id, event, actions)}
                     onPointerMove={showHoveredSide}
-                    onPointerLeave={clearHoveredSide}
+                    onPointerLeave={leaveCard}
                   >
                     <Card
                       card={card}
@@ -429,7 +439,10 @@ export default function DeckBuilder({
           shareId={shareId}
           initial={notesById.get(notesCard.id) ?? { interest: null, notes: '' }}
           from={notesOpen.from}
-          returnTo={() => cardElement(notesCard.id)?.getBoundingClientRect() ?? null}
+          returnTo={() => {
+            const element = cardElement(notesCard.id)
+            return element ? cardBox(element) : null
+          }}
           reduceMotion={Boolean(reduceMotion)}
           onChange={(notes) => changeNotes(notesCard.id, notes)}
           onClosed={() => setNotesOpen(null)}
@@ -475,6 +488,23 @@ export default function DeckBuilder({
 
 type Side = 'primary' | 'notes'
 type SideActions = Record<Side, () => void>
+
+// Cards sit straight, and lift a little bigger and tip to one side while the
+// mouse is over them, a different way each time (docs/card-layout.md
+// § "Tilting on hover"). Plain pointer events rather than Motion's
+// onHoverStart, which runs a frame late, once the event no longer has a
+// currentTarget. Touch is left out, so a tap doesn't leave a card leaning.
+function tiltCard(event: ReactPointerEvent<HTMLElement>) {
+  if (event.pointerType === 'touch') return
+  animate(event.currentTarget, { rotate: randomTilt(), scale: hoverScale }, hoverSpring)
+}
+
+function leaveCard(event: ReactPointerEvent<HTMLElement>) {
+  clearHoveredSide(event)
+  animate(event.currentTarget, { rotate: 0, scale: 1 }, hoverSpring)
+}
+
+const hoverSpring = { type: 'spring', stiffness: 400, damping: 22 } as const
 
 // Add to plan or Discard is on the left half of a card, Notes on the right.
 function sideOf(event: { clientX: number; currentTarget: Element }): Side {

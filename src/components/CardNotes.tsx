@@ -9,6 +9,7 @@ import Card from './Card'
 import cardStyles from './Card.module.css'
 import styles from './CardNotes.module.css'
 import type { Frame } from './frames'
+import type { Box } from './tilt'
 
 export type Notes = { interest: number | null; notes: string }
 
@@ -17,9 +18,10 @@ type CardNotesProps = {
   frame: Frame
   shareId: string
   initial: Notes
-  // Where the card sits in the deck, to flip up from and back down to.
-  from: DOMRect
-  returnTo: () => DOMRect | null
+  // Where the card sits in the deck, as if it weren't tilted, to flip up
+  // from and back down to. A card lifted while leaning straightens as it goes.
+  from: Box
+  returnTo: () => Box | null
   reduceMotion: boolean
   onChange: (notes: Notes) => void
   onClosed: () => void
@@ -36,16 +38,17 @@ function targetRect() {
 type Rect = ReturnType<typeof targetRect>
 
 // Lays the card over `rect` as if it were still at `to`, turned `rotateY`.
-function pose(rect: Rect, to: DOMRect, rotateY: number) {
+function pose(rect: Rect, to: Box, rotateY: number) {
   return {
     x: to.left + to.width / 2 - (rect.left + rect.width / 2),
     y: to.top + to.height / 2 - (rect.top + rect.height / 2),
     scale: to.width / rect.width,
+    rotate: to.rotate ?? 0,
     rotateY,
   }
 }
 
-const settled = { x: 0, y: 0, scale: 1, rotateY: 180 }
+const settled = { x: 0, y: 0, scale: 1, rotate: 0, rotateY: 180 }
 const flip: Transition = { duration: 0.55, ease: [0.2, 0.8, 0.2, 1] }
 const saveDelay = 700
 
@@ -73,8 +76,8 @@ export default function CardNotes({
   // transform to the animation after that.
   const [startTransform] = useState(() => {
     if (reduceMotion) return 'perspective(1600px) rotateY(180deg)'
-    const { x, y, scale } = pose(openedAt, from, 0)
-    return `perspective(1600px) translateX(${x}px) translateY(${y}px) scale(${scale})`
+    const { x, y, scale, rotate } = pose(openedAt, from, 0)
+    return `perspective(1600px) translateX(${x}px) translateY(${y}px) scale(${scale}) rotate(${rotate}deg)`
   })
   const [values, setValues] = useState(initial)
   const [status, setStatus] = useState<'idle' | 'saving' | 'saved' | 'error'>('idle')
@@ -157,6 +160,7 @@ export default function CardNotes({
         x: [start.x, 0],
         y: [start.y, 0],
         scale: [start.scale, 1],
+        rotate: [start.rotate, 0],
         rotateY: [0, 180],
         transformPerspective: [1600, 1600],
       },
