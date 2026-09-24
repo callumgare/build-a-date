@@ -1,0 +1,160 @@
+.card {
+  container-type: inline-size;
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  aspect-ratio: 3 / 4;
+  /* Hold the 3:4 shape even when text would push it taller; the description
+     shrinks to fit instead (see useFitText). */
+  min-height: 0;
+  padding: 0;
+  border: 1px solid rgba(111, 77, 43, 0.28);
+  border-radius: 6px;
+  color: #183745;
+  background:
+    radial-gradient(ellipse at 50% 30%, rgba(255, 255, 255, 0.35), transparent 70%),
+    linear-gradient(rgba(255, 255, 255, 0.14), rgba(229, 214, 191, 0.12)),
+    #f7f0e4;
+  box-shadow: 0 12px 28px rgba(4, 23, 31, 0.18);
+  cursor: pointer;
+  position: relative;
+  transform-origin: center;
+}
+
+.card:hover {
+  background-color: #fff9ef;
+}
+
+.card:focus-visible {
+  outline: 3px solid #fff4df;
+  outline-offset: 4px;
+}
+
+/* Card art is drawn in 200-unit-wide frames; --u converts a frame unit into
+   the card's width so the text always lines up with the artwork. */
+.content {
+  --edge: 4cqw;
+  --u: calc((100cqw - 2 * var(--edge)) / 200);
+  position: relative;
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  align-items: center;
+  min-height: 0;
+  padding:
+    calc(var(--edge) + var(--inset-top) * var(--u))
+    calc(var(--edge) + var(--inset-side) * var(--u))
+    calc(var(--edge) + var(--inset-bottom) * var(--u));
+  text-align: center;
+}
+
+.art {
+  position: absolute;
+  inset: var(--edge);
+  display: flex;
+  flex-direction: column;
+  color: #a07c4c;
+  pointer-events: none;
+}
+
+.art svg {
+  display: block;
+  flex: none;
+  width: 100%;
+  overflow: visible;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1;
+}
+
+.art svg * {
+  vector-effect: non-scaling-stroke;
+}
+
+.art :global(.fill) {
+  fill: currentColor;
+  stroke: none;
+}
+
+.art :global(.faint) {
+  opacity: 0.55;
+}
+
+/* Rails take whatever height the top and bottom pieces leave. A flex basis
+   of 0 rather than height: 100%, which Safari resolves against the whole
+   frame and so pushes the bottom piece out of the card. */
+.art svg.rails {
+  flex: 1 1 0;
+  min-height: 0;
+}
+
+.body {
+  position: relative;
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  align-self: stretch;
+  min-width: 0;
+}
+
+.title {
+  display: block;
+  max-width: calc(100% + 10 * var(--u));
+  margin: 0 calc(-5 * var(--u)) 0.5em;
+  color: #173d4c;
+  font-family: 'Tan Pearl', Georgia, serif;
+  font-size: clamp(0.8rem, 7.3cqw, 1.45rem);
+  line-height: 1.5;
+  overflow-wrap: break-word;
+  hyphens: auto;
+}
+
+.date {
+  display: block;
+  margin-bottom: 0.9em;
+  color: #947347;
+  font-size: calc(clamp(0.56rem, 4.2cqw, 0.72rem) * var(--fit, 1));
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  line-height: 1.4;
+  text-transform: uppercase;
+}
+
+.description {
+  display: block;
+  color: #48606a;
+  font-size: calc(clamp(0.72rem, 5.8cqw, 0.92rem) * var(--fit, 1));
+  line-height: 1.45;
+}
+
+.paragraph {
+  display: block;
+}
+
+.paragraph + .paragraph {
+  margin-top: 0.5em;
+}
+
+.description a {
+  color: #183745;
+  text-decoration: underline;
+  text-underline-offset: 0.15em;
+}
+
+.description a:hover {
+  color: #a07c4c;
+}
+
+.flying {
+  position: fixed;
+  z-index: 10;
+  transform-origin: 0 0;
+  pointer-events: none;
+}
+
+/* Motion manages inline visibility on layout-animated cards, hence !important. */
+.inFlight {
+  visibility: hidden !important;
+}

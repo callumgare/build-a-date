@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<!DOCTYPE svg PUBLIC "-//W3C//DTD SVG 1.1//EN" "http://www.w3.org/Graphics/SVG/1.1/DTD/svg11.dtd">
+<svg width="100%" height="100%" viewBox="0 0 138 184" version="1.1" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" xml:space="preserve" xmlns:affinity="https://www.affinity.studio/" style="fill-rule:evenodd;clip-rule:evenodd;stroke-linejoin:round;stroke-miterlimit:2;">
+    <g transform="matrix(1,0,0,1,-196.967692,-1041.400905)">
+        <g id="Star-5" affinity:id="Star 5" transform="matrix(1,0,0,1,-201.442725,-511.610819)">
+            <path d="M464.769,1553.012C465.363,1570.947 467.29,1585.047 469.26,1595.26C474.001,1619.831 484.177,1624.358 505.458,1625.352L535.884,1627.31L506.222,1630.225C493.675,1631.397 480.147,1635.583 473.139,1660.805C468.31,1678.185 468.124,1711.351 467.214,1736.891C465.609,1702.325 464.637,1677.009 461.869,1661.464C458.022,1639.853 450.684,1635.023 433.178,1631.732C424.412,1630.084 413.1,1629.388 398.41,1628.297C413.934,1627.484 426.603,1624.7 435.321,1623.787C453.871,1621.845 458.314,1619.069 460.902,1596.351C462.062,1586.168 464.329,1570.984 464.769,1553.012Z" style="fill:rgb(196,148,84);"/>
+        </g>
+    </g>
+</svg>

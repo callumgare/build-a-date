@@ -1,0 +1,444 @@
+@font-face {
+  font-family: 'Tan Pearl';
+  src: url('/tan-pearl.otf') format('opentype');
+  font-display: swap;
+}
+
+:root {
+  color: #f8f2e8;
+  background: #12374a;
+  font-family: Georgia, 'Times New Roman', serif;
+  font-synthesis: none;
+  text-rendering: optimizeLegibility;
+  --accent: #e5bc81;
+  --ink: #183745;
+  --paper: #f7f0e4;
+  --paper-deep: #eadcc9;
+  --line: rgba(229, 188, 129, 0.48);
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html {
+  min-width: 320px;
+  min-height: 100%;
+  background-color: #12374a;
+}
+
+body {
+  min-width: 320px;
+  min-height: 100vh;
+  margin: 0;
+}
+
+/* A fixed layer rather than background-attachment: fixed, which iOS Safari
+   ignores. Sized to the large viewport so it doesn't jump as the toolbar
+   shows and hides. */
+body::before {
+  content: '';
+  position: fixed;
+  z-index: -1;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100vh;
+  height: 100lvh;
+  background-color: #12374a;
+  background-image:
+    linear-gradient(180deg, rgba(7, 38, 53, 0.22), rgba(7, 32, 45, 0.58)),
+    url('/background.png');
+  background-position: center;
+  background-size: cover;
+  background-repeat: no-repeat;
+  pointer-events: none;
+}
+
+#root {
+  overflow-x: clip;
+}
+
+header {
+  display: flex;
+  justify-content: center;
+}
+
+button {
+  color: inherit;
+  font: inherit;
+}
+
+button:focus-visible {
+  outline: 3px solid #fff4df;
+  outline-offset: 4px;
+}
+
+.page-shell {
+  position: relative;
+  width: min(1240px, calc(100% - 40px));
+  margin: 0 auto;
+  padding: 72px 0 96px;
+}
+
+.stars {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+}
+
+.star {
+  position: absolute;
+  pointer-events: none;
+}
+
+.star--1 {
+  top: 36px;
+  right: 6%;
+  width: 84px;
+}
+
+.star--2 {
+  top: 150px;
+  right: 22%;
+  width: 48px;
+}
+
+.star--3 {
+  bottom: 24px;
+  left: 8%;
+  width: 40px;
+}
+
+.star--4 {
+  bottom: 18%;
+  left: -24px;
+  width: 60px;
+  z-index: 2;
+}
+
+.star--5 {
+  bottom: 32%;
+  right: -24px;
+  width: 60px;
+  z-index: 2;
+}
+
+.star--6 {
+  top: 210px;
+  left: 6%;
+  width: 34px;
+}
+
+.star--7 {
+  bottom: 56px;
+  right: 12%;
+  width: 42px;
+}
+
+.hero {
+  padding-top: clamp(16px, 6vh, 70px);
+}
+
+h1 {
+  max-width: 100%;
+  margin: 0;
+  color: var(--accent);
+  font-family: 'Tan Pearl', Georgia, serif;
+  font-size: clamp(2.6rem, 12vw, 8.4rem);
+  font-weight: 400;
+  line-height: 0.9;
+  overflow-wrap: anywhere;
+}
+
+.plan-section {
+  padding: 48px 0 44px;
+}
+
+.deck-section {
+  padding: 26px 0 44px;
+}
+
+.filter-button {
+  border: 0;
+  background: transparent;
+  cursor: pointer;
+}
+
+/* Styled as a link so plain-text actions still read as clickable. */
+.text-action {
+  padding: 4px 2px;
+  border: 0;
+  color: var(--accent);
+  background: transparent;
+  cursor: pointer;
+  text-decoration: underline;
+  text-decoration-color: var(--line);
+  text-decoration-thickness: 1px;
+  text-underline-offset: 0.25em;
+}
+
+.text-action:hover {
+  text-decoration-color: currentColor;
+}
+
+.plan-actions {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 20px;
+}
+
+.done-button {
+  padding: 9px 22px 8px;
+  border: 1px solid var(--accent);
+  border-radius: 3px;
+  color: #173847;
+  font-size: 0.9rem;
+  font-weight: 700;
+  letter-spacing: 0.05em;
+  background: var(--accent);
+  cursor: pointer;
+}
+
+.share-dialog {
+  width: min(92vw, 360px);
+  padding: 30px 28px 24px;
+  border: 1px solid var(--accent);
+  border-radius: 8px;
+  color: #f8f2e8;
+  text-align: center;
+  background: rgba(9, 42, 58, 0.96);
+}
+
+.share-dialog::backdrop {
+  background: rgba(4, 23, 31, 0.6);
+}
+
+.share-dialog p {
+  margin: 0 0 20px;
+  font-size: 1.15rem;
+}
+
+.share-dialog-actions {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 14px;
+}
+
+.plan-track {
+  position: relative;
+  display: grid;
+  grid-auto-columns: minmax(clamp(150px, 38vw, 220px), 250px);
+  grid-auto-flow: column;
+  justify-content: safe center;
+  gap: clamp(12px, 3vw, 20px);
+  padding: 5px 5px 18px;
+  margin: 0 -5px;
+  overflow-x: auto;
+  overflow-y: hidden;
+  overscroll-behavior-inline: contain;
+  scrollbar-color: var(--accent) transparent;
+}
+
+.empty-slot {
+  --dash-color: var(--accent);
+  --dash-length: 18px;
+  --dash-gap: 12px;
+  --dash-thickness: 5px;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5em;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  text-wrap: balance;
+  padding: 27px 24px;
+  aspect-ratio: 3 / 4;
+  border-radius: 6px;
+  color: var(--accent);
+  font-size: clamp(1.25rem, 2.5vw, 1.6rem);
+  background:
+    repeating-linear-gradient(
+      90deg,
+      var(--dash-color) 0 var(--dash-length),
+      transparent var(--dash-length) calc(var(--dash-length) + var(--dash-gap))
+    ) top left / 100% var(--dash-thickness) no-repeat,
+    repeating-linear-gradient(
+      90deg,
+      var(--dash-color) 0 var(--dash-length),
+      transparent var(--dash-length) calc(var(--dash-length) + var(--dash-gap))
+    ) bottom left / 100% var(--dash-thickness) no-repeat,
+    repeating-linear-gradient(
+      180deg,
+      var(--dash-color) 0 var(--dash-length),
+      transparent var(--dash-length) calc(var(--dash-length) + var(--dash-gap))
+    ) top left / var(--dash-thickness) 100% no-repeat,
+    repeating-linear-gradient(
+      180deg,
+      var(--dash-color) 0 var(--dash-length),
+      transparent var(--dash-length) calc(var(--dash-length) + var(--dash-gap))
+    ) top right / var(--dash-thickness) 100% no-repeat,
+    rgba(6, 38, 51, 0.24);
+}
+
+/* A small spaced-out "or" between two rules. */
+.empty-slot-divider {
+  display: flex;
+  align-items: center;
+  gap: 0.6em;
+  width: min(100%, 7em);
+  font-size: 0.7em;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  opacity: 0.8;
+}
+
+.empty-slot-divider::before,
+.empty-slot-divider::after {
+  content: '';
+  flex: 1;
+  height: 1px;
+  background: currentColor;
+}
+
+.filters {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-bottom: 28px;
+}
+
+.filter-button {
+  padding: 8px 13px 7px;
+  border: 1px solid rgba(255, 249, 239, 0.42);
+  border-radius: 3px;
+  color: rgba(255, 249, 239, 0.85);
+  font-size: 0.72rem;
+  letter-spacing: 0.07em;
+  text-transform: capitalize;
+}
+
+.filter-button[data-active='true'] {
+  border-color: var(--accent);
+  color: #173847;
+  background: var(--accent);
+}
+
+/* Hover and focus only hint at the accent, so they never read as selected.
+   Hover is limited to real pointers, where it doesn't stick after a tap. */
+.filter-button:focus-visible:not([data-active='true']) {
+  border-color: var(--accent);
+  color: var(--accent);
+  background: rgba(229, 188, 129, 0.14);
+}
+
+@media (hover: hover) {
+  .filter-button:hover:not([data-active='true']) {
+    border-color: var(--accent);
+    color: var(--accent);
+    background: rgba(229, 188, 129, 0.14);
+  }
+
+  .filter-button[data-active='true']:hover {
+    border-color: #f0d3a8;
+    background: #f0d3a8;
+  }
+}
+
+.card-grid {
+  display: grid;
+  grid-template-columns: repeat(
+    auto-fill,
+    minmax(min(100%, clamp(150px, 38vw, 235px)), 1fr)
+  );
+  gap: 16px;
+}
+
+.empty-results {
+  padding: 48px 0;
+  color: rgba(255, 249, 239, 0.76);
+  text-align: center;
+}
+
+.empty-results p {
+  margin: 0 0 12px;
+}
+
+@media (max-width: 640px) {
+  .page-shell {
+    width: min(100% - 24px, 1240px);
+    padding: 28px 0 64px;
+  }
+
+  .hero {
+    padding-top: 12px;
+  }
+
+  .plan-track {
+    grid-auto-columns: clamp(140px, 44vw, 200px);
+  }
+
+  .star--1 {
+    top: 14px;
+    right: 5%;
+    width: 52px;
+  }
+
+  .star--2,
+  .star--6 {
+    display: none;
+  }
+
+  .star--3 {
+    bottom: 14px;
+    left: 6%;
+    width: 28px;
+  }
+
+  .star--4 {
+    bottom: 16%;
+    left: -14px;
+    width: 40px;
+  }
+
+  .star--5 {
+    bottom: 32%;
+    right: -14px;
+    width: 40px;
+  }
+
+  .star--7 {
+    bottom: 32px;
+    right: 8%;
+    width: 30px;
+  }
+
+  .empty-slot {
+    --dash-length: 14px;
+    --dash-gap: 10px;
+    --dash-thickness: 4px;
+    font-size: 1.2rem;
+  }
+
+  .card-grid {
+    grid-template-columns: repeat(auto-fill, minmax(min(100%, 140px), 1fr));
+    gap: 10px;
+  }
+
+  .card-grid {
+    grid-template-columns: repeat(auto-fill, minmax(min(100%, 120px), 1fr));
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    scroll-behavior: auto !important;
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}

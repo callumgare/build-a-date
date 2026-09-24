@@ -1,0 +1,427 @@
+[
+  {
+    "id": "berlin-bar",
+    "title": "Berlin Bar",
+    "description": "A Cold War themed bar split into a ast Berlin bunker and a West Berlin salon. [More info](https://berlinbar.com.au/)",
+    "tags": ["food & drink", "night"]
+  },
+  {
+    "id": "boat-hire-at-fairfield-boathouse",
+    "title": "Boat Hire at Fairfield Boathouse",
+    "description": "",
+    "tags": ["active", "outside", "relaxed"]
+  },
+  {
+    "id": "holey-moley-fun-house",
+    "title": "Holey Moley Fun House",
+    "description": "Nine challenge games that replace mini golf's putters and balls, at Holey Moley in the CBD. [More info](https://holeymoley.com.au/activities/fun-house)",
+    "tags": ["games"]
+  },
+  {
+    "id": "collingwood-childrens-farm",
+    "title": "Collingwood Children's Farm",
+    "description": "",
+    "tags": ["animals", "outside", "relaxed"]
+  },
+  {
+    "id": "candlelight-queen-vs-abba",
+    "title": "Candlelight: Queen vs. ABBA",
+    "description": "A string quartet plays Queen and ABBA hits by candlelight at the Athenaeum Theatre. [More info](https://feverup.com/m/268812)",
+    "tags": ["culture", "night", "show"]
+  },
+  {
+    "id": "golf",
+    "title": "Golf",
+    "description": "Just kidding ;P",
+    "tags": ["active", "games", "outside"]
+  },
+  {
+    "id": "stargazing-drive",
+    "title": "Stargazing Drive",
+    "description": "",
+    "tags": ["free", "night", "outside", "relaxed"]
+  },
+  {
+    "id": "mafia-escape-room",
+    "title": "Mafia Escape Room",
+    "description": "",
+    "tags": ["games"]
+  },
+  {
+    "id": "ngv-after-dark",
+    "title": "NGV After Dark",
+    "description": "Currently showing Cartier, an exhibition on jewellery. [More info](https://www.ngv.vic.gov.au/exhibition/cartier/)",
+    "tags": ["culture", "night"],
+    "date": "Every Friday until 2 October"
+  },
+  {
+    "id": "trip-to-the-ngv",
+    "title": "Trip to the NGV",
+    "description": "Or another art gallery.",
+    "tags": ["culture", "relaxed"]
+  },
+  {
+    "id": "sca-event",
+    "title": "SCA Event",
+    "description": "",
+    "tags": ["historical"]
+  },
+  {
+    "id": "the-moth",
+    "title": "The Moth",
+    "description": "A storytelling competition of five-minute personal stories based on a theme. [More info](https://www.themoth.org/tickets/anything-goes-14)",
+    "tags": ["night", "show"],
+    "date": "First Wednesday of the month"
+  },
+  {
+    "id": "cocktail-in-the-clouds",
+    "title": "Cocktail in the Clouds",
+    "description": "A cocktail at Bar 88 in the Eureka Skydeck. [More info](https://www.headout.com/eureka-skydeck-melbourne-tickets/melbourne-skydeck-cocktail-in-the-clouds-experience-e-24544/)",
+    "tags": ["food & drink"]
+  },
+  {
+    "id": "hot-air-ballooning",
+    "title": "Hot Air Ballooning",
+    "description": "",
+    "tags": ["outside"]
+  },
+  {
+    "id": "museum-after-dark",
+    "title": "Museum After Dark",
+    "description": "Talks at the Melbourne Museum, including \"2026 Weird Research in Review\" with Alanta Colley. [More info](https://museumsvictoria.com.au/melbournemuseum/whats-on/nocturnal/)",
+    "tags": ["culture", "night", "talk"],
+    "date": "Thursday 5 November"
+  },
+  {
+    "id": "kryal-castle",
+    "title": "Kryal Castle",
+    "description": "A medieval castle near Ballarat with jousting, archery and axe throwing. [More info](https://www.kryalcastle.com.au/pages/things-to-do)",
+    "tags": ["historical"]
+  },
+  {
+    "id": "bubble-planet",
+    "title": "Bubble Planet",
+    "description": "An immersive exhibition of bubble-themed rooms. [More info](https://bubble-planet.com/melbourne/)",
+    "tags": ["experiential"]
+  },
+  {
+    "id": "cashmere-cat-cafe",
+    "title": "Cashmere Cat Cafe",
+    "description": "[More info](https://www.cashmerecatcafe.com.au/)",
+    "tags": ["animals", "food & drink", "relaxed"],
+    "date": "Monday to Friday, 11am to 7pm"
+  },
+  {
+    "id": "team-up-tuesdays-at-fortress",
+    "title": "Team Up Tuesdays at Fortress",
+    "description": "[More info](https://events.humanitix.com/team-up-tuesdays-fortress-melbourne)",
+    "tags": ["free", "games", "night"],
+    "date": "Every Tuesday"
+  },
+  {
+    "id": "forbidden-gods-and-forgotten-realms-author-panel",
+    "title": "Forbidden Gods and Forgotten Realms Author Panel",
+    "description": "At The Forbidden Chapter cafe bookstore. [More info](https://theforbiddenchapter.au/pages/events-calendar)",
+    "tags": ["culture", "talk"],
+    "date": "Saturday 3 October, 12:30pm"
+  },
+  {
+    "id": "pop-up-poetry",
+    "title": "Pop Up Poetry",
+    "description": "At The Forbidden Chapter cafe bookstore. [More info](https://theforbiddenchapter.au/pages/events-calendar)",
+    "tags": ["culture", "show"],
+    "date": "Sunday 25 October, 10am"
+  },
+  {
+    "id": "cabaret-at-viva",
+    "title": "Cabaret at VIVA",
+    "description": "Late-night cabaret of dancers, singers and aerialists in North Melbourne. [More info](https://whatson.melbourne.vic.gov.au/things-to-do/viva)",
+    "tags": ["culture", "night", "show"],
+    "date": "Tuesday, Friday and Saturday nights"
+  },
+  {
+    "id": "bathroom-with-a-view",
+    "title": "Bathroom with a View",
+    "description": "Visit the famous Melbourne loo with a view. [More info](https://www.escape.com.au/destinations/australia/victoria/worth-travelling-for-melbournes-secret-loo-with-a-view/news-story/6a3d6fadb8001463368c371fa03a76f7)",
+    "tags": ["free"]
+  },
+  {
+    "id": "old-melbourne-gaol-ghost-tour",
+    "title": "Ghost Tour at the Old Melbourne Gaol",
+    "description": "[More info](https://www.oldmelbournegaol.com.au/event/ghosts-what-ghosts-tour/)",
+    "tags": ["historical", "night"]
+  },
+  {
+    "id": "rock-climbing",
+    "title": "Rock Climbing",
+    "description": "Rope climbing at Hardrock in the city. [More info](https://www.hardrock.com.au/)",
+    "tags": ["active"]
+  },
+  {
+    "id": "oktoberfest",
+    "title": "Oktoberfest Events",
+    "description": "Possibly at Hofbräuhaus in Chinatown, or Oktoberfest in the Gardens in St Kilda. [More info](https://www.onlymelbourne.com.au/oktoberfest-melbourne)",
+    "tags": ["food & drink"],
+    "date": "Until 31 October"
+  },
+  {
+    "id": "kintsugi-workshop",
+    "title": "Kintsugi Workshop",
+    "description": "[More info](https://classbento.com.au/modern-kintsugi-workshop-for-beginners-melbourne)",
+    "tags": ["workshop"]
+  },
+  {
+    "id": "perfume-making-class",
+    "title": "Perfume Making Class",
+    "description": "Learn how to make your own perfume and take it home. [More info](https://classbento.com.au/perfume-making-workshop-for-beginners-melbourne)",
+    "tags": ["workshop"]
+  },
+  {
+    "id": "silver-letter-ring-making-class",
+    "title": "Silver Letter Ring Making Class",
+    "description": "Make your own silver ring stamped with a letter. [More info](https://classbento.com.au/silver-letter-ring-making-class-melbourne)",
+    "tags": ["workshop"]
+  },
+  {
+    "id": "glassblowing-class",
+    "title": "Glassblowing Class",
+    "description": "Shape molten glass into a paperweight and a blown glass vessel, ready to collect the next day. [More info](https://classbento.com.au/introduction-to-glassblowing-workshop-melbourne)",
+    "tags": ["workshop"],
+    "date": "Weekends"
+  },
+  {
+    "id": "auslan-class",
+    "title": "Auslan Class",
+    "description": "",
+    "tags": ["workshop"]
+  },
+  {
+    "id": "dance-class",
+    "title": "Dance Class",
+    "description": "Try a beginner class together, from salsa to swing.",
+    "tags": ["active", "workshop"]
+  },
+  {
+    "id": "stained-glass-workshop",
+    "title": "Stained Glass Workshop",
+    "description": "",
+    "tags": ["workshop"]
+  },
+  {
+    "id": "starry-sky-exhibition",
+    "title": "Starry Sky Exhibition",
+    "description": "Ten immersive light rooms, including a mirror maze and a 360° tunnel, at Metart World in Port Melbourne. [More info](https://www.metartworld.com.au/starryskyexhibition/)",
+    "tags": ["experiential"]
+  },
+  {
+    "id": "sensas",
+    "title": "SENSAS",
+    "description": "A series of fun challenges relating to all five senses. [More info](https://sensas-experience.com/melbourne/)",
+    "tags": ["experiential", "games"]
+  },
+  {
+    "id": "mystery-picnic",
+    "title": "Mystery Picnic",
+    "description": "Solve clues around the CBD to collect food from local producers, then find the secret picnic spot. [More info](https://feverup.com/m/117383)",
+    "tags": ["food & drink", "games", "outside"],
+    "date": "Tue + Thurs to Sun, starting between 11am and 1pm"
+  },
+  {
+    "id": "trip-to-daylesford",
+    "title": "Trip to Daylesford",
+    "description": "A day trip to the spa town, or somewhere like it.",
+    "tags": ["day trip", "relaxed"]
+  },
+  {
+    "id": "couples-acro-yoga",
+    "title": "Couples Acro Yoga",
+    "description": "",
+    "tags": ["active"]
+  },
+  {
+    "id": "wunderkammer",
+    "title": "Wunderkammer",
+    "description": "A curiosity shop of taxidermy, skulls, insects and minerals on Lonsdale Street. [More info](https://wunderkammer.com.au)",
+    "tags": ["free"]
+  },
+  {
+    "id": "the-forbidden-chapter",
+    "title": "The Forbidden Chapter",
+    "description": "The cafe bookstore that opened up near us. [More info](https://theforbiddenchapter.au/)",
+    "tags": ["relaxed"]
+  },
+  {
+    "id": "queer-sauna-sounds",
+    "title": "Queer Sauna Sounds",
+    "description": "An all-gender, sex-positive queer dance party at New Guernica in Collingwood. [More info](https://www.ravetemple.com/queer-sauna-sounds-melb-naarm)",
+    "tags": ["night"]
+  },
+  {
+    "id": "trivia-at-flippys",
+    "title": "Trivia at Flippy's",
+    "description": "Trivia at a queer bar in Brunswick. [More info](https://barflippys.info/)",
+    "tags": ["food & drink", "games", "night"],
+    "date": "Every Thursday, 6:30pm"
+  },
+  {
+    "id": "thursgays-at-yah-yahs",
+    "title": "Thursgays at Yah Yah's",
+    "description": "Yah Yah's weekly queer party in Fitzroy.",
+    "tags": ["free", "night"],
+    "date": "Every Thursday"
+  },
+  {
+    "id": "fiftyfive",
+    "title": "Fiftyfive",
+    "description": "A basement bar and art space on Elizabeth Street, with craft beer, cocktails and DJs. [More info](https://www.fifty-five.com.au/)",
+    "tags": ["food & drink", "night"]
+  },
+  {
+    "id": "black-cat",
+    "title": "Black Cat",
+    "description": "A Fitzroy institution since 1982, with a lounge-room feel by day and DJs at night. [More info](https://www.blackcatfitzroy.com/)",
+    "tags": ["food & drink", "night"]
+  },
+  {
+    "id": "hidden-bar-hunt",
+    "title": "Hidden Bar Hunt",
+    "description": "Track down some of the city's secret bars and cocktail lounges. [More info](https://www.qthotels.com/melbourne/qt-blog/three-hidden-melbourne-bars/)",
+    "tags": ["food & drink", "night"]
+  },
+  {
+    "id": "beneath-driver-lane",
+    "title": "Beneath Driver Lane",
+    "description": "Cocktails underground in the GPO's old money order office, with live blues Thursday to Saturday.",
+    "tags": ["food & drink", "night"]
+  },
+  {
+    "id": "caretakers-cottage",
+    "title": "Caretaker's Cottage",
+    "description": "A tiny, award-winning cocktail bar in the old caretaker's cottage of a city church. [More info](https://www.caretakerscottage.bar/)",
+    "tags": ["food & drink", "night"]
+  },
+  {
+    "id": "storyville",
+    "title": "StoryVille",
+    "description": "A fairy tale themed cocktail bar with glowing toadstools and drinks served in storybook vessels. [More info](https://www.storyvillemelbourne.com.au/)",
+    "tags": ["food & drink", "night"]
+  },
+  {
+    "id": "b-lucky-and-sons",
+    "title": "B. Lucky & Sons",
+    "description": "An arcade bar in Melbourne Central with cocktails, burgers and a rooftop terrace. [More info](https://luckyandsons.com.au/locations/melbourne-central)",
+    "tags": ["food & drink", "games", "night"]
+  },
+  {
+    "id": "ima-asa-yoru",
+    "title": "Ima Asa Yoru",
+    "description": "Japanese breakfast by day, or izakaya dishes with sake and jazz by night, in Brunswick. [More info](https://www.imaproject.co/asa-yoru)",
+    "tags": ["food & drink"]
+  },
+  {
+    "id": "brunswick-aces-bar",
+    "title": "Brunswick Aces Bar",
+    "description": "Cocktails with or without alcohol, from the distillery behind Sapiir. [More info](https://brunswickaces.com/pages/the-bar)",
+    "tags": ["food & drink", "night"],
+    "date": "Thursday to Saturday, 5pm till late"
+  },
+  {
+    "id": "joey-smalls",
+    "title": "Joey Smalls",
+    "description": "A Brunswick bar with DJs, cocktails and American diner food like fried chicken and burgers.",
+    "tags": ["food & drink", "night"]
+  },
+  {
+    "id": "japanese-restaurant",
+    "title": "Japanese Restaurant",
+    "description": "Dinner at one of the Japanese restaurants in Melbourne. [More info](https://manofmany.com/culture/food/best-japanese-restaurants-melbourne)",
+    "tags": ["food & drink", "night"]
+  },
+  {
+    "id": "sunset-watching",
+    "title": "Sunset Watching",
+    "description": "Some nice places to watch the sun set include Burkes Lookout, the Mount Dandenong Observatory, Wurundjeri Spur, [Melbourne City Sunset View](https://share.google/rpouNjjwzLCvWkd3W) in Kew, and Lily Reserve in Maribyrnong.",
+    "tags": ["free", "outside", "relaxed"]
+  },
+  {
+    "id": "planetarium-nights",
+    "title": "Planetarium Nights",
+    "description": "Adults-only screenings under the dome of the Melbourne Planetarium at Scienceworks, with a bar. [More info](https://museumsvictoria.com.au/scienceworks/whats-on/planetarium-nights/)",
+    "tags": ["culture", "night"],
+    "date": "Friday nights"
+  },
+  {
+    "id": "archie-brothers-cirque-electriq",
+    "title": "Archie Brothers Cirque Electriq",
+    "description": "Arcade games, bowling, dodgem cars and a cocktail bar in Docklands. [More info](https://archiebrothers.com.au/locations/melbourne)",
+    "tags": ["games", "night"]
+  },
+  {
+    "id": "cursed-statues-tour",
+    "title": "Cursed Statues Tour",
+    "description": "Visit Melbourne's cursed statues: [Mr Lizard and Gumnut Baby](https://www.google.com/maps/place/Mr+Lizard+and+Gumnut+Baby/@-37.8098754,144.963879,20.46z/data=!4m15!1m8!3m7!1s0x6ad642b7e14b5297:0x2906e35b55ade63e!2sAC%2FDC+La,+Melbourne+VIC+3000!3b1!8m2!3d-37.815686!4d144.9709628!16zL20vMDd6Mmdy!3m5!1s0x6ad642cba38c7c5f:0xec2d5b4186a74cf2!8m2!3d-37.8097894!4d144.9643789!16s%2Fg%2F11f2xyky66?entry=ttu), [Gog and Magog](https://www.google.com/maps/place/Gog+and+Magog/@-37.8148317,144.9593678,17z/data=!3m2!4b1!5s0x6ad642b4f41361fb:0x881c74fc6a0ee364!4m6!3m5!1s0x6ad642b5aea50999:0x60e27adff2884320!8m2!3d-37.814836!4d144.9642387!16s%2Fg%2F11b7hq01d9?entry=ttu) and [Larry La Trobe](https://www.atlasobscura.com/places/larry-la-trobe-dog-statue).",
+    "tags": ["free", "outside"]
+  },
+  {
+    "id": "depot-adventures-walking-tour",
+    "title": "Depot Adventures Walking Tour",
+    "description": "Small-group walking tours of Melbourne's history or its hidden laneway bars. [More info](https://depotadventures.com/)",
+    "tags": ["historical", "outside"]
+  },
+  {
+    "id": "couples-photoshoot",
+    "title": "Couples Photoshoot",
+    "description": "A photo session together somewhere like Carlton Gardens or Abbotsford Convent. [More info](https://livesonlovestreet.com/) · [Location ideas](https://livesonlovestreet.com/where-to-go-for-your-couples-session-in-melbourne/)",
+    "tags": ["outside"]
+  },
+  {
+    "id": "ice-skating",
+    "title": "Ice Skating",
+    "description": "",
+    "tags": ["active"]
+  },
+  {
+    "id": "acid-in-the-botanical-gardens",
+    "title": "Acid in the Botanical Gardens",
+    "description": "",
+    "tags": ["outside"]
+  },
+  {
+    "id": "go-karting",
+    "title": "Go Karting",
+    "description": "",
+    "tags": ["active", "games"]
+  },
+  {
+    "id": "sense-of-self",
+    "title": "Sense of Self",
+    "description": "A bathhouse in Collingwood with mineral pools, saunas, steam rooms and plunge pools. [More info](https://www.sos-senseofself.com/)",
+    "tags": ["relaxed"]
+  },
+  {
+    "id": "peninsula-hot-springs",
+    "title": "Peninsula Hot Springs",
+    "description": "[More info](https://www.peninsulahotsprings.com/bathe/bath-house)",
+    "tags": ["day trip", "outside", "relaxed"]
+  },
+  {
+    "id": "edgar-allan-poe-speakeasy",
+    "title": "Edgar Allan Poe Speakeasy",
+    "description": "Four of Poe's tales, including The Raven and The Tell-Tale Heart, performed in Fitzroy North, each paired with a themed cocktail. [More info](https://feverup.com/m/679389)",
+    "tags": ["food & drink", "night", "show"],
+    "date": "Selected nights, 6pm or 8:30pm"
+  },
+  {
+    "id": "serial-killer-speakeasy",
+    "title": "Serial Killer Speakeasy",
+    "description": "The stories of four notorious American serial killers performed in Fitzroy North, each paired with a themed cocktail. [More info](https://feverup.com/m/668442)",
+    "tags": ["food & drink", "night", "show"],
+    "date": "Until 29 January, 6pm or 8:30pm"
+  },
+  {
+    "id": "abbotsford-convent",
+    "title": "Visit the Abbotsford Convent",
+    "description": "Ether going to an event on or just wondering around. [More info](https://abbotsfordconvent.com.au/)",
+    "tags": ["culture", "free", "outside", "relaxed"]
+  }
+]
