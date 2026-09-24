@@ -19,15 +19,25 @@ export async function addVirtualAuthenticator(page: Page) {
   return { client, authenticatorId }
 }
 
-// Reads the newest sign-in link sent to an address from the dev-only outbox
-// (emails aren't really sent without a Resend key).
+// How many emails each address had when a link was last read from it.
+const emailsRead = new Map<string, number>()
+
+// Reads the link from the next email sent to an address, from the dev-only
+// outbox (emails aren't really sent without a Resend key). It waits for an
+// email newer than the one it last returned for that address. Otherwise,
+// straight after a click that sends a second email, it could return the
+// first email's link before the new one lands, and a sign-in link that has
+// already been used is turned away.
 export async function latestSignInLink(request: APIRequestContext, email: string) {
+  const alreadyRead = emailsRead.get(email) ?? 0
   let link: string | undefined
   await expect(async () => {
     const response = await request.get(`/api/dev/outbox?to=${encodeURIComponent(email)}`)
     const emails: { text: string }[] = await response.json()
+    expect(emails.length).toBeGreaterThan(alreadyRead)
     link = emails.at(-1)?.text.match(/https?:\/\/\S+/)?.[0]
     expect(link).toBeTruthy()
+    emailsRead.set(email, emails.length)
   }).toPass({ timeout: 10_000 })
   return link as string
 }
