@@ -34,7 +34,7 @@
     "id": "golf",
     "title": "Golf",
     "description": "Just kidding ;P",
-    "tags": ["active", "games", "outside"]
+    "tags": ["active", "games", "outside", "nsfw"]
   },
   {
     "id": "stargazing-drive",
@@ -389,7 +389,7 @@
     "id": "acid-in-the-botanical-gardens",
     "title": "Acid in the Botanical Gardens",
     "description": "",
-    "tags": ["outside"]
+    "tags": ["outside", "nsfw"]
   },
   {
     "id": "go-karting",
@@ -428,5 +428,40 @@
     "title": "Visit the Abbotsford Convent",
     "description": "Ether going to an event on or just wondering around. [More info](https://abbotsfordconvent.com.au/)",
     "tags": ["culture", "free", "outside", "relaxed"]
+  },
+  {
+    "id": "dockland-star",
+    "title": "Fuck on the Dockland Star",
+    "description": "[More info](https://melbournestar.com.au/)",
+    "tags": ["nsfw"],
+    "date": "Not yet open"
+  },
+  {
+    "id": "an-iliad",
+    "title": "An Iliad",
+    "description": "A one-man retelling of Homer's Trojan War epic. [More info](https://www.artscentremelbourne.com.au/whats-on/2027/theatre/an-iliad)",
+    "tags": ["culture", "night", "show"],
+    "date": "18 March to 11 April 2027"
+  },
+  {
+    "id": "death-and-co",
+    "title": "Death & Co",
+    "description": "The Melbourne outpost of the famous New York cocktail bar, on Flinders Lane. [More info](https://deathandcompanymelbourne.com.au/)",
+    "tags": ["food & drink", "night"],
+    "date": "Wednesday to Sunday, 4pm till late"
+  },
+  {
+    "id": "murder-at-the-movies",
+    "title": "Murder at the Movies",
+    "description": "A murder mystery dinner set at the 1937 Academy Awards, with three courses at the Stamford Plaza. Period costume encouraged. [More info](https://www.cluedunnit.com.au/melbourne/https/eventshumanitixcom/cluedunnit-murder-at-the-movies-murder-mystery-dinner-stamford-plaza-adelaide-2026-11-14-h5s9t)",
+    "tags": ["food & drink", "games", "night"],
+    "date": "Saturday 21 November, 6:30pm"
+  },
+  {
+    "id": "dracula-ballet",
+    "title": "Dracula: Ballet at its Darkest",
+    "description": "A cinematic ballet retelling of Bram Stoker's gothic novel at Her Majesty's Theatre. [More info](https://premier.ticketek.com.au/Shows/Show.aspx?sh=DRACULA26)",
+    "tags": ["culture", "night", "show"],
+    "date": "1 to 25 October"
   }
 ]
