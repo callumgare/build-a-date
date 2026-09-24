@@ -24,6 +24,89 @@
   background-color: #fff9ef;
 }
 
+/* What can be done with a card on the builder page, the same distance from
+   the top on every card, over a shade that fades out just below them. The
+   shortest frame's top inset (50 frame units) still clears them on the
+   smallest cards, so they never cover the text and links in the description
+   keep working. Shown on hover, after a tap on screens without hover, and
+   while one of the buttons has keyboard focus. */
+.actions {
+  position: absolute;
+  top: 0;
+  right: 0;
+  left: 0;
+  z-index: 1;
+  display: flex;
+  justify-content: center;
+  gap: 4cqw;
+  padding: calc(var(--edge) + 3cqw) var(--edge) 9cqw;
+  border-radius: 5px 5px 0 0;
+  background: linear-gradient(rgba(4, 23, 31, 0.32), rgba(4, 23, 31, 0.16) 55%, transparent);
+  opacity: 0;
+  transition: opacity 0.15s ease;
+  pointer-events: none;
+}
+
+.action {
+  height: clamp(20px, 12cqw, 30px);
+  padding: 0 clamp(7px, 5cqw, 14px);
+  border: 1px solid #a07c4c;
+  border-radius: 999px;
+  color: #183745;
+  font-size: clamp(0.58rem, 5.4cqw, 0.8rem);
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  white-space: nowrap;
+  background: #f7f0e4;
+  box-shadow: 0 2px 6px rgba(4, 23, 31, 0.18);
+  cursor: pointer;
+  pointer-events: none;
+}
+
+.primaryAction {
+  border-color: #c99a58;
+  background: #e5bc81;
+}
+
+.action:focus-visible {
+  outline: 2px solid #183745;
+  outline-offset: 2px;
+}
+
+@media (hover: hover) {
+  .action:hover {
+    background: #fff9ef;
+  }
+
+  .primaryAction:hover {
+    background: #efcd9b;
+  }
+
+  .card:hover .actions {
+    opacity: 1;
+  }
+
+  .card:hover .action {
+    pointer-events: auto;
+  }
+}
+
+.card[data-revealed='true'] .actions,
+.card:has(:focus-visible) .actions {
+  opacity: 1;
+}
+
+.card[data-revealed='true'] .action,
+.card:has(:focus-visible) .action {
+  pointer-events: auto;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .actions {
+    transition: none;
+  }
+}
+
 .card:focus-visible {
   outline: 3px solid #fff4df;
   outline-offset: 4px;

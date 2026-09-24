@@ -1,0 +1,185 @@
+/* Fills the screen so the card can fly anywhere on it; the scrim inside
+   stands in for the backdrop, so it can fade with the flip. */
+.dialog {
+  position: fixed;
+  inset: 0;
+  width: 100vw;
+  max-width: none;
+  height: 100dvh;
+  max-height: none;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  overflow: hidden;
+  background: transparent;
+}
+
+.dialog::backdrop {
+  background: transparent;
+}
+
+.scrim {
+  position: fixed;
+  inset: 0;
+  background: rgba(4, 23, 31, 0.6);
+  pointer-events: none;
+}
+
+.flipper {
+  position: fixed;
+  transform-style: preserve-3d;
+}
+
+.face {
+  position: absolute;
+  top: 0;
+  left: 0;
+  -webkit-backface-visibility: hidden;
+  backface-visibility: hidden;
+}
+
+.front {
+  transform: scale(var(--front-scale));
+  transform-origin: 0 0;
+  cursor: default;
+}
+
+.back {
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+  width: 100%;
+  height: 100%;
+  padding: clamp(20px, 6%, 36px);
+  border: 1px solid rgba(111, 77, 43, 0.28);
+  border-radius: 6px;
+  color: #183745;
+  text-align: center;
+  background:
+    radial-gradient(ellipse at 50% 30%, rgba(255, 255, 255, 0.35), transparent 70%),
+    linear-gradient(rgba(255, 255, 255, 0.14), rgba(229, 214, 191, 0.12)), #f7f0e4;
+  box-shadow: 0 24px 60px rgba(4, 23, 31, 0.35);
+  transform: rotateY(180deg);
+}
+
+.title {
+  margin: 0;
+  color: #173d4c;
+  font-family: 'Tan Pearl', Georgia, serif;
+  font-size: clamp(1.3rem, 5vw, 1.8rem);
+  font-weight: 400;
+  line-height: 1.4;
+}
+
+.rating {
+  margin: 0;
+  padding: 0;
+  border: 0;
+}
+
+.rating legend {
+  margin: 0 auto 6px;
+  color: #947347;
+  font-size: 0.78rem;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+}
+
+.stars {
+  display: flex;
+  justify-content: center;
+}
+
+/* No gap between stars, so the pointer never falls between two and flickers
+   the preview. */
+.star {
+  display: block;
+  padding: 2px 4px;
+  color: #a07c4c;
+  cursor: pointer;
+}
+
+.star svg {
+  display: block;
+  width: clamp(30px, 9vw, 40px);
+  height: auto;
+  fill: transparent;
+  stroke: currentColor;
+  stroke-width: 1.3;
+  stroke-linejoin: round;
+  transition: fill 0.12s ease;
+}
+
+.star[data-filled='true'] svg {
+  fill: #e5bc81;
+}
+
+/* Hovering previews the rating: every star up to the one under the pointer. */
+@media (hover: hover) {
+  .stars:hover .star svg {
+    fill: #f1d9b4;
+  }
+
+  .stars:hover .star:hover ~ .star svg {
+    fill: transparent;
+  }
+}
+
+.star:has(input:focus-visible) {
+  outline: 2px solid #a07c4c;
+  outline-offset: 1px;
+  border-radius: 4px;
+}
+
+.notesField {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  gap: 6px;
+  min-height: 0;
+  color: #947347;
+  font-size: 0.78rem;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-align: left;
+  text-transform: uppercase;
+}
+
+.notesField textarea {
+  flex: 1;
+  min-height: 6em;
+  resize: none;
+  border: 1px solid rgba(111, 77, 43, 0.35);
+  color: #183745;
+  font-size: 1rem;
+  font-weight: 400;
+  letter-spacing: normal;
+  line-height: 1.5;
+  text-transform: none;
+  background: rgba(255, 255, 255, 0.55);
+}
+
+.notesField textarea:focus-visible {
+  border-color: #a07c4c;
+  outline-color: #a07c4c;
+}
+
+.footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.status {
+  color: #6f7f86;
+  font-size: 0.85rem;
+}
+
+.error {
+  margin: -8px 0 0;
+  color: #9b2c2c;
+  font-size: 0.85rem;
+  text-align: left;
+}

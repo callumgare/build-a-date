@@ -21,6 +21,7 @@ import {
   requestEditAccess,
   respondToAccessRequest,
   saveCard,
+  saveCardNotes,
   savePlan,
 } from './decks'
 
@@ -141,6 +142,56 @@ describe('plans', () => {
     const plan = await savePlan(db, deck.shareId, [card.id])
     await deleteDeck(db, owner, deck.id)
     await expect(getPlan(db, plan.id)).rejects.toThrow(NotFoundError)
+  })
+})
+
+describe('card notes', () => {
+  /** @see docs/card-notes.md § "Who can change them" */
+  it('lets anyone with the share link rate a card and write notes on it', async () => {
+    const deck = await createDeck(db, owner, { name: 'Deck', template: 'empty' })
+    const card = await saveCard(db, owner, deck.id, null, { title: 'Picnic' })
+    await saveCardNotes(db, deck.shareId, card.id, { interest: 4, notes: 'Somewhere shady' })
+
+    const { cards } = await getSharedDeck(db, deck.shareId)
+    expect(cards[0]).toMatchObject({ interest: 4, notes: 'Somewhere shady' })
+  })
+
+  /** @see docs/card-notes.md § "Who can change them" - one rating and one set of notes per card */
+  it('replaces the rating and notes each time', async () => {
+    const deck = await createDeck(db, owner, { name: 'Deck', template: 'empty' })
+    const card = await saveCard(db, owner, deck.id, null, { title: 'Picnic' })
+    await saveCardNotes(db, deck.shareId, card.id, { interest: 4, notes: 'Somewhere shady' })
+    await saveCardNotes(db, deck.shareId, card.id, { interest: null, notes: '' })
+
+    const [saved] = (await getSharedDeck(db, deck.shareId)).cards
+    expect(saved.interest).toBeUndefined()
+    expect(saved.notes).toBeUndefined()
+  })
+
+  /** @see docs/card-notes.md § "Who can change them" - a card from another deck looks like one that doesn't exist */
+  it("won't change a card through another deck's share id", async () => {
+    const mine = await createDeck(db, owner, { name: 'Mine', template: 'empty' })
+    const other = await createDeck(db, stranger, { name: 'Other', template: 'empty' })
+    const card = await saveCard(db, owner, mine.id, null, { title: 'Picnic' })
+
+    await expect(saveCardNotes(db, other.shareId, card.id, { interest: 1, notes: 'x' })).rejects.toThrow(NotFoundError)
+    await expect(saveCardNotes(db, 'nope', card.id, { interest: 1, notes: 'x' })).rejects.toThrow(NotFoundError)
+    await expect(saveCardNotes(db, mine.shareId, 'made-up', { interest: 1, notes: 'x' })).rejects.toThrow(NotFoundError)
+    expect((await getSharedDeck(db, mine.shareId)).cards[0].interest).toBeUndefined()
+  })
+
+  /** @see docs/card-notes.md § "Rating and notes" - editing the idea keeps them */
+  it('keeps them when the card is edited', async () => {
+    const deck = await createDeck(db, owner, { name: 'Deck', template: 'empty' })
+    const card = await saveCard(db, owner, deck.id, null, { title: 'Picnic' })
+    await saveCardNotes(db, deck.shareId, card.id, { interest: 5, notes: 'Yes please' })
+    await saveCard(db, owner, deck.id, card.id, { title: 'Picnic by the river', description: 'Bring a rug' })
+
+    expect((await getSharedDeck(db, deck.shareId)).cards[0]).toMatchObject({
+      title: 'Picnic by the river',
+      interest: 5,
+      notes: 'Yes please',
+    })
   })
 })
 

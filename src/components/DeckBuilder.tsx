@@ -2,13 +2,14 @@
 
 import { AnimatePresence, LayoutGroup, motion, useReducedMotion } from 'motion/react'
 import Link from 'next/link'
-import { type KeyboardEvent, useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { savePlan } from '@/lib/actions/plans'
 import { arrangeDeck } from '@/lib/deck-order'
 import type { AccessState } from '@/lib/decks'
 import type { DateCard } from '@/types'
 import Card from './Card'
 import cardStyles from './Card.module.css'
+import CardNotes, { type Notes } from './CardNotes'
 import FlyingCard from './FlyingCard'
 import { frameFor } from './frames'
 import InstallHint from './InstallHint'
@@ -22,15 +23,6 @@ function readSelection(cardsById: Map<string, DateCard>): string[] {
     .split(',')
     .map((id) => decodeURIComponent(id))
     .filter((id) => cardsById.has(id) && !seen.has(id) && Boolean(seen.add(id)))
-}
-
-// Cards are divs rather than buttons so their descriptions can hold links,
-// so Enter and Space have to trigger them by hand.
-function clickOnActivationKey(event: KeyboardEvent<HTMLElement>) {
-  if (event.target !== event.currentTarget) return
-  if (event.key !== 'Enter' && event.key !== ' ') return
-  event.preventDefault()
-  event.currentTarget.click()
 }
 
 function selectionsMatch(first: string[], second: string[]) {
@@ -68,6 +60,16 @@ export default function DeckBuilder({
   const [activeTags, setActiveTags] = useState<Set<string>>(() => new Set())
   const [linkCopied, setLinkCopied] = useState(false)
   const [flight, setFlight] = useState<{ id: string; from: DOMRect } | null>(null)
+  const [notesOpen, setNotesOpen] = useState<{ id: string; from: DOMRect } | null>(null)
+  // Ratings and notes as they stand after any changes made on this visit.
+  const [notesById, setNotesById] = useState(
+    () =>
+      new Map<string, Notes>(
+        deckCards.map((card) => [card.id, { interest: card.interest ?? null, notes: card.notes ?? '' }]),
+      ),
+  )
+  // The card showing its buttons after a tap, for screens without hover.
+  const [revealedId, setRevealedId] = useState<string | null>(null)
   const dialogReference = useRef<HTMLDialogElement>(null)
   const trackReference = useRef<HTMLDivElement>(null)
   const reduceMotion = useReducedMotion()
@@ -107,10 +109,47 @@ export default function DeckBuilder({
   function selectRandomCard() {
     if (availableCards.length === 0) return
     const card = availableCards[Math.floor(Math.random() * availableCards.length)]
-    const deckCard = document.querySelector(`[data-deck-card-id="${CSS.escape(card.id)}"]`)
+    const deckCard = deckCardElement(card.id)
     if (deckCard) selectCard(card.id, deckCard.getBoundingClientRect())
     else setSelectedIds((currentIds) => [...currentIds, card.id])
   }
+
+  function deckCardElement(id: string) {
+    return document.querySelector(`[data-deck-card-id="${CSS.escape(id)}"]`)
+  }
+
+  // The card wherever it is now, in the plan or the deck.
+  function cardElement(id: string) {
+    return document.querySelector(`[data-card-id="${CSS.escape(id)}"], [data-deck-card-id="${CSS.escape(id)}"]`)
+  }
+
+  function openNotes(id: string) {
+    const element = cardElement(id)
+    if (!element) return
+    setRevealedId(null)
+    setNotesOpen({ id, from: element.getBoundingClientRect() })
+  }
+
+  // With a mouse the buttons show on hover, so only a tap needs to reveal them.
+  function revealOnTap(id: string, target: EventTarget) {
+    if (window.matchMedia('(hover: hover)').matches) return
+    if (target instanceof Element && target.closest('button, a')) return
+    setRevealedId(id)
+  }
+
+  const changeNotes = useCallback((id: string, notes: Notes) => {
+    setNotesById((current) => new Map(current).set(id, notes))
+  }, [])
+
+  // Tapping anywhere else hides the buttons a tap revealed.
+  useEffect(() => {
+    if (!revealedId) return
+    function hide(event: PointerEvent) {
+      if (!(event.target instanceof Element) || !event.target.closest("[data-revealed='true']")) setRevealedId(null)
+    }
+    document.addEventListener('pointerdown', hide)
+    return () => document.removeEventListener('pointerdown', hide)
+  }, [revealedId])
 
   function removeCard(id: string) {
     setSelectedIds((currentIds) => currentIds.filter((selectedId) => selectedId !== id))
@@ -181,6 +220,7 @@ export default function DeckBuilder({
   )
   const endFlight = useCallback(() => setFlight(null), [])
   const flyingCard = flight && cardsById.get(flight.id)
+  const notesCard = notesOpen && cardsById.get(notesOpen.id)
 
   return (
     <main className="page-shell">
@@ -218,19 +258,27 @@ export default function DeckBuilder({
 
                 return (
                   <motion.div
-                    className={`${cardStyles.card} ${flight?.id === card.id ? cardStyles.inFlight : ''}`}
+                    className={`${cardStyles.card} ${flight?.id === card.id || notesOpen?.id === card.id ? cardStyles.inFlight : ''}`}
                     key={card.id}
                     data-card-id={card.id}
+                    data-revealed={revealedId === card.id}
                     layout
                     layoutId={`card-${card.id}`}
                     transition={transition}
-                    role="button"
-                    tabIndex={0}
-                    onClick={() => removeCard(card.id)}
-                    onKeyDown={clickOnActivationKey}
-                    aria-label={`Remove ${card.title} from your plan`}
+                    onClick={(event) => revealOnTap(card.id, event.target)}
                   >
-                    <Card card={card} frame={frameFor(card.id)} />
+                    <Card
+                      card={card}
+                      frame={frameFor(card.id)}
+                      actions={
+                        <CardActions
+                          title={card.title}
+                          primary="Discard"
+                          onPrimary={() => removeCard(card.id)}
+                          onNotes={() => openNotes(card.id)}
+                        />
+                      }
+                    />
                   </motion.div>
                 )
               })}
@@ -276,23 +324,37 @@ export default function DeckBuilder({
           <motion.div className="card-grid" layout>
             <AnimatePresence initial={false} mode="popLayout">
               {availableCards.map((card) => (
+                // Hovering (or a tap, without hover) shows what can be done
+                // with the card rather than adding it straight away
+                // (docs/card-notes.md § "Card actions").
                 <motion.div
-                  className={cardStyles.card}
+                  className={`${cardStyles.card} ${notesOpen?.id === card.id ? cardStyles.inFlight : ''}`}
                   key={card.id}
                   data-deck-card-id={card.id}
+                  data-revealed={revealedId === card.id}
                   layout
                   layoutId={`card-${card.id}`}
                   initial={reduceMotion ? false : { opacity: 0, scale: 0.96 }}
                   animate={{ opacity: 1, scale: 1 }}
                   exit={reduceMotion ? undefined : { opacity: 0, scale: 0.96 }}
                   transition={transition}
-                  role="button"
-                  tabIndex={0}
-                  onClick={(event) => selectCard(card.id, event.currentTarget.getBoundingClientRect())}
-                  onKeyDown={clickOnActivationKey}
-                  aria-label={`Add ${card.title} to your plan`}
+                  onClick={(event) => revealOnTap(card.id, event.target)}
                 >
-                  <Card card={card} frame={frameFor(card.id)} />
+                  <Card
+                    card={card}
+                    frame={frameFor(card.id)}
+                    actions={
+                      <CardActions
+                        title={card.title}
+                        primary="Add to plan"
+                        onPrimary={() => {
+                          const deckCard = deckCardElement(card.id)
+                          if (deckCard) selectCard(card.id, deckCard.getBoundingClientRect())
+                        }}
+                        onNotes={() => openNotes(card.id)}
+                      />
+                    }
+                  />
                 </motion.div>
               ))}
             </AnimatePresence>
@@ -318,6 +380,21 @@ export default function DeckBuilder({
           track={trackReference}
           transition={transition}
           onDone={endFlight}
+        />
+      )}
+
+      {notesOpen && notesCard && (
+        <CardNotes
+          key={notesOpen.id}
+          card={notesCard}
+          frame={frameFor(notesCard.id)}
+          shareId={shareId}
+          initial={notesById.get(notesCard.id) ?? { interest: null, notes: '' }}
+          from={notesOpen.from}
+          returnTo={() => cardElement(notesCard.id)?.getBoundingClientRect() ?? null}
+          reduceMotion={Boolean(reduceMotion)}
+          onChange={(notes) => changeNotes(notesCard.id, notes)}
+          onClosed={() => setNotesOpen(null)}
         />
       )}
 
@@ -355,5 +432,32 @@ export default function DeckBuilder({
         </Link>
       </footer>
     </main>
+  )
+}
+
+type CardActionsProps = {
+  title: string
+  primary: 'Add to plan' | 'Discard'
+  onPrimary: () => void
+  onNotes: () => void
+}
+
+// The buttons in a card's top band (docs/card-notes.md § "Card actions").
+// Labels start with the words on the button, for voice control.
+function CardActions({ title, primary, onPrimary, onNotes }: CardActionsProps) {
+  return (
+    <>
+      <button
+        className={`${cardStyles.action} ${cardStyles.primaryAction}`}
+        type="button"
+        aria-label={`${primary}: ${title}`}
+        onClick={onPrimary}
+      >
+        {primary}
+      </button>
+      <button className={cardStyles.action} type="button" aria-label={`Notes on ${title}`} onClick={onNotes}>
+        Notes
+      </button>
+    </>
   )
 }

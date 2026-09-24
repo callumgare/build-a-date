@@ -43,6 +43,11 @@ export const card = sqliteTable(
     tags: text('tags', { mode: 'json' }).$type<string[]>().notNull().default(sql`'[]'`),
     date: text('date'),
     position: integer('position').notNull(),
+    // How keen whoever the deck is for is on the idea, 1–5 stars, and their
+    // notes on it. One of each per card, which anyone with the share link can
+    // change (docs/card-notes.md § "Who can change them").
+    interest: integer('interest'),
+    notes: text('notes').notNull().default(''),
     ...timestamps,
   },
   (table) => [index('card_deck_id_idx').on(table.deckId)],

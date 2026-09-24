@@ -31,6 +31,13 @@ export const planInput = z.object({
   cardIds: z.array(id).min(1).max(50),
 })
 
+export const cardNotesInput = z.object({
+  shareId: id,
+  cardId: id,
+  interest: z.number().int().min(1).max(5).nullable(),
+  notes: z.string().trim().max(2000, 'Notes can be up to 2000 characters'),
+})
+
 export type CardInput = z.input<typeof cardInput>
 
 // Where to send someone after they sign in. Only paths on this site, so a

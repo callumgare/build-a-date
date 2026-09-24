@@ -15,6 +15,13 @@
       "when": 1790252407655,
       "tag": "0001_add_deck_access",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "6",
+      "when": 1790253792794,
+      "tag": "0002_add_card_notes",
+      "breakpoints": true
     }
   ]
 }

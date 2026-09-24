@@ -4,11 +4,13 @@ A deck's share link (`/d/…`) lets anyone build a plan from it. The same page a
 
 ## Who can do what
 
-| | Build a plan | Add, edit and delete ideas | See the deck's plans | Rename or delete the deck | Answer requests, remove editors |
+| | Build a plan, rate ideas and add notes | Add, edit and delete ideas | See the deck's plans | Rename or delete the deck | Answer requests, remove editors |
 | --- | --- | --- | --- | --- | --- |
 | Anyone with the link | ✓ | | | | |
 | Editor (an accepted request) | ✓ | ✓ | ✓ | | |
 | Owner | ✓ | ✓ | ✓ | ✓ | ✓ |
+
+Ratings and notes are covered in [card-notes.md](card-notes.md).
 
 A pending request gives nothing beyond what anyone with the link already has.
 

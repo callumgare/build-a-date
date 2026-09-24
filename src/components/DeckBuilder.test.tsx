@@ -4,12 +4,12 @@ import userEvent from '@testing-library/user-event'
 import type { DateCard } from '@/types'
 import DeckBuilder from './DeckBuilder'
 
-const savePlan = vi.hoisted(() => vi.fn())
-vi.mock('@/lib/actions/plans', () => ({ savePlan }))
+const { savePlan, saveCardNotes } = vi.hoisted(() => ({ savePlan: vi.fn(), saveCardNotes: vi.fn() }))
+vi.mock('@/lib/actions/plans', () => ({ savePlan, saveCardNotes }))
 vi.mock('next/link', () => ({ default: (props: object) => <a {...props} /> }))
 
 const cards: DateCard[] = [
-  { id: 'picnic', title: 'Picnic', description: '', tags: ['outside'] },
+  { id: 'picnic', title: 'Picnic', description: '', tags: ['outside'], interest: 2, notes: 'Bring a rug' },
   { id: 'museum', title: 'Museum', description: '', tags: ['culture'] },
   { id: 'hike', title: 'Hike', description: '', tags: ['outside', 'active'] },
 ]
@@ -20,6 +20,8 @@ function renderBuilder() {
 
 beforeEach(() => {
   savePlan.mockReset()
+  saveCardNotes.mockReset()
+  saveCardNotes.mockResolvedValue({ ok: true, data: undefined })
   window.location.hash = ''
   Object.defineProperty(navigator, 'share', { value: undefined, configurable: true })
 })
@@ -29,25 +31,26 @@ describe('DeckBuilder', () => {
     renderBuilder()
     expect(screen.getByRole('heading', { name: 'Test deck' })).toBeInTheDocument()
     for (const card of cards)
-      expect(screen.getByRole('button', { name: `Add ${card.title} to your plan` })).toBeInTheDocument()
+      expect(screen.getByRole('button', { name: `Add to plan: ${card.title}` })).toBeInTheDocument()
   })
 
+  /** @see docs/card-notes.md § "Card actions" - plan cards have Discard and Notes */
   it('moves a picked card into the plan and back out', async () => {
     const user = userEvent.setup()
     renderBuilder()
 
-    await user.click(screen.getByRole('button', { name: 'Add Picnic to your plan' }))
-    expect(screen.getByRole('button', { name: 'Remove Picnic from your plan' })).toBeInTheDocument()
+    await user.click(screen.getByRole('button', { name: 'Add to plan: Picnic' }))
+    expect(screen.getByRole('button', { name: 'Discard: Picnic' })).toBeInTheDocument()
     expect(window.location.hash).toBe('#picnic')
 
-    await user.click(screen.getByRole('button', { name: 'Remove Picnic from your plan' }))
-    expect(await screen.findByRole('button', { name: 'Add Picnic to your plan' })).toBeInTheDocument()
+    await user.click(screen.getByRole('button', { name: 'Discard: Picnic' }))
+    expect(await screen.findByRole('button', { name: 'Add to plan: Picnic' })).toBeInTheDocument()
   })
 
   it('restores picks from the URL hash', async () => {
     window.location.hash = '#museum,not-a-card'
     renderBuilder()
-    expect(await screen.findByRole('button', { name: 'Remove Museum from your plan' })).toBeInTheDocument()
+    expect(await screen.findByRole('button', { name: 'Discard: Museum' })).toBeInTheDocument()
   })
 
   it('filters the deck by tag', async () => {
@@ -56,10 +59,8 @@ describe('DeckBuilder', () => {
     const filters = screen.getByRole('group', { name: 'Filter ideas by tag' })
 
     await user.click(within(filters).getByRole('button', { name: 'culture' }))
-    expect(await screen.findByRole('button', { name: 'Add Museum to your plan' })).toBeInTheDocument()
-    await waitFor(() =>
-      expect(screen.queryByRole('button', { name: 'Add Picnic to your plan' })).not.toBeInTheDocument(),
-    )
+    expect(await screen.findByRole('button', { name: 'Add to plan: Museum' })).toBeInTheDocument()
+    await waitFor(() => expect(screen.queryByRole('button', { name: 'Add to plan: Picnic' })).not.toBeInTheDocument())
   })
 
   it('saves the plan when Done is pressed and offers its link', async () => {
@@ -67,8 +68,8 @@ describe('DeckBuilder', () => {
     const user = userEvent.setup()
     renderBuilder()
 
-    await user.click(screen.getByRole('button', { name: 'Add Hike to your plan' }))
-    await user.click(screen.getByRole('button', { name: 'Add Museum to your plan' }))
+    await user.click(screen.getByRole('button', { name: 'Add to plan: Hike' }))
+    await user.click(screen.getByRole('button', { name: 'Add to plan: Museum' }))
     await user.click(screen.getByRole('button', { name: 'Done' }))
 
     expect(savePlan).toHaveBeenCalledWith('share123', ['hike', 'museum'])
@@ -87,8 +88,118 @@ describe('DeckBuilder', () => {
     const user = userEvent.setup()
     renderBuilder()
 
-    await user.click(screen.getByRole('button', { name: 'Add Hike to your plan' }))
+    await user.click(screen.getByRole('button', { name: 'Add to plan: Hike' }))
     await user.click(screen.getByRole('button', { name: 'Done' }))
     expect(await screen.findByRole('alert')).toHaveTextContent('Deck not found')
+  })
+
+  /** @see docs/card-notes.md § "Card actions" */
+  it("doesn't add a card to the plan just for clicking it", async () => {
+    const user = userEvent.setup()
+    const { container } = renderBuilder()
+
+    await user.click(container.querySelector('[data-deck-card-id="museum"]') as HTMLElement)
+    expect(container.querySelector('[data-deck-card-id="museum"]')).toHaveAttribute('data-revealed', 'true')
+    expect(screen.queryByRole('button', { name: 'Discard: Museum' })).not.toBeInTheDocument()
+    expect(window.location.hash).toBe('')
+  })
+
+  describe('notes', () => {
+    /** @see docs/card-notes.md § "Card actions" - plan cards have Discard and Notes */
+    it('opens the notes of a card in the plan', async () => {
+      const user = userEvent.setup()
+      renderBuilder()
+
+      await user.click(screen.getByRole('button', { name: 'Add to plan: Picnic' }))
+      const plan = screen.getByRole('region', { name: 'Your plan' })
+      await user.click(within(plan).getByRole('button', { name: 'Notes on Picnic' }))
+      const notes = await screen.findByRole('dialog', { name: 'Picnic' })
+      expect(within(notes).getByRole('textbox', { name: 'Notes' })).toHaveValue('Bring a rug')
+      // Still in the plan.
+      expect(screen.getByRole('button', { name: 'Discard: Picnic', hidden: true })).toBeInTheDocument()
+    })
+
+    /** @see docs/card-notes.md § "Opening a card's notes" */
+    it('opens a card to five empty stars and a notes box', async () => {
+      const user = userEvent.setup()
+      renderBuilder()
+
+      await user.click(screen.getByRole('button', { name: 'Notes on Museum' }))
+      const notes = await screen.findByRole('dialog', { name: 'Museum' })
+      const stars = within(notes).getByRole('group', { name: 'How keen are you?' })
+      expect(within(stars).getAllByRole('radio')).toHaveLength(5)
+      for (const star of within(stars).getAllByRole('radio')) expect(star).not.toBeChecked()
+      expect(within(notes).getByRole('textbox', { name: 'Notes' })).toHaveValue('')
+    })
+
+    /** @see docs/card-notes.md § "Rating and notes" */
+    it("shows the card's saved rating and notes", async () => {
+      const user = userEvent.setup()
+      renderBuilder()
+
+      await user.click(screen.getByRole('button', { name: 'Notes on Picnic' }))
+      const notes = await screen.findByRole('dialog', { name: 'Picnic' })
+      expect(within(notes).getByRole('radio', { name: '2 stars' })).toBeChecked()
+      expect(within(notes).getByRole('textbox', { name: 'Notes' })).toHaveValue('Bring a rug')
+    })
+
+    /** @see docs/card-notes.md § "Saving" - a rating saves as soon as a star is clicked */
+    it('saves a rating straight away, and clears it when the same star is clicked again', async () => {
+      const user = userEvent.setup()
+      renderBuilder()
+
+      await user.click(screen.getByRole('button', { name: 'Notes on Museum' }))
+      const notes = await screen.findByRole('dialog', { name: 'Museum' })
+      await user.click(within(notes).getByRole('radio', { name: '4 stars' }))
+      expect(saveCardNotes).toHaveBeenLastCalledWith('share123', 'museum', { interest: 4, notes: '' })
+      expect(within(notes).getByRole('radio', { name: '4 stars' })).toBeChecked()
+
+      await user.click(within(notes).getByRole('radio', { name: '4 stars' }))
+      expect(saveCardNotes).toHaveBeenLastCalledWith('share123', 'museum', { interest: null, notes: '' })
+      expect(await within(notes).findByRole('status')).toHaveTextContent('Saved')
+    })
+
+    /** @see docs/card-notes.md § "Saving" - notes save once typing stops */
+    it('saves notes once typing stops, as one save', async () => {
+      const user = userEvent.setup()
+      renderBuilder()
+
+      await user.click(screen.getByRole('button', { name: 'Notes on Museum' }))
+      const notes = await screen.findByRole('dialog', { name: 'Museum' })
+      await user.type(within(notes).getByRole('textbox', { name: 'Notes' }), 'Free on Sundays')
+      expect(saveCardNotes).not.toHaveBeenCalled()
+
+      await waitFor(() => expect(saveCardNotes).toHaveBeenCalledTimes(1), { timeout: 2000 })
+      expect(saveCardNotes).toHaveBeenCalledWith('share123', 'museum', { interest: null, notes: 'Free on Sundays' })
+    })
+
+    /** @see docs/card-notes.md § "Saving" - notes also save when closed */
+    it('saves unsaved notes on Done, and keeps them for next time', async () => {
+      const user = userEvent.setup()
+      renderBuilder()
+
+      await user.click(screen.getByRole('button', { name: 'Notes on Hike' }))
+      let notes = await screen.findByRole('dialog', { name: 'Hike' })
+      await user.type(within(notes).getByRole('textbox', { name: 'Notes' }), 'Early start')
+      await user.click(within(notes).getByRole('button', { name: 'Done' }))
+      expect(saveCardNotes).toHaveBeenCalledWith('share123', 'hike', { interest: null, notes: 'Early start' })
+      await waitFor(() => expect(screen.queryByRole('dialog', { name: 'Hike' })).not.toBeInTheDocument())
+
+      await user.click(screen.getByRole('button', { name: 'Notes on Hike' }))
+      notes = await screen.findByRole('dialog', { name: 'Hike' })
+      expect(within(notes).getByRole('textbox', { name: 'Notes' })).toHaveValue('Early start')
+    })
+
+    /** @see docs/card-notes.md § "Saving" - if a save fails, it shows why */
+    it('shows why notes could not be saved', async () => {
+      saveCardNotes.mockResolvedValue({ ok: false, error: 'Card not found' })
+      const user = userEvent.setup()
+      renderBuilder()
+
+      await user.click(screen.getByRole('button', { name: 'Notes on Museum' }))
+      const notes = await screen.findByRole('dialog', { name: 'Museum' })
+      await user.click(within(notes).getByRole('radio', { name: '3 stars' }))
+      expect(await within(notes).findByRole('alert')).toHaveTextContent('Card not found')
+    })
   })
 })

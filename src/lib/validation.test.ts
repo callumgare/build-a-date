@@ -1,4 +1,4 @@
-import { cardInput, newDeckInput, planInput, safeNextPath } from './validation'
+import { cardInput, cardNotesInput, newDeckInput, planInput, safeNextPath } from './validation'
 
 describe('cardInput', () => {
   it('trims, lowercases and dedupes tags', () => {
@@ -20,6 +20,21 @@ describe('cardInput', () => {
 
   it('caps the number of tags', () => {
     expect(() => cardInput.parse({ title: 'x', tags: Array.from({ length: 9 }, (_, i) => `t${i}`) })).toThrow()
+  })
+})
+
+/** @see docs/card-notes.md § "Rating and notes" */
+describe('cardNotesInput', () => {
+  const base = { shareId: 'share', cardId: 'card', interest: null, notes: '' }
+
+  it('takes a rating of 1 to 5 stars, or none', () => {
+    for (const interest of [null, 1, 5]) expect(cardNotesInput.parse({ ...base, interest }).interest).toBe(interest)
+    for (const interest of [0, 6, 2.5]) expect(() => cardNotesInput.parse({ ...base, interest })).toThrow()
+  })
+
+  it('trims notes and caps them at 2000 characters', () => {
+    expect(cardNotesInput.parse({ ...base, notes: '  Bring snacks \n' }).notes).toBe('Bring snacks')
+    expect(() => cardNotesInput.parse({ ...base, notes: 'x'.repeat(2001) })).toThrow('up to 2000 characters')
   })
 })
 

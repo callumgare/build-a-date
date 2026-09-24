@@ -54,8 +54,11 @@ test('sign up, share a deck, and get a plan back', async ({ page, browser, reque
   const guest = await guestContext.newPage()
   await guest.goto(shareUrl)
   await expect(guest.getByRole('heading', { name: 'Ideas for Sam' })).toBeVisible()
-  await guest.getByRole('button', { name: 'Add Rooftop Dinner to your plan' }).click()
-  await guest.getByRole('button', { name: 'Add Stargazing to your plan' }).click()
+  // A card shows its buttons on hover (docs/card-notes.md § "Card actions").
+  for (const title of ['Rooftop Dinner', 'Stargazing']) {
+    await guest.locator('[data-deck-card-id]').filter({ hasText: title }).hover()
+    await guest.getByRole('button', { name: `Add to plan: ${title}` }).click()
+  }
   await guest.getByRole('button', { name: 'Done' }).click()
   await guest.getByRole('link', { name: 'Open your plan' }).click()
 

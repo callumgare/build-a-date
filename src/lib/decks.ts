@@ -21,6 +21,8 @@ export function toDateCard(row: CardRow): DateCard {
     description: row.description,
     tags: row.tags,
     ...(row.date ? { date: row.date } : {}),
+    ...(row.interest ? { interest: row.interest } : {}),
+    ...(row.notes ? { notes: row.notes } : {}),
   }
 }
 
@@ -193,6 +195,26 @@ export async function getSharedDeck(db: Database, shareId: string) {
   if (!found) throw new NotFoundError('Deck not found')
   const cards = await getDeckCards(db, found.id)
   return { deck: found, cards: cards.map(toDateCard) }
+}
+
+// Anyone with the share link can rate a card and write notes on it. There's
+// one rating and one set of notes per card, so this replaces both
+// (docs/card-notes.md § "Who can change them").
+export async function saveCardNotes(
+  db: Database,
+  shareId: string,
+  cardId: string,
+  { interest, notes }: { interest: number | null; notes: string },
+) {
+  const [found] = await db.select({ id: deck.id }).from(deck).where(eq(deck.shareId, shareId))
+  if (!found) throw new NotFoundError('Deck not found')
+  const [saved] = await db
+    .update(card)
+    .set({ interest, notes })
+    .where(and(eq(card.id, cardId), eq(card.deckId, found.id)))
+    .returning()
+  if (!saved) throw new NotFoundError('Card not found')
+  return saved
 }
 
 // Anyone with the share link can save a plan. Only cards from that deck are

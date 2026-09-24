@@ -964,3 +964,13 @@ textarea:focus-visible {
     transition-duration: 0.01ms !important;
   }
 }
+
+/* Read out by screen readers but not shown. */
+.visually-hidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  white-space: nowrap;
+  clip-path: inset(50%);
+}

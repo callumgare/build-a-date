@@ -1,6 +1,6 @@
 'use client'
 
-import { type CSSProperties, useLayoutEffect, useRef } from 'react'
+import { type CSSProperties, type ReactNode, useLayoutEffect, useRef } from 'react'
 import Markdown, { type Components } from 'react-markdown'
 import type { DateCard as DateCardModel } from '../types'
 import styles from './Card.module.css'
@@ -9,9 +9,11 @@ import type { Frame } from './frames'
 type CardProps = {
   card: DateCardModel
   frame: Frame
+  // Buttons shown in the frame's top band, above the text.
+  actions?: ReactNode
 }
 
-export default function Card({ card, frame }: CardProps) {
+export default function Card({ card, frame, actions }: CardProps) {
   const insets = {
     '--inset-top': frame.inset.top,
     '--inset-bottom': frame.inset.bottom,
@@ -22,6 +24,8 @@ export default function Card({ card, frame }: CardProps) {
   return (
     <span className={styles.content} ref={contentReference} style={insets} data-frame={frame.name}>
       <FrameArt frame={frame} />
+      {/* Before the body, since useFitText measures the last child. */}
+      {actions && <span className={styles.actions}>{actions}</span>}
       <span className={styles.body}>
         <span className={styles.title} ref={titleReference}>
           {card.title}
