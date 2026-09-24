@@ -3,12 +3,14 @@ import { redirect } from 'next/navigation'
 import WelcomePasskey from '@/components/auth/WelcomePasskey'
 import { requireUser } from '@/lib/auth'
 import { listPasskeys } from '@/lib/passkeys'
+import { safeNextPath } from '@/lib/validation'
 
 export const metadata: Metadata = { title: 'Welcome' }
 
-export default async function Welcome() {
+export default async function Welcome({ searchParams }: PageProps<'/welcome'>) {
   const user = await requireUser()
-  if ((await listPasskeys()).length > 0) redirect('/decks')
+  const next = safeNextPath((await searchParams).next) ?? '/decks'
+  if ((await listPasskeys()).length > 0) redirect(next)
 
   return (
     <section className="panel narrow">
@@ -17,7 +19,7 @@ export default async function Welcome() {
         Create a passkey to sign in with your fingerprint, face or device PIN, with no password. If you ever lose it, we
         can email you a link instead.
       </p>
-      <WelcomePasskey />
+      <WelcomePasskey next={next} />
     </section>
   )
 }

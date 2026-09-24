@@ -8,11 +8,18 @@ type EmailLinkFormProps = {
   submitLabel: string
   // Lets the email field's autofill offer passkeys (see SignInForm).
   offerPasskeys?: boolean
+  // Where to land once the link is followed (after Welcome).
+  next?: string
 }
 
 // Emails a sign-in link: how new accounts are made, and how anyone without a
 // passkey to hand signs in.
-export default function EmailLinkForm({ askName = false, submitLabel, offerPasskeys = false }: EmailLinkFormProps) {
+export default function EmailLinkForm({
+  askName = false,
+  submitLabel,
+  offerPasskeys = false,
+  next,
+}: EmailLinkFormProps) {
   const [{ sentTo, error, email, name }, formAction, pending] = useActionState(sendSignInLink, {})
 
   if (sentTo) {
@@ -25,6 +32,7 @@ export default function EmailLinkForm({ askName = false, submitLabel, offerPassk
 
   return (
     <form className="form" action={formAction}>
+      {next && <input type="hidden" name="next" value={next} />}
       {askName && (
         <label className="field">
           <span>Your name</span>

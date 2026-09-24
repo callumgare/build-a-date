@@ -1,15 +1,21 @@
 'use client'
 
 import { type FormEvent, type KeyboardEvent, useMemo, useState, useTransition } from 'react'
-import { deleteDeck, renameDeck } from '@/lib/actions/decks'
+import { deleteDeck, leaveDeck, renameDeck } from '@/lib/actions/decks'
+import type { DeckRole } from '@/lib/decks'
 import type { DateCard } from '@/types'
 import Card from '../Card'
 import cardStyles from '../Card.module.css'
 import { frameFor } from '../frames'
 import CardEditor from './CardEditor'
+import { AccessRequests, type DeckPerson, Editors } from './DeckAccess'
 
 type DeckEditorProps = {
   deck: { id: string; name: string; shareId: string }
+  // Editors can change the cards; only the owner renames, deletes or decides
+  // who else can edit.
+  role: DeckRole
+  access: DeckPerson[]
   shareUrl: string
   cards: DateCard[]
   plans: { id: string; createdAt: Date; cards: number }[]
@@ -24,7 +30,7 @@ function clickOnActivationKey(event: KeyboardEvent<HTMLElement>) {
   event.currentTarget.click()
 }
 
-export default function DeckEditor({ deck, shareUrl, cards, plans }: DeckEditorProps) {
+export default function DeckEditor({ deck, role, access, shareUrl, cards, plans }: DeckEditorProps) {
   // undefined: closed, null: adding a card.
   const [editing, setEditing] = useState<DateCard | null | undefined>(undefined)
   const [renaming, setRenaming] = useState(false)
@@ -85,14 +91,30 @@ export default function DeckEditor({ deck, shareUrl, cards, plans }: DeckEditorP
         ) : (
           <>
             <h2>{deck.name}</h2>
-            <div className="section-actions">
-              <button className="text-action" type="button" onClick={() => setRenaming(true)}>
-                Rename
-              </button>
-              <button className="text-action" type="button" onClick={remove} disabled={pending}>
-                Delete deck
-              </button>
-            </div>
+            {role === 'owner' ? (
+              <div className="section-actions">
+                <button className="text-action" type="button" onClick={() => setRenaming(true)}>
+                  Rename
+                </button>
+                <button className="text-action" type="button" onClick={remove} disabled={pending}>
+                  Delete deck
+                </button>
+              </div>
+            ) : (
+              <form
+                className="section-actions"
+                action={leaveDeck.bind(null, deck.id)}
+                onSubmit={(event) => {
+                  if (!window.confirm(`Stop editing "${deck.name}"? You'd need to ask again to get back in.`)) {
+                    event.preventDefault()
+                  }
+                }}
+              >
+                <button className="text-action" type="submit">
+                  Leave deck
+                </button>
+              </form>
+            )}
           </>
         )}
       </div>
@@ -117,6 +139,8 @@ export default function DeckEditor({ deck, shareUrl, cards, plans }: DeckEditorP
           </a>
         </div>
       </div>
+
+      {role === 'owner' && <AccessRequests deckId={deck.id} people={access} />}
 
       <h3 className="subheading">
         Ideas <small>({cards.length})</small>
@@ -166,6 +190,8 @@ export default function DeckEditor({ deck, shareUrl, cards, plans }: DeckEditorP
           ))}
         </ul>
       )}
+
+      {role === 'owner' && <Editors deckId={deck.id} people={access} />}
 
       <CardEditor deckId={deck.id} card={editing} deckTags={deckTags} onClose={() => setEditing(undefined)} />
     </section>

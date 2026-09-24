@@ -15,9 +15,10 @@ export const getSession = cache(async () => {
   return getAuth().api.getSession({ headers: requestHeaders })
 })
 
-// For pages and actions that only make sense signed in.
-export async function requireUser() {
+// For pages and actions that only make sense signed in. `next` is where to
+// come back to once signed in.
+export async function requireUser(next?: string) {
   const session = await getSession()
-  if (!session) redirect('/sign-in')
+  if (!session) redirect(next ? `/sign-in?next=${encodeURIComponent(next)}` : '/sign-in')
   return session.user
 }

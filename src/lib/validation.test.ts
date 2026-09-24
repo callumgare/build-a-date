@@ -1,4 +1,4 @@
-import { cardInput, newDeckInput, planInput } from './validation'
+import { cardInput, newDeckInput, planInput, safeNextPath } from './validation'
 
 describe('cardInput', () => {
   it('trims, lowercases and dedupes tags', () => {
@@ -33,5 +33,26 @@ describe('newDeckInput', () => {
 describe('planInput', () => {
   it('needs at least one card', () => {
     expect(() => planInput.parse({ shareId: 'abc', cardIds: [] })).toThrow()
+  })
+})
+
+/** @see docs/deck-sharing.md § "Returning after sign-in" */
+describe('safeNextPath', () => {
+  it('keeps paths on this site', () => {
+    expect(safeNextPath('/d/abc/request')).toBe('/d/abc/request')
+    expect(safeNextPath('/decks?tab=shared')).toBe('/decks?tab=shared')
+  })
+
+  it.each([
+    'https://evil.example',
+    '//evil.example',
+    '/\\evil.example',
+    '/\t/evil.example',
+    'decks',
+    '',
+    undefined,
+    ['/decks'],
+  ])('refuses %j', (next) => {
+    expect(safeNextPath(next)).toBeUndefined()
   })
 })

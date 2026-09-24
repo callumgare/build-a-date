@@ -3,7 +3,8 @@ import { notFound } from 'next/navigation'
 import { connection } from 'next/server'
 import DeckBuilder from '@/components/DeckBuilder'
 import { getDb } from '@/db'
-import { getSharedDeck, NotFoundError } from '@/lib/decks'
+import { getSession } from '@/lib/auth'
+import { getAccessState, getSharedDeck, NotFoundError } from '@/lib/decks'
 
 async function findDeck(shareId: string) {
   try {
@@ -27,6 +28,18 @@ export default async function SharedDeck({ params }: PageProps<'/d/[shareId]'>) 
   await connection()
   const { deck, cards } = await findDeck((await params).shareId)
   const seed = Math.floor(Math.random() * 2 ** 32)
+  const session = await getSession()
+  const access = session ? await getAccessState(getDb(), session.user.id, deck) : 'none'
 
-  return <DeckBuilder deckName={deck.name} shareId={deck.shareId} cards={cards} seed={seed} />
+  return (
+    <DeckBuilder
+      deckName={deck.name}
+      shareId={deck.shareId}
+      cards={cards}
+      seed={seed}
+      access={access}
+      // The deck's own id only goes to people who can open its edit page.
+      editHref={access === 'owner' || access === 'editor' ? `/decks/${deck.id}` : undefined}
+    />
+  )
 }

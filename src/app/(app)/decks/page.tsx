@@ -3,7 +3,7 @@ import Link from 'next/link'
 import NewDeckButton from '@/components/decks/NewDeckButton'
 import { getDb } from '@/db'
 import { requireUser } from '@/lib/auth'
-import { listDecks } from '@/lib/decks'
+import { listDecks, listSharedDecks } from '@/lib/decks'
 
 export const metadata: Metadata = { title: 'Your decks' }
 
@@ -13,7 +13,7 @@ function plural(count: number, word: string) {
 
 export default async function Decks() {
   const user = await requireUser()
-  const decks = await listDecks(getDb(), user.id)
+  const [decks, sharedDecks] = await Promise.all([listDecks(getDb(), user.id), listSharedDecks(getDb(), user.id)])
 
   return (
     <section className="app-section">
@@ -35,11 +35,31 @@ export default async function Decks() {
                 <strong>{deck.name}</strong>
                 <span>
                   {plural(deck.cards, 'idea')} · {plural(deck.plans, 'plan')}
+                  {deck.requests > 0 && ` · ${plural(deck.requests, 'edit request')}`}
                 </span>
               </Link>
             </li>
           ))}
         </ul>
+      )}
+
+      {sharedDecks.length > 0 && (
+        <>
+          <h3 className="subheading">Shared decks</h3>
+          <ul className="deck-list">
+            {sharedDecks.map((deck) => (
+              <li key={deck.id}>
+                <Link className="deck-tile" href={`/decks/${deck.id}`}>
+                  <strong>{deck.name}</strong>
+                  <span>
+                    {deck.ownerName ? `${deck.ownerName}'s deck · ` : ''}
+                    {plural(deck.cards, 'idea')} · {plural(deck.plans, 'plan')}
+                  </span>
+                </Link>
+              </li>
+            ))}
+          </ul>
+        </>
       )}
     </section>
   )

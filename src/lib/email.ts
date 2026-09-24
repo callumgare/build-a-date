@@ -68,3 +68,18 @@ export function signInEmail(to: string, url: string): Email {
 <p>If you didn't ask for it, you can ignore this email.</p>`,
   }
 }
+
+export function editRequestEmail(
+  to: string,
+  { requester, deckName, url }: { requester: { name: string; email: string }; deckName: string; url: string },
+): Email {
+  const who = requester.name ? `${requester.name} (${requester.email})` : requester.email
+  return {
+    to,
+    subject: `${requester.name || requester.email} wants to help edit ${deckName}`,
+    text: `${who} asked to edit your Build-a-Date deck "${deckName}". Accept or decline on the deck's page:\n\n${url}\n\nIf you don't know them, decline it and they won't be able to change anything.`,
+    html: `<p>${escapeHtml(who)} asked to edit your Build-a-Date deck <strong>${escapeHtml(deckName)}</strong>.</p>
+<p><a href="${escapeHtml(url)}">Accept or decline the request</a></p>
+<p>If you don't know them, decline it and they won't be able to change anything.</p>`,
+  }
+}

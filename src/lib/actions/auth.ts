@@ -5,6 +5,7 @@ import { headers } from 'next/headers'
 import { redirect } from 'next/navigation'
 import { z } from 'zod'
 import { getAuth } from '../auth'
+import { safeNextPath } from '../validation'
 
 // On an error, what was typed comes back too, since React resets the form.
 export type SignInLinkState = { sentTo?: string; error?: string; email?: string; name?: string }
@@ -25,6 +26,9 @@ export async function sendSignInLink(_state: SignInLinkState, form: FormData): P
   })
   if (!parsed.success) return { ...typed, error: parsed.error.issues[0]?.message ?? 'Check the form and try again.' }
   const { email, name } = parsed.data
+  // Where they were headed before being asked to sign in, if anywhere.
+  const next = safeNextPath(form.get('next'))
+  const carry = next ? `next=${encodeURIComponent(next)}` : ''
 
   try {
     await getAuth().api.signInMagicLink({
@@ -33,8 +37,8 @@ export async function sendSignInLink(_state: SignInLinkState, form: FormData): P
         ...(name ? { name } : {}),
         // Welcome sends people with a passkey on to their decks, and offers
         // one to anyone without (new, skipped it, or lost it).
-        callbackURL: '/welcome',
-        errorCallbackURL: '/sign-in?error=link',
+        callbackURL: carry ? `/welcome?${carry}` : '/welcome',
+        errorCallbackURL: carry ? `/sign-in?error=link&${carry}` : '/sign-in?error=link',
       },
       headers: await headers(),
     })

@@ -1,4 +1,4 @@
-import { devOutbox, sendEmail, signInEmail, usesOutbox } from './email'
+import { devOutbox, editRequestEmail, sendEmail, signInEmail, usesOutbox } from './email'
 
 const email = signInEmail('sam@example.com', 'https://build-a-date.example/api/auth/magic-link/verify?token=abc')
 const production = { BETTER_AUTH_URL: 'https://build-a-date.example', EMAIL_FROM: 'Dates <hi@example.com>' }
@@ -67,5 +67,22 @@ describe('signInEmail', () => {
     const { html, text } = signInEmail('sam@example.com', 'https://x.example/?a=1&b="2"')
     expect(html).toContain('href="https://x.example/?a=1&#38;b=&#34;2&#34;"')
     expect(text).toContain('https://x.example/?a=1&b="2"')
+  })
+})
+
+describe('editRequestEmail', () => {
+  it('says who is asking and links to the deck, escaping both in the HTML', () => {
+    const { to, subject, text, html } = editRequestEmail('owner@example.com', {
+      requester: { name: 'Sam <3', email: 'sam@example.com' },
+      deckName: 'Dates & "more"',
+      url: 'https://x.example/decks/abc',
+    })
+    expect(to).toBe('owner@example.com')
+    expect(subject).toBe('Sam <3 wants to help edit Dates & "more"')
+    expect(text).toContain('Sam <3 (sam@example.com)')
+    expect(text).toContain('https://x.example/decks/abc')
+    expect(html).toContain('Sam &#60;3')
+    expect(html).toContain('Dates &#38; &#34;more&#34;')
+    expect(html).not.toContain('<3')
   })
 })

@@ -1,10 +1,13 @@
 'use server'
 
+import { getCloudflareContext } from '@opennextjs/cloudflare'
 import { revalidatePath } from 'next/cache'
-import { redirect } from 'next/navigation'
+import { notFound, redirect } from 'next/navigation'
+import { z } from 'zod'
 import { getDb } from '@/db'
 import { requireUser } from '../auth'
 import * as decks from '../decks'
+import { editRequestEmail, sendEmail } from '../email'
 import { type CardInput, cardInput, deckInput, newDeckInput } from '../validation'
 import { type ActionResult, fail, ok } from './result'
 
@@ -64,4 +67,66 @@ export async function deleteCard(deckId: string, cardId: string): Promise<Action
   }
   revalidatePath(`/decks/${deckId}`)
   return ok(undefined)
+}
+
+// A form action (bound to the share id), so asking works before the page's
+// JavaScript loads. Lands back on the request page, which then says it's sent.
+export async function requestEditAccess(shareId: string): Promise<void> {
+  const requestPath = `/d/${encodeURIComponent(shareId)}/request`
+  const user = await requireUser(requestPath)
+  const db = getDb()
+  let result: Awaited<ReturnType<typeof decks.requestEditAccess>>
+  try {
+    result = await decks.requestEditAccess(db, user.id, z.string().min(1).max(64).parse(shareId))
+  } catch (error) {
+    if (error instanceof decks.NotFoundError || error instanceof z.ZodError) notFound()
+    throw error
+  }
+
+  if (result.created) {
+    const { env } = getCloudflareContext()
+    // The request is saved and shows on the deck's page either way, so a
+    // failed email is logged rather than shown to the requester.
+    try {
+      await sendEmail(
+        env,
+        editRequestEmail(result.owner.email, {
+          requester: { name: user.name, email: user.email },
+          deckName: result.deck.name,
+          url: new URL(`/decks/${result.deck.id}`, env.BETTER_AUTH_URL).href,
+        }),
+      )
+    } catch (error) {
+      console.error("Couldn't email the owner about an edit request", error)
+    }
+  }
+  redirect(requestPath)
+}
+
+export async function respondToAccessRequest(deckId: string, userId: string, accept: boolean): Promise<ActionResult> {
+  const user = await requireUser()
+  try {
+    await decks.respondToAccessRequest(getDb(), user.id, deckId, userId, accept)
+  } catch (error) {
+    return fail(error)
+  }
+  revalidatePath(`/decks/${deckId}`)
+  return ok(undefined)
+}
+
+export async function removeEditor(deckId: string, userId: string): Promise<ActionResult> {
+  const user = await requireUser()
+  try {
+    await decks.removeEditor(getDb(), user.id, deckId, userId)
+  } catch (error) {
+    return fail(error)
+  }
+  revalidatePath(`/decks/${deckId}`)
+  return ok(undefined)
+}
+
+export async function leaveDeck(deckId: string): Promise<void> {
+  const user = await requireUser()
+  await decks.leaveDeck(getDb(), user.id, deckId)
+  redirect('/decks')
 }

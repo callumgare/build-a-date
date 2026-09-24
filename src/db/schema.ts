@@ -1,5 +1,5 @@
 import { relations, sql } from 'drizzle-orm'
-import { index, integer, sqliteTable, text } from 'drizzle-orm/sqlite-core'
+import { index, integer, primaryKey, sqliteTable, text } from 'drizzle-orm/sqlite-core'
 import { user } from './auth-schema'
 
 export * from './auth-schema'
@@ -64,10 +64,34 @@ export const plan = sqliteTable(
   (table) => [index('plan_deck_id_idx').on(table.deckId)],
 )
 
+// Someone other than the owner who asked to edit a deck (pending) and was
+// let in (accepted). Declining or removing someone deletes their row, so
+// they can ask again.
+export const deckAccess = sqliteTable(
+  'deck_access',
+  {
+    deckId: text('deck_id')
+      .notNull()
+      .references(() => deck.id, { onDelete: 'cascade' }),
+    userId: text('user_id')
+      .notNull()
+      .references(() => user.id, { onDelete: 'cascade' }),
+    status: text('status', { enum: ['pending', 'accepted'] }).notNull(),
+    ...timestamps,
+  },
+  (table) => [primaryKey({ columns: [table.deckId, table.userId] }), index('deck_access_user_id_idx').on(table.userId)],
+)
+
 export const deckRelations = relations(deck, ({ one, many }) => ({
   owner: one(user, { fields: [deck.ownerId], references: [user.id] }),
   cards: many(card),
   plans: many(plan),
+  access: many(deckAccess),
+}))
+
+export const deckAccessRelations = relations(deckAccess, ({ one }) => ({
+  deck: one(deck, { fields: [deckAccess.deckId], references: [deck.id] }),
+  user: one(user, { fields: [deckAccess.userId], references: [user.id] }),
 }))
 
 export const cardRelations = relations(card, ({ one }) => ({
@@ -81,3 +105,4 @@ export const planRelations = relations(plan, ({ one }) => ({
 export type Deck = typeof deck.$inferSelect
 export type CardRow = typeof card.$inferSelect
 export type Plan = typeof plan.$inferSelect
+export type DeckAccess = typeof deckAccess.$inferSelect

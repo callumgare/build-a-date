@@ -32,3 +32,14 @@ export const planInput = z.object({
 })
 
 export type CardInput = z.input<typeof cardInput>
+
+// Where to send someone after they sign in. Only paths on this site, so a
+// crafted sign-in link can't bounce people somewhere else. Browsers drop tabs
+// and newlines from URLs and read backslashes as slashes, so "/\t/evil.com"
+// would otherwise become "//evil.com".
+export function safeNextPath(next: unknown): string | undefined {
+  if (typeof next !== 'string' || !next.startsWith('/')) return undefined
+  // biome-ignore lint/suspicious/noControlCharactersInRegex: control characters are what it looks for
+  if (/[\x00-\x1f\\]/.test(next) || next.startsWith('//')) return undefined
+  return next
+}

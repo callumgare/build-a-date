@@ -5,6 +5,7 @@ import Link from 'next/link'
 import { type KeyboardEvent, useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { savePlan } from '@/lib/actions/plans'
 import { arrangeDeck } from '@/lib/deck-order'
+import type { AccessState } from '@/lib/decks'
 import type { DateCard } from '@/types'
 import Card from './Card'
 import cardStyles from './Card.module.css'
@@ -42,9 +43,19 @@ type DeckBuilderProps = {
   cards: DateCard[]
   // Shuffles the deck the same way on the server and in the browser.
   seed: number
+  // Whether the visitor can edit the deck, has asked to, or neither.
+  access?: AccessState
+  editHref?: string
 }
 
-export default function DeckBuilder({ deckName, shareId, cards: deckCards, seed }: DeckBuilderProps) {
+export default function DeckBuilder({
+  deckName,
+  shareId,
+  cards: deckCards,
+  seed,
+  access = 'none',
+  editHref,
+}: DeckBuilderProps) {
   const cards = useMemo(() => arrangeDeck(deckCards, seed), [deckCards, seed])
   const cardsById = useMemo(() => new Map(cards.map((card) => [card.id, card])), [cards])
   // Picks in progress live in the URL hash, which only the browser can see,
@@ -328,6 +339,17 @@ export default function DeckBuilder({ deckName, shareId, cards: deckCards, seed 
       </dialog>
 
       <footer className="site-footer">
+        {editHref ? (
+          <Link className="text-action" href={editHref}>
+            Edit this deck
+          </Link>
+        ) : access === 'pending' ? (
+          <span className="muted">You&apos;ve asked to edit this deck</span>
+        ) : (
+          <Link className="text-action" href={`/d/${shareId}/request`}>
+            Request edit access
+          </Link>
+        )}
         <Link className="text-action" href="/">
           Make your own deck with Build-a-Date
         </Link>
