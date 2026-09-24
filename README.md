@@ -32,7 +32,7 @@ npm run db:migrate:local
 npm run dev                      # http://localhost:3000
 ```
 
-With `RESEND_API_KEY` left empty, sign-in emails aren't sent. The link is printed in the terminal instead, and `GET /api/dev/outbox` returns it. Setting `EMAIL_DELIVERY=outbox` does the same even when a key is set. Both only work on localhost. Open the app at `http://localhost:3000` rather than `127.0.0.1` or a network address: passkeys and Better Auth are tied to the origin in `BETTER_AUTH_URL`, and Next's dev server blocks its scripts on other hosts.
+With `RESEND_API_KEY` left empty, sign-in emails aren't sent. The link is printed in the terminal instead, and `GET /api/dev/outbox` returns it. Setting `EMAIL_DELIVERY=outbox` does the same even when a key is set. Both only work on localhost. Open the app at `http://localhost:3000` rather than `127.0.0.1`. To try it from another device, open it at your machine's network address (`192.168.*`, `10.*`, `172.*` or `*.local`, on the same port) instead. Sign-in links then point back at that address. Passkeys only work at `localhost`, because browsers don't allow them on an IP address, so sign in there with a magic link.
 
 `npm run dev` runs Next's dev server in Node, with D1 and the other bindings provided locally. `npm run preview` builds the app and serves it with workerd, the runtime Cloudflare uses, which catches anything that only breaks on Workers.
 

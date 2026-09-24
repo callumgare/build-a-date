@@ -18,10 +18,11 @@ export default function SignInForm({ linkFailed = false, next }: { linkFailed?: 
 
   // Where the browser supports it, the email field offers saved passkeys in
   // its autofill too, in case someone reaches for their email out of habit.
+  // Off localhost over http there is no PublicKeyCredential at all.
   // biome-ignore lint/correctness/useExhaustiveDependencies: runs once; signedIn only uses the stable router and next, a prop from the URL
   useEffect(() => {
     let active = true
-    PublicKeyCredential?.isConditionalMediationAvailable?.().then(async (available) => {
+    window.PublicKeyCredential?.isConditionalMediationAvailable?.().then(async (available) => {
       if (!available || !active) return
       const { data } = await authClient.signIn.passkey({ autoFill: true })
       if (data && active) signedIn()
