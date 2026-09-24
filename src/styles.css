@@ -156,6 +156,7 @@ h1 {
 }
 
 .deck-section {
+  container-type: inline-size;
   padding: 26px 0 44px;
 }
 
@@ -185,8 +186,27 @@ h1 {
 .plan-actions {
   display: flex;
   align-items: center;
-  justify-content: space-between;
+  justify-content: center;
+  gap: min(5vw, 60px);
   margin-bottom: 20px;
+  transition:
+    opacity 0.3s ease,
+    visibility 0s;
+}
+
+.plan-actions[data-visible='false'] {
+  opacity: 0;
+  visibility: hidden;
+  transition:
+    opacity 0.3s ease,
+    visibility 0s 0.3s;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .plan-actions,
+  .plan-actions[data-visible='false'] {
+    transition: none;
+  }
 }
 
 .done-button {
@@ -308,6 +328,10 @@ h1 {
   flex-wrap: wrap;
   gap: 8px;
   margin-bottom: 28px;
+  justify-content: center;
+  max-width: 900px;
+  margin-left: auto;
+  margin-right: auto;
 }
 
 .filter-button {
@@ -345,13 +369,23 @@ h1 {
   }
 }
 
+/* Cards run from 200px to 250px wide. Columns stretch to share the row, and
+   once they reach 250px the grid stops widening and centres, so the spare
+   room goes to the outside edges rather than between the cards. The grid
+   can't cap a 1fr column itself (a 250px column maximum pins every column at
+   250px, since auto-fill sizes repeats by their maximum), so it caps its own
+   width instead, from the number of 200px columns that fit the deck.
+   tan(atan2(a, b)) is a / b as a plain number, which plain division of one
+   length by another can't yet give in every browser. */
 .card-grid {
+  --gap: 16px;
+  --columns: max(1, round(down, tan(atan2(100cqw + var(--gap), 200px + var(--gap)))));
   display: grid;
-  grid-template-columns: repeat(
-    auto-fill,
-    minmax(min(100%, clamp(150px, 38vw, 235px)), 1fr)
-  );
-  gap: 16px;
+  grid-template-columns: repeat(auto-fill, minmax(min(100%, 200px), 1fr));
+  gap: var(--gap);
+  place-items: center;
+  max-width: calc(var(--columns) * 250px + (var(--columns) - 1) * var(--gap));
+  margin-inline: auto;
 }
 
 .empty-results {
@@ -421,12 +455,7 @@ h1 {
   }
 
   .card-grid {
-    grid-template-columns: repeat(auto-fill, minmax(min(100%, 140px), 1fr));
-    gap: 10px;
-  }
-
-  .card-grid {
-    grid-template-columns: repeat(auto-fill, minmax(min(100%, 120px), 1fr));
+    --gap: 10px;
   }
 }
 

@@ -193,16 +193,16 @@ function App() {
 
       <LayoutGroup id="date-builder">
         <section className="plan-section" aria-label="Your plan">
-          {selectedIds.length > 0 && (
-            <div className="plan-actions">
-              <button className="done-button" type="button" onClick={sharePlan}>
-                Done
-              </button>
-              <button className="text-action" type="button" onClick={() => setSelectedIds([])}>
-                Clear plan
-              </button>
-            </div>
-          )}
+          {/* Always laid out, so the first pick doesn't push the page down;
+              hidden (and inert) until there's a plan to act on. */}
+          <div className="plan-actions" data-visible={selectedIds.length > 0} inert={selectedIds.length === 0}>
+            <button className="done-button" type="button" onClick={sharePlan}>
+              Done
+            </button>
+            <button className="text-action" type="button" onClick={() => setSelectedIds([])}>
+              Clear plan
+            </button>
+          </div>
 
           <div className="plan-track" ref={trackReference} aria-label="Selected date ideas">
             <AnimatePresence initial={false} mode="popLayout">
