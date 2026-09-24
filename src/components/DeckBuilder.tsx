@@ -2,7 +2,15 @@
 
 import { AnimatePresence, LayoutGroup, motion, useReducedMotion } from 'motion/react'
 import Link from 'next/link'
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import {
+  type MouseEvent as ReactMouseEvent,
+  type PointerEvent as ReactPointerEvent,
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from 'react'
 import { savePlan } from '@/lib/actions/plans'
 import { arrangeDeck, type DeckSort, deckSorts, sortDeck } from '@/lib/deck-order'
 import type { AccessState } from '@/lib/decks'
@@ -141,11 +149,16 @@ export default function DeckBuilder({
     setNotesOpen({ id, from: element.getBoundingClientRect() })
   }
 
-  // With a mouse the buttons show on hover, so only a tap needs to reveal them.
-  function revealOnTap(id: string, target: EventTarget) {
-    if (window.matchMedia('(hover: hover)').matches) return
-    if (target instanceof Element && target.closest('button, a')) return
-    setRevealedId(id)
+  // A click on either half of a card does what's written on that side
+  // (docs/card-notes.md § "Card actions"). Without hover the first tap only
+  // shows the options, so it can't add or discard the card by accident.
+  function clickCard(id: string, event: ReactMouseEvent<HTMLElement>, actions: SideActions) {
+    if (event.target instanceof Element && event.target.closest('button, a')) return
+    if (!window.matchMedia('(hover: hover)').matches && revealedId !== id) {
+      setRevealedId(id)
+      return
+    }
+    actions[sideOf(event)]()
   }
 
   const changeNotes = useCallback((id: string, notes: Notes) => {
@@ -266,6 +279,7 @@ export default function DeckBuilder({
               {selectedIds.map((id) => {
                 const card = cardsById.get(id)
                 if (!card) return null
+                const actions: SideActions = { primary: () => removeCard(card.id), notes: () => openNotes(card.id) }
 
                 return (
                   <motion.div
@@ -276,19 +290,14 @@ export default function DeckBuilder({
                     layout
                     layoutId={`card-${card.id}`}
                     transition={transition}
-                    onClick={(event) => revealOnTap(card.id, event.target)}
+                    onClick={(event) => clickCard(card.id, event, actions)}
+                    onPointerMove={showHoveredSide}
+                    onPointerLeave={clearHoveredSide}
                   >
                     <Card
                       card={card}
                       frame={frameFor(card.id)}
-                      actions={
-                        <CardActions
-                          title={card.title}
-                          primary="Discard"
-                          onPrimary={() => removeCard(card.id)}
-                          onNotes={() => openNotes(card.id)}
-                        />
-                      }
+                      actions={<CardActions title={card.title} primary="Discard" actions={actions} />}
                     />
                   </motion.div>
                 )
@@ -351,40 +360,41 @@ export default function DeckBuilder({
 
           <motion.div className="card-grid" layout>
             <AnimatePresence initial={false} mode="popLayout">
-              {availableCards.map((card) => (
+              {availableCards.map((card) => {
+                const actions: SideActions = {
+                  primary: () => {
+                    const deckCard = deckCardElement(card.id)
+                    if (deckCard) selectCard(card.id, deckCard.getBoundingClientRect())
+                  },
+                  notes: () => openNotes(card.id),
+                }
+
                 // Hovering (or a tap, without hover) shows what can be done
-                // with the card rather than adding it straight away
-                // (docs/card-notes.md § "Card actions").
-                <motion.div
-                  className={`${cardStyles.card} ${notesOpen?.id === card.id ? cardStyles.inFlight : ''}`}
-                  key={card.id}
-                  data-deck-card-id={card.id}
-                  data-revealed={revealedId === card.id}
-                  layout
-                  layoutId={`card-${card.id}`}
-                  initial={reduceMotion ? false : { opacity: 0, scale: 0.96 }}
-                  animate={{ opacity: 1, scale: 1 }}
-                  exit={reduceMotion ? undefined : { opacity: 0, scale: 0.96 }}
-                  transition={transition}
-                  onClick={(event) => revealOnTap(card.id, event.target)}
-                >
-                  <Card
-                    card={card}
-                    frame={frameFor(card.id)}
-                    actions={
-                      <CardActions
-                        title={card.title}
-                        primary="Add to plan"
-                        onPrimary={() => {
-                          const deckCard = deckCardElement(card.id)
-                          if (deckCard) selectCard(card.id, deckCard.getBoundingClientRect())
-                        }}
-                        onNotes={() => openNotes(card.id)}
-                      />
-                    }
-                  />
-                </motion.div>
-              ))}
+                // with the card (docs/card-notes.md § "Card actions").
+                return (
+                  <motion.div
+                    className={`${cardStyles.card} ${notesOpen?.id === card.id ? cardStyles.inFlight : ''}`}
+                    key={card.id}
+                    data-deck-card-id={card.id}
+                    data-revealed={revealedId === card.id}
+                    layout
+                    layoutId={`card-${card.id}`}
+                    initial={reduceMotion ? false : { opacity: 0, scale: 0.96 }}
+                    animate={{ opacity: 1, scale: 1 }}
+                    exit={reduceMotion ? undefined : { opacity: 0, scale: 0.96 }}
+                    transition={transition}
+                    onClick={(event) => clickCard(card.id, event, actions)}
+                    onPointerMove={showHoveredSide}
+                    onPointerLeave={clearHoveredSide}
+                  >
+                    <Card
+                      card={card}
+                      frame={frameFor(card.id)}
+                      actions={<CardActions title={card.title} primary="Add to plan" actions={actions} />}
+                    />
+                  </motion.div>
+                )
+              })}
             </AnimatePresence>
           </motion.div>
 
@@ -463,27 +473,56 @@ export default function DeckBuilder({
   )
 }
 
+type Side = 'primary' | 'notes'
+type SideActions = Record<Side, () => void>
+
+// Add to plan or Discard is on the left half of a card, Notes on the right.
+function sideOf(event: { clientX: number; currentTarget: Element }): Side {
+  const rect = event.currentTarget.getBoundingClientRect()
+  return event.clientX < rect.left + rect.width / 2 ? 'primary' : 'notes'
+}
+
+// Marks which option a click would pick, so its label can go bold. Set on the
+// element directly, as it changes with every move of the mouse. Nothing is
+// marked over a link, since a click there follows the link instead.
+function showHoveredSide(event: ReactPointerEvent<HTMLElement>) {
+  if (event.pointerType === 'touch') return
+  const overLink = event.target instanceof Element && event.target.closest('a')
+  if (overLink) delete event.currentTarget.dataset.side
+  else event.currentTarget.dataset.side = sideOf(event)
+}
+
+function clearHoveredSide(event: ReactPointerEvent<HTMLElement>) {
+  delete event.currentTarget.dataset.side
+}
+
 type CardActionsProps = {
   title: string
   primary: 'Add to plan' | 'Discard'
-  onPrimary: () => void
-  onNotes: () => void
+  actions: SideActions
 }
 
-// The buttons in a card's top band (docs/card-notes.md § "Card actions").
-// Labels start with the words on the button, for voice control.
-function CardActions({ title, primary, onPrimary, onNotes }: CardActionsProps) {
+// The options in a card's top band (docs/card-notes.md § "Card actions").
+// Clicking a card does the same as the label on that side; the labels are
+// buttons too, for the keyboard. Labels start with the words on the button,
+// for voice control.
+function CardActions({ title, primary, actions }: CardActionsProps) {
   return (
     <>
       <button
         className={`${cardStyles.action} ${cardStyles.primaryAction}`}
         type="button"
         aria-label={`${primary}: ${title}`}
-        onClick={onPrimary}
+        onClick={actions.primary}
       >
         {primary}
       </button>
-      <button className={cardStyles.action} type="button" aria-label={`Notes on ${title}`} onClick={onNotes}>
+      <button
+        className={`${cardStyles.action} ${cardStyles.notesAction}`}
+        type="button"
+        aria-label={`Notes on ${title}`}
+        onClick={actions.notes}
+      >
         Notes
       </button>
     </>

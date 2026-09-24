@@ -24,64 +24,72 @@
   background-color: #fff9ef;
 }
 
-/* What can be done with a card on the builder page, the same distance from
-   the top on every card, over a shade that fades out just below them. The
-   shortest frame's top inset (50 frame units) still clears them on the
-   smallest cards, so they never cover the text and links in the description
-   keep working. Shown on hover, after a tap on screens without hover, and
-   while one of the buttons has keyboard focus. */
+/* What can be done with a card on the builder page, written in white on a
+   dark shade that fades out below it, the same distance from the top on every
+   card. A white line, fading out with the shade, splits it into the card's two
+   halves: a click on either half does what's written on that side (see
+   clickCard in DeckBuilder), and the side under the mouse is in bold. The
+   shortest frame's top inset (50 frame units) still clears the labels on the
+   smallest cards, so they never cover the text, and the shade doesn't take
+   clicks, so links in the description keep working. Shown on hover, after a
+   tap on screens without hover, and while a label has keyboard focus. */
 .actions {
   position: absolute;
   top: 0;
   right: 0;
   left: 0;
   z-index: 1;
-  display: flex;
-  justify-content: center;
-  gap: 4cqw;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
   padding: calc(var(--edge) + 3cqw) var(--edge) 9cqw;
   border-radius: 5px 5px 0 0;
-  background: linear-gradient(rgba(4, 23, 31, 0.32), rgba(4, 23, 31, 0.16) 55%, transparent);
+  background: linear-gradient(rgba(4, 23, 31, 0.66), rgba(4, 23, 31, 0.36) 55%, transparent);
   opacity: 0;
   transition: opacity 0.15s ease;
   pointer-events: none;
 }
 
+.actions::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: 50%;
+  width: 1px;
+  translate: -50%;
+  height: 110%;
+  background: linear-gradient(rgba(255, 255, 255, 0.9), rgba(255, 255, 255, 0.45) 65%, transparent);
+}
+
 .action {
   height: clamp(20px, 12cqw, 30px);
-  padding: 0 clamp(7px, 5cqw, 14px);
-  border: 1px solid #a07c4c;
-  border-radius: 999px;
-  color: #183745;
-  font-size: clamp(0.58rem, 5.4cqw, 0.8rem);
-  font-weight: 700;
+  padding: 0 2cqw;
+  border: 0;
+  border-radius: 3px;
+  color: #fff;
+  font: inherit;
+  font-size: clamp(0.62rem, 5.8cqw, 0.86rem);
+  font-weight: 400;
   letter-spacing: 0.02em;
   white-space: nowrap;
-  background: #f7f0e4;
-  box-shadow: 0 2px 6px rgba(4, 23, 31, 0.18);
+  text-shadow: 0 1px 3px rgba(4, 23, 31, 0.6);
+  background: none;
   cursor: pointer;
   pointer-events: none;
 }
 
-.primaryAction {
-  border-color: #c99a58;
-  background: #e5bc81;
+.card[data-side='primary'] .primaryAction,
+.card[data-side='notes'] .notesAction,
+.action:focus-visible {
+  font-weight: 700;
 }
 
 .action:focus-visible {
-  outline: 2px solid #183745;
+  outline: 2px solid #fff;
   outline-offset: 2px;
 }
 
 @media (hover: hover) {
-  .action:hover {
-    background: #fff9ef;
-  }
-
-  .primaryAction:hover {
-    background: #efcd9b;
-  }
-
   .card:hover .actions {
     opacity: 1;
   }

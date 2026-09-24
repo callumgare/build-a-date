@@ -6,7 +6,7 @@
 | -------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | [docs/deck-sharing.md](docs/deck-sharing.md) | Touching edit access, the `deck_access` table, Shared decks, who may change a deck, or the `next` redirect after sign-in |
 | [docs/historical-plans/2026-09-24-deck-sharing.md](docs/historical-plans/2026-09-24-deck-sharing.md) | Wondering why deck sharing was built the way it was (frozen plan) |
-| [docs/card-notes.md](docs/card-notes.md) | Touching the buttons on cards on `/d/…`, the flip-over notes view, card ratings and notes (`interest`/`notes` on `card`), or `saveCardNotes` |
+| [docs/card-notes.md](docs/card-notes.md) | Touching the options on cards on `/d/…` (Add to plan/Discard and Notes, clicking a side of a card), the flip-over notes view, card ratings and notes (`interest`/`notes` on `card`), or `saveCardNotes` |
 | [docs/historical-plans/2026-09-24-card-notes.md](docs/historical-plans/2026-09-24-card-notes.md) | Wondering why card notes were built the way they were (frozen plan) |
 | [docs/deck-sorting.md](docs/deck-sorting.md) | Touching the **Sort by** options on `/d/…` (random, date added, interest), or `sortDeck` in `src/lib/deck-order.ts` |
 

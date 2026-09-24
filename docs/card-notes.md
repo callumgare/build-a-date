@@ -4,22 +4,30 @@ On a shared deck (`/d/…`), each idea can be given a star rating for how keen s
 
 ## Card actions
 
-Clicking a card no longer does anything by itself. Instead, each card shows two buttons at its top:
+Each card shows two options in white text over a dark shade at its top. A white line runs down between them and fades out with the shade:
 
-| Where the card is | Buttons |
-| --- | --- |
-| In the deck | **Add to plan** adds it to the plan, which clicking it used to do. **Notes** opens its notes. |
-| In the plan | **Discard** takes it out of the plan and back into the deck, which clicking it used to do. **Notes** opens its notes. |
+| Where the card is | Left | Right |
+| --- | --- | --- |
+| In the deck | **Add to plan** adds it to the plan. | **Notes** opens its notes. |
+| In the plan | **Discard** takes it out of the plan and back into the deck. | **Notes** opens its notes. |
 
 **Notes** is covered in [Opening a card's notes](#opening-a-cards-notes).
 
-When the buttons show depends on the device:
+### Clicking a side of the card
+
+A click anywhere on a card's left half does the left option, and anywhere on its right half does the right one. A click on a link in the description follows the link instead.
+
+With a mouse, the option on the side the mouse is over is in bold. Over a link, neither is.
+
+### When the options show
+
+When the options show depends on the device:
 
 - With a mouse, they show on hover.
-- On a touch screen, which has no hover, they show after a tap on the card. Tapping anywhere else hides them again. Hidden buttons don't take taps, so the first tap on a card can't add or discard it by accident.
-- With a keyboard, Tab goes to each button in turn, and a card shows its buttons while one of them has focus.
+- On a touch screen, which has no hover, they show after a tap on the card. Once they're showing, a tap on either side does that option. Tapping anywhere else hides them again. So the first tap on a card can't add or discard it by accident.
+- With a keyboard, the two options are buttons. Tab goes to each one in turn, and a card shows its options while one of them has focus. The focused one is in bold.
 
-The buttons sit the same distance from the top of every card, over a shade that fades out just below them. A card's text always starts below the band of frame art at its top (the frame's top inset), and even the shortest band is taller than the buttons, so they never cover the title or description. The shade doesn't take clicks, so links in the description keep working while the buttons are showing.
+The options sit the same distance from the top of every card. A card's text always starts below the band of frame art at its top (the frame's top inset), and even the shortest band is taller than the options, so they never cover the title or description. The shade doesn't take clicks, so links in the description keep working while the options are showing.
 
 ## Opening a card's notes
 

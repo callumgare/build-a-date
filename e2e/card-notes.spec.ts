@@ -26,12 +26,11 @@ test('someone with the link rates an idea and leaves notes the owner can see', a
   await guest.goto(shareUrl)
   const card = guest.locator('[data-deck-card-id]').filter({ hasText: 'Stargazing' })
 
-  // docs/card-notes.md § "Card actions" - a click on the card itself doesn't add it.
-  await card.click({ position: { x: 10, y: 10 } })
+  // docs/card-notes.md § "Clicking a side of the card" - the right half opens the notes.
+  const box = await card.boundingBox()
+  if (!box) throw new Error('Card has no size')
+  await card.click({ position: { x: box.width * 0.75, y: box.height * 0.7 } })
   await expect(guest.getByRole('button', { name: 'Discard: Stargazing' })).toHaveCount(0)
-
-  await card.hover()
-  await guest.getByRole('button', { name: 'Notes on Stargazing' }).click()
   const notes = guest.getByRole('dialog', { name: 'Stargazing' })
   await expect(notes).toBeVisible()
   await notes.getByRole('radio', { name: '4 stars' }).locator('..').click()
@@ -52,9 +51,8 @@ test('someone with the link rates an idea and leaves notes the owner can see', a
     await expect(reopened).toBeHidden()
   }
 
-  // Adding to the plan is still one press away.
-  await card.hover()
-  await guest.getByRole('button', { name: 'Add to plan: Stargazing' }).click()
+  // docs/card-notes.md § "Clicking a side of the card" - the left half adds it to the plan.
+  await card.click({ position: { x: box.width * 0.25, y: box.height * 0.7 } })
   await expect(guest.getByRole('button', { name: 'Discard: Stargazing' })).toBeVisible()
 
   await guestContext.close()

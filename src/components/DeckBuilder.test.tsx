@@ -1,5 +1,5 @@
 /** @vitest-environment jsdom */
-import { render, screen, waitFor, within } from '@testing-library/react'
+import { fireEvent, render, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import type { DateCard } from '@/types'
 import DeckBuilder from './DeckBuilder'
@@ -10,7 +10,7 @@ vi.mock('next/link', () => ({ default: (props: object) => <a {...props} /> }))
 
 const cards: DateCard[] = [
   { id: 'picnic', title: 'Picnic', description: '', tags: ['outside'], interest: 2, notes: 'Bring a rug' },
-  { id: 'museum', title: 'Museum', description: '', tags: ['culture'] },
+  { id: 'museum', title: 'Museum', description: 'See [the gallery](https://example.com)', tags: ['culture'] },
   { id: 'hike', title: 'Hike', description: '', tags: ['outside', 'active'] },
 ]
 
@@ -93,15 +93,107 @@ describe('DeckBuilder', () => {
     expect(await screen.findByRole('alert')).toHaveTextContent('Deck not found')
   })
 
-  /** @see docs/card-notes.md § "Card actions" */
-  it("doesn't add a card to the plan just for clicking it", async () => {
-    const user = userEvent.setup()
-    const { container } = renderBuilder()
+  describe('clicking a side of a card', () => {
+    // A 200px-wide card, so x < 100 is its left half.
+    function deckCard(container: HTMLElement, id: string) {
+      const element = container.querySelector(`[data-deck-card-id="${id}"]`) as HTMLElement
+      element.getBoundingClientRect = () => new DOMRect(0, 0, 200, 266)
+      return element
+    }
 
-    await user.click(container.querySelector('[data-deck-card-id="museum"]') as HTMLElement)
-    expect(container.querySelector('[data-deck-card-id="museum"]')).toHaveAttribute('data-revealed', 'true')
-    expect(screen.queryByRole('button', { name: 'Discard: Museum' })).not.toBeInTheDocument()
-    expect(window.location.hash).toBe('')
+    function planCard(container: HTMLElement, id: string) {
+      const element = container.querySelector(`[data-card-id="${id}"]`) as HTMLElement
+      element.getBoundingClientRect = () => new DOMRect(0, 0, 200, 266)
+      return element
+    }
+
+    describe('with a mouse', () => {
+      beforeEach(() => {
+        vi.spyOn(window, 'matchMedia').mockImplementation(
+          (query) => ({ matches: query === '(hover: hover)', media: query }) as MediaQueryList,
+        )
+      })
+
+      afterEach(() => vi.restoreAllMocks())
+
+      /** @see docs/card-notes.md § "Clicking a side of the card" */
+      it('adds a card to the plan from its left half, and discards it from there too', async () => {
+        const { container } = renderBuilder()
+
+        fireEvent.click(deckCard(container, 'hike'), { clientX: 40 })
+        expect(await screen.findByRole('button', { name: 'Discard: Hike' })).toBeInTheDocument()
+
+        fireEvent.click(planCard(container, 'hike'), { clientX: 40 })
+        expect(await screen.findByRole('button', { name: 'Add to plan: Hike' })).toBeInTheDocument()
+        expect(window.location.hash).toBe('')
+      })
+
+      /** @see docs/card-notes.md § "Clicking a side of the card" */
+      it('opens the notes from its right half', async () => {
+        const { container } = renderBuilder()
+
+        fireEvent.click(deckCard(container, 'museum'), { clientX: 160 })
+        expect(await screen.findByRole('dialog', { name: 'Museum' })).toBeInTheDocument()
+        expect(window.location.hash).toBe('')
+      })
+
+      /** @see docs/card-notes.md § "Clicking a side of the card" - a link in the description is followed instead */
+      it('leaves a click on a link in the description to the link', () => {
+        renderBuilder()
+
+        fireEvent.click(screen.getByRole('link', { name: 'the gallery' }), { clientX: 40 })
+        expect(screen.queryByRole('button', { name: 'Discard: Museum' })).not.toBeInTheDocument()
+        expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
+      })
+
+      /** @see docs/card-notes.md § "Clicking a side of the card" - the side under the mouse is bold */
+      it('marks the side the mouse is over, but not over a link', () => {
+        const { container } = renderBuilder()
+        const card = deckCard(container, 'museum')
+
+        fireEvent.pointerMove(card, { clientX: 40, pointerType: 'mouse' })
+        expect(card).toHaveAttribute('data-side', 'primary')
+        fireEvent.pointerMove(card, { clientX: 160, pointerType: 'mouse' })
+        expect(card).toHaveAttribute('data-side', 'notes')
+        fireEvent.pointerMove(screen.getByRole('link', { name: 'the gallery' }), { clientX: 40, pointerType: 'mouse' })
+        expect(card).not.toHaveAttribute('data-side')
+
+        fireEvent.pointerMove(card, { clientX: 40, pointerType: 'mouse' })
+        fireEvent.pointerLeave(card, { pointerType: 'mouse' })
+        expect(card).not.toHaveAttribute('data-side')
+      })
+    })
+
+    /** @see docs/card-notes.md § "When the options show" - on a touch screen */
+    describe('on a touch screen', () => {
+      it("doesn't add a card to the plan on the first tap, only shows its options", async () => {
+        const { container } = renderBuilder()
+
+        fireEvent.click(deckCard(container, 'museum'), { clientX: 40 })
+        expect(container.querySelector('[data-deck-card-id="museum"]')).toHaveAttribute('data-revealed', 'true')
+        expect(screen.queryByRole('button', { name: 'Discard: Museum' })).not.toBeInTheDocument()
+        expect(window.location.hash).toBe('')
+      })
+
+      it('does the option on the side tapped once the options are showing', async () => {
+        const { container } = renderBuilder()
+
+        fireEvent.click(deckCard(container, 'museum'), { clientX: 160 })
+        fireEvent.click(deckCard(container, 'museum'), { clientX: 160 })
+        expect(await screen.findByRole('dialog', { name: 'Museum' })).toBeInTheDocument()
+      })
+
+      it('needs a fresh tap on a card after tapping somewhere else', async () => {
+        const { container } = renderBuilder()
+
+        fireEvent.click(deckCard(container, 'museum'), { clientX: 40 })
+        fireEvent.pointerDown(document.body)
+        expect(container.querySelector('[data-deck-card-id="museum"]')).toHaveAttribute('data-revealed', 'false')
+
+        fireEvent.click(deckCard(container, 'museum'), { clientX: 40 })
+        expect(screen.queryByRole('button', { name: 'Discard: Museum' })).not.toBeInTheDocument()
+      })
+    })
   })
 
   /** @see docs/deck-sorting.md § "Sort options" */
