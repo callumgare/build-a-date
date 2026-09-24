@@ -418,12 +418,16 @@ h1 {
   }
 
   .star--1 {
-    top: 14px;
+    top: 104px;
     right: 5%;
     width: 52px;
   }
 
-  .star--2,
+  .star--2 {
+    right: unset;
+    left: 5%;
+    top: 140px;
+  }
   .star--6 {
     display: none;
   }

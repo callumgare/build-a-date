@@ -3,6 +3,7 @@ import { AnimatePresence, LayoutGroup, motion, useReducedMotion } from 'motion/r
 import cardData from './data/cards.json'
 import Card from './components/Card'
 import FlyingCard from './components/FlyingCard'
+import InstallHint from './components/InstallHint'
 import cardStyles from './components/Card.module.css'
 import { frameFor, type Frame } from './components/frames'
 import type { DateCard } from './types'
@@ -177,6 +178,8 @@ function App() {
 
   return (
     <main className="page-shell">
+      <InstallHint />
+
       <header className="hero">
         <h1>Build-a-Date</h1>
       </header>
