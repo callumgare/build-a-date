@@ -6,7 +6,7 @@
 
 :root {
   color: #f8f2e8;
-  background: #12374a;
+  background: #07114F;
   font-family: Georgia, 'Times New Roman', serif;
   font-synthesis: none;
   text-rendering: optimizeLegibility;
@@ -24,13 +24,10 @@
 }
 
 html {
-  min-width: 320px;
   min-height: 100%;
-  background-color: #12374a;
 }
 
 body {
-  min-width: 320px;
   min-height: 100vh;
   margin: 0;
 }
@@ -374,18 +371,26 @@ h1 {
    room goes to the outside edges rather than between the cards. The grid
    can't cap a 1fr column itself (a 250px column maximum pins every column at
    250px, since auto-fill sizes repeats by their maximum), so it caps its own
-   width instead, from the number of 200px columns that fit the deck.
-   tan(atan2(a, b)) is a / b as a plain number, which plain division of one
-   length by another can't yet give in every browser. */
+   width instead, from the number of 200px columns that fit the deck. */
 .card-grid {
   --gap: 16px;
+  /* tan(atan2(a, b)) is a / b as a plain number, for browsers that can't
+     divide one length by another. */
   --columns: max(1, round(down, tan(atan2(100cqw + var(--gap), 200px + var(--gap)))));
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(min(100%, 200px), 1fr));
   gap: var(--gap);
   place-items: center;
-  max-width: calc(var(--columns) * 250px + (var(--columns) - 1) * var(--gap));
+  max-width: calc(var(--columns) * (250px + var(--gap)) - var(--gap));
   margin-inline: auto;
+}
+
+/* Real division where it's supported: iOS Safari takes atan2() of lengths
+   as 0. */
+@supports (width: calc(1px / 1px * 1px)) {
+  .card-grid {
+    --columns: max(1, round(down, (100cqw + var(--gap)) / (200px + var(--gap))));
+  }
 }
 
 .empty-results {
