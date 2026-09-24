@@ -1,8 +1,10 @@
-import { useLayoutEffect, useRef, type CSSProperties } from 'react'
+'use client'
+
+import { type CSSProperties, useLayoutEffect, useRef } from 'react'
 import Markdown, { type Components } from 'react-markdown'
 import type { DateCard as DateCardModel } from '../types'
-import type { Frame } from './frames'
 import styles from './Card.module.css'
+import type { Frame } from './frames'
 
 type CardProps = {
   card: DateCardModel
@@ -21,7 +23,9 @@ export default function Card({ card, frame }: CardProps) {
     <span className={styles.content} ref={contentReference} style={insets} data-frame={frame.name}>
       <FrameArt frame={frame} />
       <span className={styles.body}>
-        <span className={styles.title} ref={titleReference}>{card.title}</span>
+        <span className={styles.title} ref={titleReference}>
+          {card.title}
+        </span>
         {card.date && <span className={styles.date}>{card.date}</span>}
         <span className={styles.description}>
           <Markdown components={markdownComponents}>{card.description}</Markdown>
@@ -49,6 +53,7 @@ function useFitText(card: DateCardModel) {
   const contentReference = useRef<HTMLSpanElement>(null)
   const titleReference = useRef<HTMLSpanElement>(null)
 
+  // biome-ignore lint/correctness/useExhaustiveDependencies: refits whenever the card's text changes
   useLayoutEffect(() => {
     const content = contentReference.current
     if (!content) return

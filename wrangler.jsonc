@@ -1,14 +1,55 @@
 {
+  "$schema": "node_modules/wrangler/config-schema.json",
   "name": "build-a-date",
+  "main": ".open-next/worker.js",
   "compatibility_date": "2026-09-24",
-  "build": {
-    "command": "npm run build"
-  },
+  "compatibility_flags": ["nodejs_compat", "global_fetch_strictly_public"],
   "assets": {
-    "directory": "./dist",
-    "not_found_handling": "single-page-application"
+    "directory": ".open-next/assets",
+    "binding": "ASSETS"
   },
-  "routes": [
-    { "pattern": "build-a-date.oncal.link", "custom_domain": true }
-  ]
+  "services": [
+    // Lets OpenNext call back into this worker; the name must match the worker's.
+    { "binding": "WORKER_SELF_REFERENCE", "service": "build-a-date" }
+  ],
+  "d1_databases": [
+    {
+      "binding": "DB",
+      "database_name": "build-a-date",
+      // From `wrangler d1 create build-a-date`.
+      "database_id": "52fa547a-f45c-43ce-affd-14ac4bde78bc",
+      "migrations_dir": "drizzle"
+    }
+  ],
+  "vars": {
+    "BETTER_AUTH_URL": "https://build-a-date.cals.cafe",
+    "EMAIL_FROM": "Build-a-Date <hello@build-a-date.cals.cafe>"
+  },
+  // BETTER_AUTH_SECRET and RESEND_API_KEY are secrets: `wrangler secret put`
+  // for production, .dev.vars locally.
+  "routes": [{ "pattern": "build-a-date.cals.cafe", "custom_domain": true }],
+  // Local dev serves on localhost rather than posing as the custom domain
+  // above, so the Origin header matches BETTER_AUTH_URL in .dev.vars.
+  "dev": { "port": 3000, "host": "localhost:3000", "upstream_protocol": "http" },
+  "observability": { "enabled": true },
+  "env": {
+    // For the server the e2e tests start (see playwright.config.ts), which
+    // reads .dev.vars.e2e. Bindings aren't inherited, hence the repeats.
+    "e2e": {
+      "routes": [],
+      "services": [{ "binding": "WORKER_SELF_REFERENCE", "service": "build-a-date" }],
+      "d1_databases": [
+        {
+          "binding": "DB",
+          "database_name": "build-a-date-e2e",
+          "database_id": "00000000-0000-0000-0000-000000000000",
+          "migrations_dir": "drizzle"
+        }
+      ],
+      "vars": {
+        "BETTER_AUTH_URL": "http://localhost:3100",
+        "EMAIL_FROM": "Build-a-Date <hello@build-a-date.cals.cafe>"
+      }
+    }
+  }
 }

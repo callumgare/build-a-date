@@ -1,0 +1,7 @@
+# Settings for the server the e2e tests start (wrangler environment "e2e"),
+# in place of .dev.vars. Sign-in emails go to the in-memory outbox, where the
+# tests read them, and never to Resend. Nothing here is secret.
+BETTER_AUTH_URL=http://localhost:3100
+BETTER_AUTH_SECRET=e2e-tests-only-not-a-real-secret-0000
+RESEND_API_KEY=
+EMAIL_DELIVERY=outbox

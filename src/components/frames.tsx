@@ -12,6 +12,12 @@ export type Frame = {
   inset: { top: number; bottom: number; side: number }
 }
 
+// Trig results can differ in their last digits between the server and the
+// browser, which would break hydration, so computed points are rounded.
+function round(value: number) {
+  return Math.round(value * 1000) / 1000
+}
+
 function sparkle(cx: number, cy: number, r: number) {
   const k = r * 0.16
   return `M ${cx} ${cy - r} Q ${cx + k} ${cy - k} ${cx + r} ${cy} Q ${cx + k} ${cy + k} ${cx} ${cy + r} Q ${cx - k} ${cy + k} ${cx - r} ${cy} Q ${cx - k} ${cy - k} ${cx} ${cy - r} Z`
@@ -21,7 +27,7 @@ function sparkle(cx: number, cy: number, r: number) {
 // to -1 (nearly full).
 function moon(cx: number, cy: number, r: number, lit: 'left' | 'right', shadow: number) {
   const outerSweep = lit === 'right' ? 1 : 0
-  const innerSweep = (shadow > 0) === (lit === 'right') ? 0 : 1
+  const innerSweep = shadow > 0 === (lit === 'right') ? 0 : 1
   const rx = Math.abs(shadow) * r
   return `M ${cx} ${cy - r} A ${r} ${r} 0 0 ${outerSweep} ${cx} ${cy + r} A ${rx} ${r} 0 0 ${innerSweep} ${cx} ${cy - r} Z`
 }
@@ -31,7 +37,7 @@ function rays(cx: number, cy: number, count: number, inner: number, long: number
   return Array.from({ length: count + (to - from === 360 ? 0 : 1) }, (_, index) => {
     const angle = ((from + index * step) * Math.PI) / 180
     const outer = index % 2 === 0 ? long : short
-    return `M ${cx + Math.cos(angle) * inner} ${cy + Math.sin(angle) * inner} L ${cx + Math.cos(angle) * outer} ${cy + Math.sin(angle) * outer}`
+    return `M ${round(cx + Math.cos(angle) * inner)} ${round(cy + Math.sin(angle) * inner)} L ${round(cx + Math.cos(angle) * outer)} ${round(cy + Math.sin(angle) * outer)}`
   }).join(' ')
 }
 
@@ -201,7 +207,10 @@ const constellation: Frame = {
       <>
         <path d="M 1 60 V 1 H 199 V 60" />
         <path d="M 7 60 V 7 H 193 V 60" />
-        <path className="faint" d="M 30 36 L 52 24 L 74 32 L 100 20 L 126 32 L 148 24 L 170 36 M 74 32 L 88 44 M 126 32 L 112 44" />
+        <path
+          className="faint"
+          d="M 30 36 L 52 24 L 74 32 L 100 20 L 126 32 L 148 24 L 170 36 M 74 32 L 88 44 M 126 32 L 112 44"
+        />
         <g className="fill">
           <path d={sparkle(100, 20, 8)} />
           <path d={sparkle(52, 24, 4.5)} />
@@ -338,7 +347,15 @@ const crescentCradle: Frame = {
           <path d="M 176 40 L 180 36 L 184 40 L 180 44 Z" />
           {Array.from({ length: 9 }, (_, index) => {
             const angle = ((200 + index * 17.5) * Math.PI) / 180
-            return <circle key={index} cx={100 + Math.cos(angle) * 25} cy={40 + Math.sin(angle) * 25} r={index === 4 ? 1.6 : 1.1} />
+            return (
+              <circle
+                // biome-ignore lint/suspicious/noArrayIndexKey: a fixed ring of dots that never reorders
+                key={index}
+                cx={round(100 + Math.cos(angle) * 25)}
+                cy={round(40 + Math.sin(angle) * 25)}
+                r={index === 4 ? 1.6 : 1.1}
+              />
+            )
           })}
         </g>
       </>
@@ -447,7 +464,10 @@ const hangingStars: Frame = {
       <>
         <path d="M 1 66 V 1 H 199 V 66" />
         <path d="M 8 66 V 8 H 192 V 66" />
-        <path className="faint" d="M 28 8 V 24 M 46 8 V 18.5 M 64 8 V 29 M 82 8 V 21 M 100 8 V 33 M 118 8 V 21 M 136 8 V 29 M 154 8 V 18.5 M 172 8 V 24" />
+        <path
+          className="faint"
+          d="M 28 8 V 24 M 46 8 V 18.5 M 64 8 V 29 M 82 8 V 21 M 100 8 V 33 M 118 8 V 21 M 136 8 V 29 M 154 8 V 18.5 M 172 8 V 24"
+        />
         <g className="fill">
           <path d={sparkle(28, 28, 4)} />
           <circle cx="46" cy="20" r="1.5" />

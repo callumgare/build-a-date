@@ -1,0 +1,4 @@
+BETTER_AUTH_URL=http://localhost:3000
+BETTER_AUTH_SECRET=replace-with-output-of-openssl-rand-base64-32
+# Leave empty to print emails to the terminal instead of sending them.
+RESEND_API_KEY=

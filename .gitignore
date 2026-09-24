@@ -1,5 +1,13 @@
 .local
 node_modules
-dist
 .DS_Store
 .wrangler
+.next
+.next-e2e
+.open-next
+next-env.d.ts
+*.tsbuildinfo
+.dev.vars
+.env*
+test-results
+playwright-report

@@ -1,10 +1,12 @@
-import { useLayoutEffect, type RefObject } from 'react'
+'use client'
+
+import { type Transition, useAnimate } from 'motion/react'
+import { type RefObject, useLayoutEffect } from 'react'
 import { createPortal } from 'react-dom'
-import { useAnimate, type Transition } from 'motion/react'
 import type { DateCard } from '../types'
-import type { Frame } from './frames'
 import Card from './Card'
 import styles from './Card.module.css'
+import type { Frame } from './frames'
 
 type FlyingCardProps = {
   card: DateCard
@@ -71,11 +73,7 @@ export default function FlyingCard({ card, frame, from, track, transition, onDon
   }, [animate, card.id, from, onDone, scope, track, transition])
 
   return createPortal(
-    <div
-      className={`${styles.card} ${styles.flying}`}
-      ref={scope}
-      aria-hidden="true"
-    >
+    <div className={`${styles.card} ${styles.flying}`} ref={scope} aria-hidden="true">
       <Card card={card} frame={frame} />
     </div>,
     document.body,

@@ -1,54 +1,19 @@
-import { useCallback, useEffect, useMemo, useRef, useState, type KeyboardEvent } from 'react'
+'use client'
+
 import { AnimatePresence, LayoutGroup, motion, useReducedMotion } from 'motion/react'
-import cardData from './data/cards.json'
-import Card from './components/Card'
-import FlyingCard from './components/FlyingCard'
-import InstallHint from './components/InstallHint'
-import cardStyles from './components/Card.module.css'
-import { frameFor, type Frame } from './components/frames'
-import type { DateCard } from './types'
+import Link from 'next/link'
+import { type KeyboardEvent, useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { savePlan } from '@/lib/actions/plans'
+import { arrangeDeck } from '@/lib/deck-order'
+import type { DateCard } from '@/types'
+import Card from './Card'
+import cardStyles from './Card.module.css'
+import FlyingCard from './FlyingCard'
+import { frameFor } from './frames'
+import InstallHint from './InstallHint'
+import Stars from './Stars'
 
-const cards: DateCard[] = spreadFrames(shuffle(cardData))
-const cardsById = new Map(cards.map((card) => [card.id, card]))
-
-// A fresh order on every page load.
-function shuffle<T>(items: T[]): T[] {
-  const shuffled = [...items]
-  for (let index = shuffled.length - 1; index > 0; index--) {
-    const swap = Math.floor(Math.random() * (index + 1))
-    ;[shuffled[index], shuffled[swap]] = [shuffled[swap], shuffled[index]]
-  }
-  return shuffled
-}
-
-// Keeps matching frames apart: each card takes the next in the shuffle whose
-// frame isn't among the last few placed, so neither the card beside it nor
-// the one above it (the grid runs up to six columns) shares its frame. A
-// frame with too many cards left to stay spread out goes first, so they
-// don't bunch up at the end, and when no card fits, the gap shrinks.
-function spreadFrames(shuffled: DateCard[]): DateCard[] {
-  const remaining = [...shuffled]
-  const spread: DateCard[] = []
-  const left = new Map<Frame, number>()
-  for (const card of shuffled) left.set(frameFor(card.id), (left.get(frameFor(card.id)) ?? 0) + 1)
-
-  while (remaining.length > 0) {
-    for (let gap = 6; gap >= 0; gap--) {
-      const recent = new Set(spread.slice(Math.max(0, spread.length - gap)).map((card) => frameFor(card.id)))
-      const fits = remaining.filter((card) => !recent.has(frameFor(card.id)))
-      if (gap > 0 && fits.length === 0) continue
-      const crowded = fits.find((card) => (left.get(frameFor(card.id)) ?? 0) * (gap + 1) > remaining.length)
-      const card = crowded ?? fits[0] ?? remaining[0]
-      remaining.splice(remaining.indexOf(card), 1)
-      left.set(frameFor(card.id), (left.get(frameFor(card.id)) ?? 1) - 1)
-      spread.push(card)
-      break
-    }
-  }
-  return spread
-}
-
-function readSelection(): string[] {
+function readSelection(cardsById: Map<string, DateCard>): string[] {
   const seen = new Set<string>()
 
   return window.location.hash
@@ -71,8 +36,24 @@ function selectionsMatch(first: string[], second: string[]) {
   return first.length === second.length && first.every((id, index) => id === second[index])
 }
 
-function App() {
-  const [selectedIds, setSelectedIds] = useState(readSelection)
+type DeckBuilderProps = {
+  deckName: string
+  shareId: string
+  cards: DateCard[]
+  // Shuffles the deck the same way on the server and in the browser.
+  seed: number
+}
+
+export default function DeckBuilder({ deckName, shareId, cards: deckCards, seed }: DeckBuilderProps) {
+  const cards = useMemo(() => arrangeDeck(deckCards, seed), [deckCards, seed])
+  const cardsById = useMemo(() => new Map(cards.map((card) => [card.id, card])), [cards])
+  // Picks in progress live in the URL hash, which only the browser can see,
+  // so they're read in after the first render.
+  const [selectedIds, setSelectedIds] = useState<string[]>([])
+  const hashRead = useRef(false)
+  const [saved, setSaved] = useState<{ key: string; url: string } | null>(null)
+  const [saving, setSaving] = useState(false)
+  const [saveError, setSaveError] = useState<string | null>(null)
   const [activeTags, setActiveTags] = useState<Set<string>>(() => new Set())
   const [linkCopied, setLinkCopied] = useState(false)
   const [flight, setFlight] = useState<{ id: string; from: DOMRect } | null>(null)
@@ -80,18 +61,14 @@ function App() {
   const trackReference = useRef<HTMLDivElement>(null)
   const reduceMotion = useReducedMotion()
 
-  const tags = useMemo(
-    () => [...new Set(cards.flatMap((card) => card.tags))].sort(),
-    [],
-  )
+  const tags = useMemo(() => [...new Set(cards.flatMap((card) => card.tags))].sort(), [cards])
 
   const availableCards = cards.filter(
-    (card) =>
-      !selectedIds.includes(card.id) &&
-      [...activeTags].every((tag) => card.tags.includes(tag)),
+    (card) => !selectedIds.includes(card.id) && [...activeTags].every((tag) => card.tags.includes(tag)),
   )
 
   useEffect(() => {
+    if (!hashRead.current) return
     const encodedIds = selectedIds.map(encodeURIComponent).join(',')
     const nextUrl = `${window.location.pathname}${window.location.search}${encodedIds ? `#${encodedIds}` : ''}`
     window.history.replaceState(null, '', nextUrl)
@@ -99,21 +76,19 @@ function App() {
 
   useEffect(() => {
     function restoreSelection() {
-      const restoredIds = readSelection()
-      setSelectedIds((currentIds) =>
-        selectionsMatch(currentIds, restoredIds) ? currentIds : restoredIds,
-      )
+      const restoredIds = readSelection(cardsById)
+      setSelectedIds((currentIds) => (selectionsMatch(currentIds, restoredIds) ? currentIds : restoredIds))
     }
 
+    restoreSelection()
+    hashRead.current = true
     window.addEventListener('hashchange', restoreSelection)
     return () => window.removeEventListener('hashchange', restoreSelection)
-  }, [])
+  }, [cardsById])
 
   function selectCard(id: string, from: DOMRect) {
     if (!reduceMotion) setFlight({ id, from })
-    setSelectedIds((currentIds) =>
-      currentIds.includes(id) ? currentIds : [...currentIds, id],
-    )
+    setSelectedIds((currentIds) => (currentIds.includes(id) ? currentIds : [...currentIds, id]))
   }
 
   // Picks from the ideas the current filters show, flying it up from its
@@ -139,12 +114,34 @@ function App() {
     })
   }
 
+  // Saves the plan under its own short link, then shares that. Pressing Done
+  // again without changing the plan shares the same link.
   async function sharePlan() {
-    const shareUrl = window.location.href
+    const key = selectedIds.join(',')
+    let shareUrl = saved?.key === key ? saved.url : null
+
+    if (!shareUrl) {
+      setSaving(true)
+      setSaveError(null)
+      try {
+        const result = await savePlan(shareId, selectedIds)
+        if (!result.ok) {
+          setSaveError(result.error)
+          return
+        }
+        shareUrl = new URL(`/p/${result.data.planId}`, window.location.origin).href
+        setSaved({ key, url: shareUrl })
+      } catch {
+        setSaveError("Couldn't save your plan. Check your connection and try again.")
+        return
+      } finally {
+        setSaving(false)
+      }
+    }
 
     if (navigator.share) {
       try {
-        await navigator.share({ title: 'Build-a-Date', url: shareUrl })
+        await navigator.share({ title: deckName, url: shareUrl })
         return
       } catch (error) {
         if (error instanceof DOMException && error.name === 'AbortError') {
@@ -158,8 +155,9 @@ function App() {
   }
 
   async function copyLink() {
+    if (!saved) return
     try {
-      await navigator.clipboard.writeText(window.location.href)
+      await navigator.clipboard.writeText(saved.url)
       setLinkCopied(true)
     } catch {
       setLinkCopied(false)
@@ -167,10 +165,7 @@ function App() {
   }
 
   const transition = useMemo(
-    () =>
-      reduceMotion
-        ? { duration: 0 }
-        : { type: 'spring' as const, stiffness: 430, damping: 38, mass: 0.8 },
+    () => (reduceMotion ? { duration: 0 } : { type: 'spring' as const, stiffness: 430, damping: 38, mass: 0.8 }),
     [reduceMotion],
   )
   const endFlight = useCallback(() => setFlight(null), [])
@@ -181,33 +176,30 @@ function App() {
       <InstallHint />
 
       <header className="hero">
-        <h1>Build-a-Date</h1>
+        <h1>{deckName}</h1>
       </header>
 
-      <div className="stars" aria-hidden="true">
-        <img className="star star--1" src="/star-1.svg" alt="" />
-        <img className="star star--2" src="/star-2.svg" alt="" />
-        <img className="star star--3" src="/star-3.svg" alt="" />
-        <img className="star star--4" src="/star-4.svg" alt="" />
-        <img className="star star--5" src="/star-5.svg" alt="" />
-        <img className="star star--6" src="/star-6.svg" alt="" />
-        <img className="star star--7" src="/star-7.svg" alt="" />
-      </div>
+      <Stars />
 
       <LayoutGroup id="date-builder">
         <section className="plan-section" aria-label="Your plan">
           {/* Always laid out, so the first pick doesn't push the page down;
               hidden (and inert) until there's a plan to act on. */}
           <div className="plan-actions" data-visible={selectedIds.length > 0} inert={selectedIds.length === 0}>
-            <button className="done-button" type="button" onClick={sharePlan}>
-              Done
+            <button className="done-button" type="button" onClick={sharePlan} disabled={saving}>
+              {saving ? 'Saving…' : 'Done'}
             </button>
             <button className="text-action" type="button" onClick={() => setSelectedIds([])}>
               Clear plan
             </button>
           </div>
+          {saveError && (
+            <p className="form-error" role="alert">
+              {saveError}
+            </p>
+          )}
 
-          <div className="plan-track" ref={trackReference} aria-label="Selected date ideas">
+          <div className="plan-track" ref={trackReference}>
             <AnimatePresence initial={false} mode="popLayout">
               {selectedIds.map((id) => {
                 const card = cardsById.get(id)
@@ -247,7 +239,7 @@ function App() {
         </section>
 
         <section className="deck-section" aria-label="Date ideas">
-          <div className="filters" aria-label="Filter ideas by tag">
+          <fieldset className="filters" aria-label="Filter ideas by tag">
             <button
               className="filter-button"
               data-active={activeTags.size === 0}
@@ -268,7 +260,7 @@ function App() {
                 {tag}
               </button>
             ))}
-          </div>
+          </fieldset>
 
           <motion.div className="card-grid" layout>
             <AnimatePresence initial={false} mode="popLayout">
@@ -318,23 +310,28 @@ function App() {
         />
       )}
 
-      <dialog
-        className="share-dialog"
-        ref={dialogReference}
-        onClose={() => setLinkCopied(false)}
-      >
+      <dialog className="share-dialog" ref={dialogReference} onClose={() => setLinkCopied(false)}>
         <p>Share your date plan</p>
         <div className="share-dialog-actions">
           <button className="done-button" type="button" onClick={copyLink}>
             {linkCopied ? 'Copied!' : 'Copy link'}
           </button>
+          {saved && (
+            <a className="text-action" href={saved.url}>
+              Open your plan
+            </a>
+          )}
           <button className="text-action" type="button" onClick={() => dialogReference.current?.close()}>
             Close
           </button>
         </div>
       </dialog>
+
+      <footer className="site-footer">
+        <Link className="text-action" href="/">
+          Make your own deck with Build-a-Date
+        </Link>
+      </footer>
     </main>
   )
 }
-
-export default App

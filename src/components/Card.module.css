@@ -13,8 +13,7 @@
   color: #183745;
   background:
     radial-gradient(ellipse at 50% 30%, rgba(255, 255, 255, 0.35), transparent 70%),
-    linear-gradient(rgba(255, 255, 255, 0.14), rgba(229, 214, 191, 0.12)),
-    #f7f0e4;
+    linear-gradient(rgba(255, 255, 255, 0.14), rgba(229, 214, 191, 0.12)), #f7f0e4;
   box-shadow: 0 12px 28px rgba(4, 23, 31, 0.18);
   cursor: pointer;
   position: relative;
@@ -41,9 +40,7 @@
   flex-direction: column;
   align-items: center;
   min-height: 0;
-  padding:
-    calc(var(--edge) + var(--inset-top) * var(--u))
-    calc(var(--edge) + var(--inset-side) * var(--u))
+  padding: calc(var(--edge) + var(--inset-top) * var(--u)) calc(var(--edge) + var(--inset-side) * var(--u))
     calc(var(--edge) + var(--inset-bottom) * var(--u));
   text-align: center;
 }

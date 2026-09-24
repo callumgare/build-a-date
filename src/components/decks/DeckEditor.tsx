@@ -1,0 +1,173 @@
+'use client'
+
+import { type FormEvent, type KeyboardEvent, useMemo, useState, useTransition } from 'react'
+import { deleteDeck, renameDeck } from '@/lib/actions/decks'
+import type { DateCard } from '@/types'
+import Card from '../Card'
+import cardStyles from '../Card.module.css'
+import { frameFor } from '../frames'
+import CardEditor from './CardEditor'
+
+type DeckEditorProps = {
+  deck: { id: string; name: string; shareId: string }
+  shareUrl: string
+  cards: DateCard[]
+  plans: { id: string; createdAt: Date; cards: number }[]
+}
+
+// Cards are divs rather than buttons so their descriptions can hold links,
+// so Enter and Space have to trigger them by hand.
+function clickOnActivationKey(event: KeyboardEvent<HTMLElement>) {
+  if (event.target !== event.currentTarget) return
+  if (event.key !== 'Enter' && event.key !== ' ') return
+  event.preventDefault()
+  event.currentTarget.click()
+}
+
+export default function DeckEditor({ deck, shareUrl, cards, plans }: DeckEditorProps) {
+  // undefined: closed, null: adding a card.
+  const [editing, setEditing] = useState<DateCard | null | undefined>(undefined)
+  const [renaming, setRenaming] = useState(false)
+  const [copied, setCopied] = useState(false)
+  const [error, setError] = useState<string | null>(null)
+  const [pending, startTransition] = useTransition()
+
+  const deckTags = useMemo(() => [...new Set(cards.flatMap((card) => card.tags))].sort(), [cards])
+
+  function rename(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault()
+    const name = String(new FormData(event.currentTarget).get('name'))
+    startTransition(async () => {
+      const result = await renameDeck(deck.id, name)
+      if (result.ok) setRenaming(false)
+      else setError(result.error)
+    })
+  }
+
+  function remove() {
+    if (!window.confirm(`Delete "${deck.name}" and every plan made from it? This can't be undone.`)) return
+    startTransition(async () => {
+      const result = await deleteDeck(deck.id)
+      if (!result.ok) setError(result.error)
+    })
+  }
+
+  async function copyLink() {
+    try {
+      await navigator.clipboard.writeText(shareUrl)
+      setCopied(true)
+    } catch {
+      setCopied(false)
+    }
+  }
+
+  return (
+    <section className="app-section">
+      <div className="section-heading">
+        {renaming ? (
+          <form className="rename-form" onSubmit={rename}>
+            <input
+              name="name"
+              defaultValue={deck.name}
+              required
+              maxLength={80}
+              aria-label="Deck name"
+              // biome-ignore lint/a11y/noAutofocus: the field the Rename button just revealed
+              autoFocus
+            />
+            <button className="done-button" type="submit" disabled={pending}>
+              Save
+            </button>
+            <button className="text-action" type="button" onClick={() => setRenaming(false)}>
+              Cancel
+            </button>
+          </form>
+        ) : (
+          <>
+            <h2>{deck.name}</h2>
+            <div className="section-actions">
+              <button className="text-action" type="button" onClick={() => setRenaming(true)}>
+                Rename
+              </button>
+              <button className="text-action" type="button" onClick={remove} disabled={pending}>
+                Delete deck
+              </button>
+            </div>
+          </>
+        )}
+      </div>
+      {error && (
+        <p className="form-error" role="alert">
+          {error}
+        </p>
+      )}
+
+      <div className="panel share-panel">
+        <p>
+          <strong>Share this link</strong> with whoever you&apos;re planning a date with. They don&apos;t need an
+          account to build a plan.
+        </p>
+        <div className="share-row">
+          <input readOnly value={shareUrl} aria-label="Share link" onFocus={(event) => event.target.select()} />
+          <button className="done-button" type="button" onClick={copyLink}>
+            {copied ? 'Copied!' : 'Copy'}
+          </button>
+          <a className="text-action" href={`/d/${deck.shareId}`} target="_blank" rel="noreferrer">
+            Open
+          </a>
+        </div>
+      </div>
+
+      <h3 className="subheading">
+        Ideas <small>({cards.length})</small>
+      </h3>
+      <div className="card-grid editor-grid">
+        <button className="empty-slot add-card" type="button" onClick={() => setEditing(null)}>
+          <span>Add an idea</span>
+        </button>
+        {cards.map((card) => (
+          // biome-ignore lint/a11y/useSemanticElements: a div so descriptions can hold links (see clickOnActivationKey)
+          <div
+            className={cardStyles.card}
+            key={card.id}
+            role="button"
+            tabIndex={0}
+            onClick={() => setEditing(card)}
+            onKeyDown={clickOnActivationKey}
+            aria-label={`Edit ${card.title}`}
+          >
+            <Card card={card} frame={frameFor(card.id)} />
+          </div>
+        ))}
+      </div>
+
+      <h3 className="subheading">
+        Plans <small>({plans.length})</small>
+      </h3>
+      {plans.length === 0 ? (
+        <p className="muted">When someone builds a plan from your link and presses Done, it shows up here.</p>
+      ) : (
+        <ul className="plan-list">
+          {plans.map((plan) => (
+            <li key={plan.id}>
+              <a className="text-action" href={`/p/${plan.id}`}>
+                {/* Formatted in the viewer's time zone once in the browser. */}
+                <time dateTime={plan.createdAt.toISOString()} suppressHydrationWarning>
+                  {plan.createdAt.toLocaleString(undefined, {
+                    dateStyle: 'medium',
+                    timeStyle: 'short',
+                  })}
+                </time>
+              </a>
+              <span className="muted">
+                {plan.cards} {plan.cards === 1 ? 'idea' : 'ideas'}
+              </span>
+            </li>
+          ))}
+        </ul>
+      )}
+
+      <CardEditor deckId={deck.id} card={editing} deckTags={deckTags} onClose={() => setEditing(undefined)} />
+    </section>
+  )
+}

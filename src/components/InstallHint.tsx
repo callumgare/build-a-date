@@ -1,4 +1,6 @@
-import { useState } from 'react'
+'use client'
+
+import { useEffect, useState } from 'react'
 import styles from './InstallHint.module.css'
 
 const dismissedKey = 'install-hint-dismissed'
@@ -29,7 +31,11 @@ function wasDismissed() {
 // iOS has no install prompt of its own, so point Safari users at the manual
 // route, until they save it or wave the hint away.
 export default function InstallHint() {
-  const [visible, setVisible] = useState(() => isIos() && !isSavedApp() && !wasDismissed())
+  // Decided after the first render, since the server can't see the device.
+  const [visible, setVisible] = useState(false)
+  useEffect(() => {
+    setVisible(isIos() && !isSavedApp() && !wasDismissed())
+  }, [])
 
   if (!visible) return null
 
