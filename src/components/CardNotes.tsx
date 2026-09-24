@@ -223,6 +223,16 @@ export default function CardNotes({
           <h2 className={styles.title} id={titleId}>
             {card.title}
           </h2>
+          {card.addedAt && (
+            // Only drawn in the browser, so the visitor's own locale and time
+            // zone can't cause a hydration mismatch.
+            <p className={styles.added}>
+              Added{' '}
+              <time dateTime={card.addedAt}>
+                {new Date(card.addedAt).toLocaleDateString(undefined, { dateStyle: 'long' })}
+              </time>
+            </p>
+          )}
 
           <fieldset className={styles.rating}>
             <legend>How keen are you?</legend>

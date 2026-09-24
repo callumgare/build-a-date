@@ -25,7 +25,7 @@ The buttons sit the same distance from the top of every card, over a shade that 
 
 Pressing **Notes** lifts the card out of the deck or the plan. It flips over and grows until it fills most of the screen. It keeps the card's 3:4 shape and is never wider than 540px, so it doesn't get too big on a desktop. The back of the card has:
 
-1. The idea's title.
+1. The idea's title, with the date the card was added under it (**Added 24 September 2026**, written the way the visitor's browser writes dates). It's the `created_at` column on the `card` table, so editing the card doesn't change it.
 2. Five stars under **How keen are you?** They start empty. Clicking a star sets the rating to that many stars, and clicking the chosen star again clears it.
 3. A box for free-text notes, empty apart from a placeholder until someone writes in it.
 

@@ -71,6 +71,13 @@
   line-height: 1.4;
 }
 
+.added {
+  margin: -12px 0 0;
+  color: #947347;
+  font-size: 0.8rem;
+  font-style: italic;
+}
+
 .rating {
   margin: 0;
   padding: 0;

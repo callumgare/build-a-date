@@ -168,6 +168,19 @@ describe('DeckBuilder', () => {
   })
 
   describe('notes', () => {
+    /** @see docs/card-notes.md § "Opening a card's notes" - the date the card was added */
+    it('shows when the card was added', async () => {
+      const user = userEvent.setup()
+      const addedAt = '2026-03-14T10:00:00.000Z'
+      render(<DeckBuilder deckName="Test deck" shareId="share123" cards={[{ ...cards[1], addedAt }]} seed={1} />)
+
+      await user.click(screen.getByRole('button', { name: 'Notes on Museum' }))
+      const notes = await screen.findByRole('dialog', { name: 'Museum' })
+      const date = new Date(addedAt).toLocaleDateString(undefined, { dateStyle: 'long' })
+      expect(within(notes).getByText(date)).toHaveAttribute('datetime', addedAt)
+      expect(within(notes).getByText(/^Added/)).toHaveTextContent(`Added ${date}`)
+    })
+
     /** @see docs/card-notes.md § "Card actions" - plan cards have Discard and Notes */
     it('opens the notes of a card in the plan', async () => {
       const user = userEvent.setup()

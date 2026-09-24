@@ -156,6 +156,15 @@ describe('card notes', () => {
     expect(cards[0]).toMatchObject({ interest: 4, notes: 'Somewhere shady' })
   })
 
+  /** @see docs/card-notes.md § "Opening a card's notes" - the date the card was added */
+  it('gives each shared card the date it was added', async () => {
+    const deck = await createDeck(db, owner, { name: 'Deck', template: 'empty' })
+    const card = await saveCard(db, owner, deck.id, null, { title: 'Picnic' })
+
+    const [shared] = (await getSharedDeck(db, deck.shareId)).cards
+    expect(shared.addedAt).toBe(card.createdAt.toISOString())
+  })
+
   /** @see docs/card-notes.md § "Who can change them" - one rating and one set of notes per card */
   it('replaces the rating and notes each time', async () => {
     const deck = await createDeck(db, owner, { name: 'Deck', template: 'empty' })

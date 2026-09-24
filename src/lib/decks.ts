@@ -23,6 +23,7 @@ export function toDateCard(row: CardRow): DateCard {
     ...(row.date ? { date: row.date } : {}),
     ...(row.interest ? { interest: row.interest } : {}),
     ...(row.notes ? { notes: row.notes } : {}),
+    addedAt: row.createdAt.toISOString(),
   }
 }
 
