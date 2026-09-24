@@ -4,7 +4,7 @@ import { AnimatePresence, LayoutGroup, motion, useReducedMotion } from 'motion/r
 import Link from 'next/link'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { savePlan } from '@/lib/actions/plans'
-import { arrangeDeck } from '@/lib/deck-order'
+import { arrangeDeck, type DeckSort, deckSorts, sortDeck } from '@/lib/deck-order'
 import type { AccessState } from '@/lib/decks'
 import type { DateCard } from '@/types'
 import Card from './Card'
@@ -48,8 +48,8 @@ export default function DeckBuilder({
   access = 'none',
   editHref,
 }: DeckBuilderProps) {
-  const cards = useMemo(() => arrangeDeck(deckCards, seed), [deckCards, seed])
-  const cardsById = useMemo(() => new Map(cards.map((card) => [card.id, card])), [cards])
+  const arranged = useMemo(() => arrangeDeck(deckCards, seed), [deckCards, seed])
+  const cardsById = useMemo(() => new Map(deckCards.map((card) => [card.id, card])), [deckCards])
   // Picks in progress live in the URL hash, which only the browser can see,
   // so they're read in after the first render.
   const [selectedIds, setSelectedIds] = useState<string[]>([])
@@ -70,11 +70,22 @@ export default function DeckBuilder({
   )
   // The card showing its buttons after a tap, for screens without hover.
   const [revealedId, setRevealedId] = useState<string | null>(null)
+  const [sort, setSort] = useState<DeckSort>('random')
+  // Ratings changed on this visit move the card straight away.
+  const cards = useMemo(
+    () =>
+      sortDeck(sort, {
+        added: deckCards,
+        arranged,
+        interest: (id) => notesById.get(id)?.interest ?? null,
+      }),
+    [sort, deckCards, arranged, notesById],
+  )
   const dialogReference = useRef<HTMLDialogElement>(null)
   const trackReference = useRef<HTMLDivElement>(null)
   const reduceMotion = useReducedMotion()
 
-  const tags = useMemo(() => [...new Set(cards.flatMap((card) => card.tags))].sort(), [cards])
+  const tags = useMemo(() => [...new Set(deckCards.flatMap((card) => card.tags))].sort(), [deckCards])
 
   const availableCards = cards.filter(
     (card) => !selectedIds.includes(card.id) && [...activeTags].every((tag) => card.tags.includes(tag)),
@@ -299,6 +310,7 @@ export default function DeckBuilder({
 
         <section className="deck-section" aria-label="Date ideas">
           <fieldset className="filters" aria-label="Filter ideas by tag">
+            <span className="filter-label">Show</span>
             <button
               className="filter-button"
               data-active={activeTags.size === 0}
@@ -317,6 +329,22 @@ export default function DeckBuilder({
                 aria-pressed={activeTags.has(tag)}
               >
                 {tag}
+              </button>
+            ))}
+          </fieldset>
+
+          <fieldset className="filters sort-options" aria-label="Sort ideas">
+            <span className="filter-label">Sort by</span>
+            {deckSorts.map((option) => (
+              <button
+                className="filter-button"
+                data-active={sort === option.value}
+                type="button"
+                key={option.value}
+                onClick={() => setSort(option.value)}
+                aria-pressed={sort === option.value}
+              >
+                {option.label}
               </button>
             ))}
           </fieldset>

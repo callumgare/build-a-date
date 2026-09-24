@@ -1,6 +1,6 @@
 import { frameFor } from '@/components/frames'
 import type { DateCard } from '@/types'
-import { arrangeDeck, shuffle, spreadFrames } from './deck-order'
+import { arrangeDeck, shuffle, sortDeck, spreadFrames } from './deck-order'
 
 const cards: DateCard[] = Array.from({ length: 40 }, (_, index) => ({
   id: `card-${index}`,
@@ -48,5 +48,46 @@ describe('spreadFrames', () => {
 describe('arrangeDeck', () => {
   it('is deterministic per seed, so server and browser agree', () => {
     expect(arrangeDeck(cards, 99)).toEqual(arrangeDeck(cards, 99))
+  })
+})
+
+/** @see docs/deck-sorting.md § "Sort options" */
+describe('sortDeck', () => {
+  const added = cards.slice(0, 6)
+  const arranged = arrangeDeck(added, 5)
+  const ratings = new Map<string, number | null>([
+    ['card-0', 3],
+    ['card-1', 5],
+    ['card-3', 3],
+    ['card-4', null],
+  ])
+  const interest = (id: string) => ratings.get(id) ?? null
+  const ids = (sorted: DateCard[]) => sorted.map((card) => card.id)
+
+  it('keeps the shuffled order for Random', () => {
+    expect(sortDeck('random', { added, arranged, interest })).toEqual(arranged)
+  })
+
+  it('puts the newest first for Date added', () => {
+    expect(ids(sortDeck('added', { added, arranged, interest }))).toEqual([
+      'card-5',
+      'card-4',
+      'card-3',
+      'card-2',
+      'card-1',
+      'card-0',
+    ])
+  })
+
+  it('puts the most stars first for Interest, unrated last, ties in shuffled order', () => {
+    const sorted = ids(sortDeck('interest', { added, arranged, interest }))
+    const inShuffle = (group: string[]) => ids(arranged).filter((id) => group.includes(id))
+    expect(sorted).toEqual(['card-1', ...inShuffle(['card-0', 'card-3']), ...inShuffle(['card-2', 'card-4', 'card-5'])])
+  })
+
+  it('leaves the input alone', () => {
+    const copy = [...added]
+    sortDeck('added', { added, arranged, interest })
+    expect(added).toEqual(copy)
   })
 })

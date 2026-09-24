@@ -55,3 +55,26 @@ export function spreadFrames(shuffled: DateCard[]): DateCard[] {
 export function arrangeDeck(cards: DateCard[], seed: number) {
   return spreadFrames(shuffle(cards, seed))
 }
+
+export const deckSorts = [
+  { value: 'random', label: 'Random' },
+  { value: 'added', label: 'Date added' },
+  { value: 'interest', label: 'Interest' },
+] as const
+
+export type DeckSort = (typeof deckSorts)[number]['value']
+
+// Puts the deck in the order the visitor picked (docs/deck-sorting.md § "Sort
+// options"). `added` is the deck as it's stored, which is the order its cards
+// were added in, since a new card always goes at the end. `arranged` is the
+// same cards shuffled by `arrangeDeck`, and breaks ties between ideas with
+// the same rating.
+export function sortDeck(
+  sort: DeckSort,
+  { added, arranged, interest }: { added: DateCard[]; arranged: DateCard[]; interest: (id: string) => number | null },
+): DateCard[] {
+  if (sort === 'added') return [...added].reverse()
+  if (sort === 'interest')
+    return [...arranged].sort((first, second) => (interest(second.id) ?? 0) - (interest(first.id) ?? 0))
+  return arranged
+}

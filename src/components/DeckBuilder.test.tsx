@@ -104,6 +104,69 @@ describe('DeckBuilder', () => {
     expect(window.location.hash).toBe('')
   })
 
+  /** @see docs/deck-sorting.md § "Sort options" */
+  describe('sorting', () => {
+    function deckOrder(container: HTMLElement) {
+      return [...container.querySelectorAll('[data-deck-card-id]')].map((card) =>
+        card.getAttribute('data-deck-card-id'),
+      )
+    }
+
+    it('starts on Random', () => {
+      renderBuilder()
+      const sorts = screen.getByRole('group', { name: 'Sort ideas' })
+      expect(within(sorts).getByRole('button', { name: 'Random' })).toHaveAttribute('aria-pressed', 'true')
+    })
+
+    it('puts the newest ideas first for Date added', async () => {
+      const user = userEvent.setup()
+      const { container } = renderBuilder()
+
+      await user.click(screen.getByRole('button', { name: 'Date added' }))
+      expect(screen.getByRole('button', { name: 'Date added' })).toHaveAttribute('aria-pressed', 'true')
+      expect(deckOrder(container)).toEqual(['hike', 'museum', 'picnic'])
+    })
+
+    it('puts the highest rated ideas first for Interest', async () => {
+      const user = userEvent.setup()
+      const { container } = render(
+        <DeckBuilder
+          deckName="Test deck"
+          shareId="share123"
+          cards={[...cards.slice(0, 2), { ...cards[2], interest: 4 }]}
+          seed={1}
+        />,
+      )
+
+      await user.click(screen.getByRole('button', { name: 'Interest' }))
+      expect(deckOrder(container)).toEqual(['hike', 'picnic', 'museum'])
+    })
+
+    /** @see docs/deck-sorting.md § "Sort options" - rating a card moves it straight away */
+    it('moves an idea as soon as it is rated', async () => {
+      const user = userEvent.setup()
+      const { container } = renderBuilder()
+
+      await user.click(screen.getByRole('button', { name: 'Interest' }))
+      await user.click(screen.getByRole('button', { name: 'Notes on Museum' }))
+      const notes = await screen.findByRole('dialog', { name: 'Museum' })
+      await user.click(within(notes).getByRole('radio', { name: '5 stars' }))
+      await waitFor(() => expect(deckOrder(container)[0]).toBe('museum'))
+    })
+
+    /** @see docs/deck-sorting.md § "How it fits with filters and the plan" */
+    it('sorts only the ideas the filters show', async () => {
+      const user = userEvent.setup()
+      const { container } = renderBuilder()
+
+      await user.click(
+        within(screen.getByRole('group', { name: 'Filter ideas by tag' })).getByRole('button', { name: 'outside' }),
+      )
+      await user.click(screen.getByRole('button', { name: 'Date added' }))
+      await waitFor(() => expect(deckOrder(container)).toEqual(['hike', 'picnic']))
+    })
+  })
+
   describe('notes', () => {
     /** @see docs/card-notes.md § "Card actions" - plan cards have Discard and Notes */
     it('opens the notes of a card in the plan', async () => {
