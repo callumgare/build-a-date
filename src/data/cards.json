@@ -2,13 +2,13 @@
   {
     "id": "berlin-bar",
     "title": "Berlin Bar",
-    "description": "A Cold War themed bar split into a ast Berlin bunker and a West Berlin salon. [More info](https://berlinbar.com.au/)",
+    "description": "A Cold War themed bar split into an East Berlin bunker and a West Berlin salon. [More info](https://berlinbar.com.au/)",
     "tags": ["food & drink", "night"]
   },
   {
     "id": "boat-hire-at-fairfield-boathouse",
     "title": "Boat Hire at Fairfield Boathouse",
-    "description": "",
+    "description": "[More info](https://fairfieldboathouse.com/)",
     "tags": ["active", "outside", "relaxed"]
   },
   {
@@ -20,8 +20,9 @@
   {
     "id": "collingwood-childrens-farm",
     "title": "Collingwood Children's Farm",
-    "description": "",
-    "tags": ["animals", "outside", "relaxed"]
+    "description": "[More info](https://www.farm.org.au/)",
+    "tags": ["animals", "outside", "relaxed"],
+    "date": "Open daily"
   },
   {
     "id": "candlelight-queen-vs-abba",
@@ -44,8 +45,9 @@
   {
     "id": "mafia-escape-room",
     "title": "Mafia Escape Room",
-    "description": "",
-    "tags": ["games"]
+    "description": "[More info](https://adventurerooms.com.au/games/melbourne-mafia-bourke-st/)",
+    "tags": ["games", "night"],
+    "date": "Open daily, later on Fri - Sun"
   },
   {
     "id": "ngv-after-dark",
@@ -154,7 +156,7 @@
   {
     "id": "rock-climbing",
     "title": "Rock Climbing",
-    "description": "Rope climbing at Hardrock in the city. [More info](https://www.hardrock.com.au/)",
+    "description": "Rope climbing at Hardrock in the city (or another gym). [More info](https://www.hardrock.com.au/)",
     "tags": ["active"]
   },
   {
@@ -168,13 +170,15 @@
     "id": "kintsugi-workshop",
     "title": "Kintsugi Workshop",
     "description": "[More info](https://classbento.com.au/modern-kintsugi-workshop-for-beginners-melbourne)",
-    "tags": ["workshop"]
+    "tags": ["workshop"],
+    "date": "Most days except Mondays"
   },
   {
     "id": "perfume-making-class",
     "title": "Perfume Making Class",
     "description": "Learn how to make your own perfume and take it home. [More info](https://classbento.com.au/perfume-making-workshop-for-beginners-melbourne)",
-    "tags": ["workshop"]
+    "tags": ["workshop"],
+    "date": "Weekends, occasionally other days"
   },
   {
     "id": "silver-letter-ring-making-class",
@@ -185,20 +189,21 @@
   {
     "id": "glassblowing-class",
     "title": "Glassblowing Class",
-    "description": "Shape molten glass into a paperweight and a blown glass vessel, ready to collect the next day. [More info](https://classbento.com.au/introduction-to-glassblowing-workshop-melbourne)",
+    "description": "Shape molten glass into a paperweight and a blown glass vessel, which you can take home the next day. [More info](https://classbento.com.au/introduction-to-glassblowing-workshop-melbourne)",
     "tags": ["workshop"],
     "date": "Weekends"
   },
   {
-    "id": "auslan-class",
-    "title": "Auslan Class",
-    "description": "",
-    "tags": ["workshop"]
+    "id": "auslan-classes",
+    "title": "Auslan Classes",
+    "description": "[More info](https://training.expression.com.au/w/courses/2-auslan-101)",
+    "tags": ["workshop"],
+    "date": "Tuesdays or Saturdays"
   },
   {
     "id": "dance-class",
     "title": "Dance Class",
-    "description": "Try a beginner class together, from salsa to swing.",
+    "description": "Do class together, any style you like.",
     "tags": ["active", "workshop"]
   },
   {
@@ -241,7 +246,7 @@
   {
     "id": "wunderkammer",
     "title": "Wunderkammer",
-    "description": "A curiosity shop of taxidermy, skulls, insects and minerals on Lonsdale Street. [More info](https://wunderkammer.com.au)",
+    "description": "A curiosity shop with taxidermy, skulls, and minerals on Lonsdale Street. [More info](https://wunderkammer.com.au)",
     "tags": ["free"]
   },
   {
@@ -291,7 +296,7 @@
   {
     "id": "beneath-driver-lane",
     "title": "Beneath Driver Lane",
-    "description": "Cocktails underground in the GPO's old money order office, with live blues Thursday to Saturday.",
+    "description": "Cocktails underground in the GPO's old money order office, with live blues Thursday to Saturday. [More info](https://www.driverlanebar.com/)",
     "tags": ["food & drink", "night"]
   },
   {
@@ -328,25 +333,25 @@
   {
     "id": "joey-smalls",
     "title": "Joey Smalls",
-    "description": "A Brunswick bar with DJs, cocktails and American diner food like fried chicken and burgers.",
+    "description": "A Brunswick bar with DJs, cocktails and American diner food like fried chicken and burgers. [More info](https://www.joeysmalls.com.au/)",
     "tags": ["food & drink", "night"]
   },
   {
     "id": "japanese-restaurant",
     "title": "Japanese Restaurant",
-    "description": "Dinner at one of the Japanese restaurants in Melbourne. [More info](https://manofmany.com/culture/food/best-japanese-restaurants-melbourne)",
+    "description": "Dinner at a Japanese restaurant. [More info](https://manofmany.com/culture/food/best-japanese-restaurants-melbourne)",
     "tags": ["food & drink", "night"]
   },
   {
     "id": "sunset-watching",
     "title": "Sunset Watching",
-    "description": "Some nice places to watch the sun set include Burkes Lookout, the Mount Dandenong Observatory, Wurundjeri Spur, [Melbourne City Sunset View](https://share.google/rpouNjjwzLCvWkd3W) in Kew, and Lily Reserve in Maribyrnong.",
+    "description": "At a nice place to watch the sun set like the Burkes Lookout, the Mount Dandenong Observatory, Wurundjeri Spur, [Melbourne City Sunset View](https://share.google/rpouNjjwzLCvWkd3W) in Kew, or Lily Reserve in Maribyrnong.",
     "tags": ["free", "outside", "relaxed"]
   },
   {
     "id": "planetarium-nights",
     "title": "Planetarium Nights",
-    "description": "Adults-only screenings under the dome of the Melbourne Planetarium at Scienceworks, with a bar. [More info](https://museumsvictoria.com.au/scienceworks/whats-on/planetarium-nights/)",
+    "description": "Kid-free screenings under the dome of the Melbourne Planetarium at Scienceworks, with a bar. [More info](https://museumsvictoria.com.au/scienceworks/whats-on/planetarium-nights/)",
     "tags": ["culture", "night"],
     "date": "Friday nights"
   },
@@ -371,7 +376,7 @@
   {
     "id": "couples-photoshoot",
     "title": "Couples Photoshoot",
-    "description": "A photo session together somewhere like Carlton Gardens or Abbotsford Convent. [More info](https://livesonlovestreet.com/) · [Location ideas](https://livesonlovestreet.com/where-to-go-for-your-couples-session-in-melbourne/)",
+    "description": "A photo session together somewhere like Carlton Gardens or Abbotsford Convent. [More info](https://livesonlovestreet.com/) and [Location ideas](https://livesonlovestreet.com/where-to-go-for-your-couples-session-in-melbourne/)",
     "tags": ["outside"]
   },
   {
