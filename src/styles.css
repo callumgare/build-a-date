@@ -15,6 +15,8 @@
   --paper: #f7f0e4;
   --paper-deep: #eadcc9;
   --line: rgba(229, 188, 129, 0.48);
+  --background-color: rgb(17, 31, 82);
+  --defocused-background-color: color-mix(var(--background-color) 80%, transparent)
 }
 
 * {
@@ -46,9 +48,7 @@ body::before {
   height: 100vh;
   height: 100lvh;
   background-color: #12374a;
-  background-image:
-    linear-gradient(180deg, rgba(7, 38, 53, 0.22), rgba(7, 32, 45, 0.58)),
-    url('/background.png');
+  background-image: url('/background.png');
   background-position: center;
   background-size: cover;
   background-repeat: no-repeat;
@@ -161,7 +161,7 @@ h1 {
 
 .filter-button {
   border: 0;
-  background: transparent;
+  background: var(--defocused-background-color);
   cursor: pointer;
 }
 
@@ -280,7 +280,7 @@ h1 {
       var(--dash-color) 0 var(--dash-length),
       transparent var(--dash-length) calc(var(--dash-length) + var(--dash-gap))
     ) top right / var(--dash-thickness) 100% no-repeat,
-    rgba(6, 38, 51, 0.24);
+    var(--defocused-background-color);
 }
 
 /* A small spaced-out "or" between two rules. */
@@ -331,14 +331,12 @@ h1 {
 .filter-button:focus-visible:not([data-active='true']) {
   border-color: var(--accent);
   color: var(--accent);
-  background: rgba(229, 188, 129, 0.14);
 }
 
 @media (hover: hover) {
   .filter-button:hover:not([data-active='true']) {
     border-color: var(--accent);
     color: var(--accent);
-    background: rgba(229, 188, 129, 0.14);
   }
 
   .filter-button[data-active='true']:hover {

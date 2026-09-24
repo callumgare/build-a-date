@@ -15,13 +15,13 @@ export default function Card({ card, frame }: CardProps) {
     '--inset-bottom': frame.inset.bottom,
     '--inset-side': frame.inset.side,
   } as CSSProperties
-  const contentReference = useFitText(card)
+  const [contentReference, titleReference] = useFitText(card)
 
   return (
     <span className={styles.content} ref={contentReference} style={insets} data-frame={frame.name}>
       <FrameArt frame={frame} />
       <span className={styles.body}>
-        <span className={styles.title}>{card.title}</span>
+        <span className={styles.title} ref={titleReference}>{card.title}</span>
         {card.date && <span className={styles.date}>{card.date}</span>}
         <span className={styles.description}>
           <Markdown components={markdownComponents}>{card.description}</Markdown>
@@ -42,10 +42,12 @@ const markdownComponents: Components = {
   ),
 }
 
-// Cards keep a fixed shape, so when the text doesn't fit, step the
-// description and date text down together until it does.
+// Cards keep a fixed shape, so when the text doesn't fit, step it down until
+// it does: first the title, until its longest word fits on a line without
+// breaking, then the description and date together, until they fit the card.
 function useFitText(card: DateCardModel) {
   const contentReference = useRef<HTMLSpanElement>(null)
+  const titleReference = useRef<HTMLSpanElement>(null)
 
   useLayoutEffect(() => {
     const content = contentReference.current
@@ -61,8 +63,21 @@ function useFitText(card: DateCardModel) {
       return content.lastElementChild.getBoundingClientRect().bottom > limit + 0.5
     }
 
+    // Layout widths, which a layout-animation transform doesn't affect.
+    function titleOverflows() {
+      const title = titleReference.current
+      return Boolean(title && title.scrollWidth > title.clientWidth)
+    }
+
     function fit() {
       if (!content) return
+      let titleScale = 1
+      content.style.removeProperty('--title-fit')
+      while (titleOverflows() && titleScale > 0.5) {
+        titleScale -= 0.05
+        content.style.setProperty('--title-fit', titleScale.toFixed(2))
+      }
+
       let scale = 1
       content.style.removeProperty('--fit')
       while (overflows() && scale > 0.6) {
@@ -85,7 +100,7 @@ function useFitText(card: DateCardModel) {
     }
   }, [card])
 
-  return contentReference
+  return [contentReference, titleReference] as const
 }
 
 function FrameArt({ frame }: { frame: Frame }) {

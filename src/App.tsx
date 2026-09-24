@@ -4,10 +4,10 @@ import cardData from './data/cards.json'
 import Card from './components/Card'
 import FlyingCard from './components/FlyingCard'
 import cardStyles from './components/Card.module.css'
-import { frameFor } from './components/frames'
+import { frameFor, type Frame } from './components/frames'
 import type { DateCard } from './types'
 
-const cards: DateCard[] = shuffle(cardData)
+const cards: DateCard[] = spreadFrames(shuffle(cardData))
 const cardsById = new Map(cards.map((card) => [card.id, card]))
 
 // A fresh order on every page load.
@@ -18,6 +18,33 @@ function shuffle<T>(items: T[]): T[] {
     ;[shuffled[index], shuffled[swap]] = [shuffled[swap], shuffled[index]]
   }
   return shuffled
+}
+
+// Keeps matching frames apart: each card takes the next in the shuffle whose
+// frame isn't among the last few placed, so neither the card beside it nor
+// the one above it (the grid runs up to six columns) shares its frame. A
+// frame with too many cards left to stay spread out goes first, so they
+// don't bunch up at the end, and when no card fits, the gap shrinks.
+function spreadFrames(shuffled: DateCard[]): DateCard[] {
+  const remaining = [...shuffled]
+  const spread: DateCard[] = []
+  const left = new Map<Frame, number>()
+  for (const card of shuffled) left.set(frameFor(card.id), (left.get(frameFor(card.id)) ?? 0) + 1)
+
+  while (remaining.length > 0) {
+    for (let gap = 6; gap >= 0; gap--) {
+      const recent = new Set(spread.slice(Math.max(0, spread.length - gap)).map((card) => frameFor(card.id)))
+      const fits = remaining.filter((card) => !recent.has(frameFor(card.id)))
+      if (gap > 0 && fits.length === 0) continue
+      const crowded = fits.find((card) => (left.get(frameFor(card.id)) ?? 0) * (gap + 1) > remaining.length)
+      const card = crowded ?? fits[0] ?? remaining[0]
+      remaining.splice(remaining.indexOf(card), 1)
+      left.set(frameFor(card.id), (left.get(frameFor(card.id)) ?? 1) - 1)
+      spread.push(card)
+      break
+    }
+  }
+  return spread
 }
 
 function readSelection(): string[] {
