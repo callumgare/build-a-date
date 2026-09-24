@@ -1,4 +1,4 @@
-import { cardInput, cardNotesInput, newDeckInput, planInput, safeNextPath } from './validation'
+import { cardInput, cardNotesInput, deckInput, newDeckInput, planInput, safeNextPath } from './validation'
 
 describe('cardInput', () => {
   it('trims, lowercases and dedupes tags', () => {
@@ -35,6 +35,14 @@ describe('cardNotesInput', () => {
   it('trims notes and caps them at 2000 characters', () => {
     expect(cardNotesInput.parse({ ...base, notes: '  Bring snacks \n' }).notes).toBe('Bring snacks')
     expect(() => cardNotesInput.parse({ ...base, notes: 'x'.repeat(2001) })).toThrow('up to 2000 characters')
+  })
+})
+
+describe('deckInput', () => {
+  it('trims the name, and needs one of up to 80 characters', () => {
+    expect(deckInput.parse({ name: ' Weekend ' })).toEqual({ name: 'Weekend' })
+    expect(() => deckInput.parse({ name: '  ' })).toThrow('Give your deck a name')
+    expect(() => deckInput.parse({ name: 'x'.repeat(81) })).toThrow()
   })
 })
 

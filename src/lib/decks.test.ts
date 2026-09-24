@@ -1,4 +1,6 @@
+import { eq } from 'drizzle-orm'
 import { starterCards } from '@/data/starter-cards'
+import { deck, deckAccess, plan, user } from '@/db/schema'
 import { createTestDb, createUser } from '@/test/db'
 import {
   createDeck,
@@ -101,6 +103,15 @@ describe('listDecks', () => {
 
     expect(await listDecks(db, owner)).toMatchObject([{ name: 'Deck', cards: 1, plans: 1 }])
   })
+
+  it('lists the most recently edited deck first', async () => {
+    const older = await createDeck(db, owner, { name: 'Older', template: 'empty' })
+    await createDeck(db, owner, { name: 'Newer', template: 'empty' })
+    await db.update(deck).set({ updatedAt: new Date('2020-01-01') })
+
+    await saveCard(db, owner, older.id, null, { title: 'Picnic' })
+    expect((await listDecks(db, owner)).map((row) => row.name)).toEqual(['Older', 'Newer'])
+  })
 })
 
 describe('plans', () => {
@@ -115,6 +126,19 @@ describe('plans', () => {
     expect(plan.cardIds).toEqual([b.id, a.id])
     expect((await getPlan(db, plan.id)).cards.map((card) => card.title)).toEqual(['B', 'A'])
     expect(await listPlans(db, deck.id)).toHaveLength(1)
+  })
+
+  it('lists the newest plan first', async () => {
+    const deck = await createDeck(db, owner, { name: 'Deck', template: 'empty' })
+    const card = await saveCard(db, owner, deck.id, null, { title: 'A' })
+    const first = await savePlan(db, deck.shareId, [card.id])
+    const second = await savePlan(db, deck.shareId, [card.id])
+    await db
+      .update(plan)
+      .set({ createdAt: new Date('2020-01-01') })
+      .where(eq(plan.id, first.id))
+
+    expect((await listPlans(db, deck.id)).map((row) => row.id)).toEqual([second.id, first.id])
   })
 
   it('refuses a plan with no cards from the deck', async () => {
@@ -223,6 +247,16 @@ describe('edit access', () => {
     expect((await listDecks(db, owner))[0].requests).toBe(1)
   })
 
+  /** @see docs/deck-sharing.md § "Asking for edit access" - asking for a deck you already edit changes nothing */
+  it("doesn't make a new request from someone who already edits the deck", async () => {
+    const deck = await sharedDeck()
+    await requestEditAccess(db, stranger, deck.shareId)
+    await respondToAccessRequest(db, owner, deck.id, stranger, true)
+
+    expect((await requestEditAccess(db, stranger, deck.shareId)).created).toBe(false)
+    expect(await getAccessState(db, stranger, deck)).toBe('editor')
+  })
+
   it("doesn't make a request for the owner's own deck", async () => {
     const deck = await sharedDeck()
     expect((await requestEditAccess(db, owner, deck.shareId)).created).toBe(false)
@@ -271,6 +305,31 @@ describe('edit access', () => {
   })
 
   /** @see docs/deck-sharing.md § "Answering requests" */
+  /** @see docs/deck-sharing.md § "Answering requests" - a request that has already been answered can't be answered again */
+  it("can't answer a request twice", async () => {
+    const deck = await sharedDeck()
+    await requestEditAccess(db, stranger, deck.shareId)
+    await respondToAccessRequest(db, owner, deck.id, stranger, true)
+
+    await expect(respondToAccessRequest(db, owner, deck.id, stranger, true)).rejects.toThrow(NotFoundError)
+    await expect(respondToAccessRequest(db, owner, deck.id, stranger, false)).rejects.toThrow(NotFoundError)
+    expect(await getAccessState(db, stranger, deck)).toBe('editor')
+  })
+
+  it('lists everyone who asked, oldest first', async () => {
+    const deck = await sharedDeck()
+    const third = await createUser(db, 'third')
+    await requestEditAccess(db, third, deck.shareId)
+    await requestEditAccess(db, stranger, deck.shareId)
+    await db
+      .update(deckAccess)
+      .set({ createdAt: new Date('2020-01-01') })
+      .where(eq(deckAccess.userId, stranger))
+
+    expect((await listDeckAccess(db, owner, deck.id)).map((row) => row.userId)).toEqual([stranger, third])
+  })
+
+  /** @see docs/deck-sharing.md § "Answering requests" */
   it("only the owner answers requests, and can't accept someone who never asked", async () => {
     const deck = await sharedDeck()
     await requestEditAccess(db, stranger, deck.shareId)
@@ -302,6 +361,19 @@ describe('edit access', () => {
     await respondToAccessRequest(db, owner, deck.id, stranger, true)
     await deleteDeck(db, owner, deck.id)
     expect(await listSharedDecks(db, stranger)).toEqual([])
+  })
+
+  /** @see docs/deck-sharing.md § "Removing and leaving" - deleting either person's account deletes its access rows */
+  it("goes when either person's account does", async () => {
+    const deck = await sharedDeck()
+    const other = await createDeck(db, stranger, { name: 'Theirs', template: 'empty' })
+    await requestEditAccess(db, stranger, deck.shareId)
+    await respondToAccessRequest(db, owner, deck.id, stranger, true)
+    await requestEditAccess(db, owner, other.shareId)
+
+    await db.delete(user).where(eq(user.id, stranger))
+    expect(await listDeckAccess(db, owner, deck.id)).toEqual([])
+    expect(await db.select().from(deckAccess)).toEqual([])
   })
 
   it("won't request access to a deck that doesn't exist", async () => {

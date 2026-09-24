@@ -1,9 +1,10 @@
 import { APIError } from 'better-auth/api'
-import { sendSignInLink } from './auth'
+import { sendSignInLink, signOut } from './auth'
 
-const signInMagicLink = vi.hoisted(() => vi.fn())
-vi.mock('../auth', () => ({ getAuth: () => ({ api: { signInMagicLink } }) }))
-vi.mock('next/headers', () => ({ headers: async () => new Headers() }))
+const { signInMagicLink, signOutApi } = vi.hoisted(() => ({ signInMagicLink: vi.fn(), signOutApi: vi.fn() }))
+vi.mock('../auth', () => ({ getAuth: () => ({ api: { signInMagicLink, signOut: signOutApi } }) }))
+vi.mock('next/headers', () => import('@/test/next'))
+vi.mock('next/navigation', () => import('@/test/next'))
 
 function form(fields: Record<string, string>) {
   const data = new FormData()
@@ -13,6 +14,7 @@ function form(fields: Record<string, string>) {
 
 beforeEach(() => {
   signInMagicLink.mockReset()
+  signOutApi.mockReset()
   vi.spyOn(console, 'error').mockImplementation(() => {})
 })
 
@@ -43,5 +45,46 @@ describe('sendSignInLink', () => {
     const state = await sendSignInLink({}, form({ email: 'sam@example.com' }))
     expect(state).toMatchObject({ error: "Couldn't send the email. Try again in a minute.", email: 'sam@example.com' })
     expect(console.error).toHaveBeenCalled()
+  })
+})
+
+/** @see docs/deck-sharing.md § "Returning after sign-in" - with an email link, `next` rides along in the callback URL */
+describe('sendSignInLink with somewhere to go next', () => {
+  it('carries `next` through Welcome, and back to sign-in if the link fails', async () => {
+    await sendSignInLink({}, form({ email: 'sam@example.com', next: '/d/abc/request' }))
+    expect(signInMagicLink.mock.calls[0][0].body).toMatchObject({
+      callbackURL: '/welcome?next=%2Fd%2Fabc%2Frequest',
+      errorCallbackURL: '/sign-in?error=link&next=%2Fd%2Fabc%2Frequest',
+    })
+  })
+
+  it('goes to Welcome alone without one', async () => {
+    await sendSignInLink({}, form({ email: 'sam@example.com' }))
+    expect(signInMagicLink.mock.calls[0][0].body).toMatchObject({
+      callbackURL: '/welcome',
+      errorCallbackURL: '/sign-in?error=link',
+    })
+  })
+
+  it('drops a `next` that leads off the site', async () => {
+    await sendSignInLink({}, form({ email: 'sam@example.com', next: '//evil.example' }))
+    expect(signInMagicLink.mock.calls[0][0].body).toMatchObject({ callbackURL: '/welcome' })
+  })
+})
+
+describe('signOut', () => {
+  it('signs out and goes home', async () => {
+    await expect(signOut()).rejects.toThrow(/^Redirected to \/$/)
+    expect(signOutApi).toHaveBeenCalledOnce()
+  })
+
+  it('still goes home when already signed out', async () => {
+    signOutApi.mockRejectedValue(new APIError('BAD_REQUEST', { message: 'No session' }))
+    await expect(signOut()).rejects.toThrow(/^Redirected to \/$/)
+  })
+
+  it('lets anything unexpected surface as a real error', async () => {
+    signOutApi.mockRejectedValue(new Error('D1 is down'))
+    await expect(signOut()).rejects.toThrow('D1 is down')
   })
 })

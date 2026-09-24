@@ -85,4 +85,14 @@ describe('editRequestEmail', () => {
     expect(html).toContain('Dates &#38; &#34;more&#34;')
     expect(html).not.toContain('<3')
   })
+
+  it('names the requester by email when they have no name', () => {
+    const { subject, text } = editRequestEmail('owner@example.com', {
+      requester: { name: '', email: 'sam@example.com' },
+      deckName: 'Dates',
+      url: 'https://x.example/decks/abc',
+    })
+    expect(subject).toBe('sam@example.com wants to help edit Dates')
+    expect(text).toMatch(/^sam@example\.com asked to edit/)
+  })
 })

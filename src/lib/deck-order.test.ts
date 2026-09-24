@@ -43,6 +43,20 @@ describe('spreadFrames', () => {
       }
     }
   })
+
+  it('keeps every card exactly once when frames have to repeat', () => {
+    const sameFrame = cards.filter((card) => frameFor(card.id) === frameFor(cards[0].id)).slice(0, 3)
+    const few = [...sameFrame, cards.find((card) => frameFor(card.id) !== frameFor(cards[0].id)) as DateCard]
+    expect(sameFrame.length).toBeGreaterThan(1)
+
+    for (const deck of [few, sameFrame, cards.slice(0, 1), []]) {
+      expect(
+        spreadFrames(deck)
+          .map((card) => card.id)
+          .sort(),
+      ).toEqual(deck.map((card) => card.id).sort())
+    }
+  })
 })
 
 describe('arrangeDeck', () => {

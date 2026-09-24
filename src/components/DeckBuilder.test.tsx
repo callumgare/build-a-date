@@ -370,4 +370,181 @@ describe('DeckBuilder', () => {
       expect(await within(notes).findByRole('alert')).toHaveTextContent('Card not found')
     })
   })
+
+  describe('footer', () => {
+    /** @see docs/deck-sharing.md § "Asking for edit access" - owners and editors see Edit this deck instead */
+    it('links owners and editors to the deck editor', () => {
+      render(<DeckBuilder deckName="Test deck" shareId="share123" cards={cards} seed={1} editHref="/decks/deck1" />)
+      expect(screen.getByRole('link', { name: 'Edit this deck' })).toHaveAttribute('href', '/decks/deck1')
+      expect(screen.queryByRole('link', { name: 'Request edit access' })).not.toBeInTheDocument()
+    })
+
+    /** @see docs/deck-sharing.md § "Asking for edit access" - someone who has already asked sees that they have */
+    it('says so once someone has asked to edit', () => {
+      render(<DeckBuilder deckName="Test deck" shareId="share123" cards={cards} seed={1} access="pending" />)
+      expect(screen.getByText("You've asked to edit this deck")).toBeInTheDocument()
+      expect(screen.queryByRole('link', { name: 'Request edit access' })).not.toBeInTheDocument()
+    })
+
+    /** @see docs/deck-sharing.md § "Asking for edit access" - the footer shows Request edit access */
+    it('offers to request edit access', () => {
+      renderBuilder()
+      expect(screen.getByRole('link', { name: 'Request edit access' })).toHaveAttribute('href', '/d/share123/request')
+    })
+  })
+
+  /** @see docs/deck-sorting.md § "How it fits with filters and the plan" */
+  describe('sorting with the plan', () => {
+    afterEach(() => vi.restoreAllMocks())
+
+    it('keeps the plan in the order the cards were picked', async () => {
+      const user = userEvent.setup()
+      const { container } = renderBuilder()
+
+      await user.click(screen.getByRole('button', { name: 'Add to plan: Picnic' }))
+      await user.click(screen.getByRole('button', { name: 'Add to plan: Hike' }))
+      await user.click(screen.getByRole('button', { name: 'Date added' }))
+      await user.click(screen.getByRole('button', { name: 'Interest' }))
+      const plan = [...container.querySelectorAll('[data-card-id]')].map((card) => card.getAttribute('data-card-id'))
+      expect(plan).toEqual(['picnic', 'hike'])
+    })
+
+    it('only picks a random idea from the ones the filters show', async () => {
+      vi.spyOn(Math, 'random').mockReturnValue(0.99)
+      const user = userEvent.setup()
+      renderBuilder()
+
+      await user.click(
+        within(screen.getByRole('group', { name: 'Filter ideas by tag' })).getByRole('button', { name: 'culture' }),
+      )
+      await user.click(screen.getByRole('button', { name: 'select a random one' }))
+      expect(await screen.findByRole('button', { name: 'Discard: Museum' })).toBeInTheDocument()
+      expect(screen.queryByRole('button', { name: 'Discard: Picnic' })).not.toBeInTheDocument()
+      expect(screen.queryByRole('button', { name: 'Discard: Hike' })).not.toBeInTheDocument()
+    })
+  })
+
+  it('empties the plan with Clear plan', async () => {
+    const user = userEvent.setup()
+    renderBuilder()
+
+    await user.click(screen.getByRole('button', { name: 'Add to plan: Picnic' }))
+    await user.click(screen.getByRole('button', { name: 'Add to plan: Hike' }))
+    await user.click(screen.getByRole('button', { name: 'Clear plan' }))
+
+    expect(await screen.findByRole('button', { name: 'Add to plan: Picnic' })).toBeInTheDocument()
+    expect(await screen.findByRole('button', { name: 'Add to plan: Hike' })).toBeInTheDocument()
+    expect(window.location.hash).toBe('')
+  })
+
+  describe('filtering by several tags', () => {
+    function filterButton(name: string) {
+      return within(screen.getByRole('group', { name: 'Filter ideas by tag' })).getByRole('button', { name })
+    }
+
+    it('shows only the ideas with every selected tag', async () => {
+      const user = userEvent.setup()
+      renderBuilder()
+
+      await user.click(filterButton('outside'))
+      await user.click(filterButton('active'))
+      expect(screen.getByRole('button', { name: 'Add to plan: Hike' })).toBeInTheDocument()
+      await waitFor(() => expect(screen.queryByRole('button', { name: 'Add to plan: Picnic' })).not.toBeInTheDocument())
+      expect(screen.queryByRole('button', { name: 'Add to plan: Museum' })).not.toBeInTheDocument()
+    })
+
+    it('says when no idea has every tag, and can show them all again', async () => {
+      const user = userEvent.setup()
+      renderBuilder()
+
+      await user.click(filterButton('culture'))
+      await user.click(filterButton('active'))
+      expect(screen.getByText('No ideas match every selected tag.')).toBeInTheDocument()
+
+      await user.click(screen.getByRole('button', { name: 'Show all ideas' }))
+      for (const card of cards)
+        expect(await screen.findByRole('button', { name: `Add to plan: ${card.title}` })).toBeInTheDocument()
+      expect(filterButton('culture')).toHaveAttribute('aria-pressed', 'false')
+    })
+
+    it('clears the filters with All', async () => {
+      const user = userEvent.setup()
+      renderBuilder()
+
+      await user.click(filterButton('culture'))
+      await user.click(filterButton('All'))
+      for (const card of cards)
+        expect(await screen.findByRole('button', { name: `Add to plan: ${card.title}` })).toBeInTheDocument()
+      expect(filterButton('culture')).toHaveAttribute('aria-pressed', 'false')
+    })
+  })
+
+  describe('sharing the plan', () => {
+    const planUrl = () => `${window.location.origin}/p/plan42`
+
+    beforeEach(() => {
+      savePlan.mockResolvedValue({ ok: true, data: { planId: 'plan42' } })
+    })
+
+    async function pickAndShare() {
+      const user = userEvent.setup()
+      renderBuilder()
+      await user.click(screen.getByRole('button', { name: 'Add to plan: Hike' }))
+      await user.click(screen.getByRole('button', { name: 'Done' }))
+      return user
+    }
+
+    it("uses the device's share sheet where there is one", async () => {
+      const share = vi.fn().mockResolvedValue(undefined)
+      Object.defineProperty(navigator, 'share', { value: share, configurable: true })
+      await pickAndShare()
+
+      await waitFor(() => expect(share).toHaveBeenCalledWith({ title: 'Test deck', url: planUrl() }))
+      expect(screen.queryByRole('button', { name: 'Copy link' })).not.toBeInTheDocument()
+    })
+
+    it('does nothing more when the share sheet is closed', async () => {
+      const share = vi.fn().mockRejectedValue(new DOMException('Share cancelled', 'AbortError'))
+      Object.defineProperty(navigator, 'share', { value: share, configurable: true })
+      await pickAndShare()
+
+      await waitFor(() => expect(share).toHaveBeenCalled())
+      expect(screen.queryByRole('button', { name: 'Copy link' })).not.toBeInTheDocument()
+    })
+
+    it("offers the link to copy when the share sheet doesn't work", async () => {
+      const share = vi.fn().mockRejectedValue(new DOMException('Not allowed', 'NotAllowedError'))
+      Object.defineProperty(navigator, 'share', { value: share, configurable: true })
+      await pickAndShare()
+
+      expect(await screen.findByRole('button', { name: 'Copy link' })).toBeInTheDocument()
+    })
+
+    it('copies the plan link', async () => {
+      const user = await pickAndShare()
+
+      await user.click(await screen.findByRole('button', { name: 'Copy link' }))
+      expect(await navigator.clipboard.readText()).toBe(planUrl())
+      expect(screen.getByRole('button', { name: 'Copied!' })).toBeInTheDocument()
+    })
+
+    it("says the plan couldn't be saved when the server can't be reached", async () => {
+      savePlan.mockRejectedValue(new Error('Failed to fetch'))
+      await pickAndShare()
+
+      expect(await screen.findByRole('alert')).toHaveTextContent(
+        "Couldn't save your plan. Check your connection and try again.",
+      )
+    })
+
+    it('saves again once the plan has changed', async () => {
+      const user = await pickAndShare()
+      await user.click(await screen.findByRole('button', { name: 'Close' }))
+
+      await user.click(screen.getByRole('button', { name: 'Add to plan: Museum' }))
+      await user.click(screen.getByRole('button', { name: 'Done' }))
+      await waitFor(() => expect(savePlan).toHaveBeenCalledTimes(2))
+      expect(savePlan).toHaveBeenLastCalledWith('share123', ['hike', 'museum'])
+    })
+  })
 })

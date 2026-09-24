@@ -1,4 +1,4 @@
-import { type Browser, test as base } from '@playwright/test'
+import { type Browser, type BrowserContextOptions, test as base } from '@playwright/test'
 
 export { expect } from '@playwright/test'
 
@@ -18,6 +18,6 @@ export const test = base.extend({
 })
 
 // A second person, or the same person on another device.
-export function newVisitor(browser: Browser) {
-  return browser.newContext({ extraHTTPHeaders: { 'cf-connecting-ip': visitorAddress() } })
+export function newVisitor(browser: Browser, options: BrowserContextOptions = {}) {
+  return browser.newContext({ ...options, extraHTTPHeaders: { 'cf-connecting-ip': visitorAddress() } })
 }

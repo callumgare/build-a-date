@@ -10,6 +10,8 @@
 | [docs/historical-plans/2026-09-24-card-notes.md](docs/historical-plans/2026-09-24-card-notes.md) | Wondering why card notes were built the way they were (frozen plan) |
 | [docs/deck-sorting.md](docs/deck-sorting.md) | Touching the **Sort by** options on `/d/…` (random, date added, interest), or `sortDeck` in `src/lib/deck-order.ts` |
 | [docs/card-layout.md](docs/card-layout.md) | Touching how cards sit on `/d/…` (the tilt on hover, `randomTilt`/`leanOf`/`untiltedBox` in `src/components/tilt.ts`), or the plan track's padding |
+| [docs/testing.md](docs/testing.md) | Writing or fixing a test: where it goes, what's real, and the `src/test/` stand-ins for Next, Cloudflare and Better Auth |
+| [docs/historical-plans/2026-09-25-test-coverage.md](docs/historical-plans/2026-09-25-test-coverage.md) | Wondering why the test suite is laid out the way it is (frozen plan) |
 
 ### Citing the documentation
 If the docs provide some relevent and useful info about the behaviour or context of some code then you should cite the relevent section in a code comment. Citations should be in the form of `docs/<file>.md § "<heading>"`, optionally followed by `- <the specific claim>` where the section covers several.
@@ -46,6 +48,9 @@ Make sure you only cite a stated requirement. A test for something the docs do n
   is actively misleading someone, mark the edit inline as post-implementation,
   dated, with who changed it and why — never a silent rewrite.
 
+## Testing
+
+Tests sit beside the file they test. Server code (actions, route handlers, pages) is tested against the real queries and an in-memory SQLite database. Only the request-bound edges are replaced: Next's `redirect`/`notFound`/`headers`/`cache`, the Cloudflare context and `getDb`, and Better Auth's `createAuth`. Use the stand-ins in `src/test/` for those, rather than mocking `src/lib/decks.ts` or `requireUser`. See [docs/testing.md](docs/testing.md) § "Stand-ins for server-only code".
 
 ## Creating Plans/Making Major Changes
 

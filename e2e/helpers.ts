@@ -45,3 +45,35 @@ export async function latestSignInLink(request: APIRequestContext, email: string
 export function uniqueEmail(label: string) {
   return `${label}-${Date.now()}-${Math.floor(Math.random() * 1e6)}@example.com`
 }
+
+// How many emails have been sent to an address so far.
+export async function outboxCount(request: APIRequestContext, email: string) {
+  const response = await request.get(`/api/dev/outbox?to=${encodeURIComponent(email)}`)
+  const emails: unknown[] = await response.json()
+  return emails.length
+}
+
+// Makes an account with an email link and skips the passkey. Returns the
+// address it signed up with.
+export async function signUp(page: Page, request: APIRequestContext, name: string) {
+  const email = uniqueEmail(name.toLowerCase())
+  await page.goto('/sign-up')
+  await page.getByLabel('Your name').fill(name)
+  await page.getByLabel('Email').fill(email)
+  await page.getByRole('button', { name: 'Email me a link' }).click()
+  await page.goto(await latestSignInLink(request, email))
+  await page.getByRole('link', { name: 'Skip for now' }).click()
+  await expect(page).toHaveURL(/\/decks$/)
+  return email
+}
+
+// Makes a deck, from the suggestions unless it's asked to be empty, from an
+// empty /decks page. Returns its share link.
+export async function createDeck(page: Page, name: string, { empty = false } = {}) {
+  await page.getByRole('button', { name: 'Make your first deck' }).click()
+  await page.getByLabel('Name').fill(name)
+  if (empty) await page.getByLabel('An empty deck').check()
+  await page.getByRole('button', { name: 'Create deck' }).click()
+  await expect(page.getByRole('heading', { name })).toBeVisible()
+  return page.getByLabel('Share link').inputValue()
+}
