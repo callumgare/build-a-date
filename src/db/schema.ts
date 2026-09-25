@@ -87,6 +87,20 @@ export const deckAccess = sqliteTable(
   (table) => [primaryKey({ columns: [table.deckId, table.userId] }), index('deck_access_user_id_idx').on(table.userId)],
 )
 
+// Settings that follow someone across devices. One row per account, made the
+// first time they change one.
+export const userPreference = sqliteTable('user_preference', {
+  userId: text('user_id')
+    .primaryKey()
+    .references(() => user.id, { onDelete: 'cascade' }),
+  // The Sort by option they last picked on a shared deck
+  // (docs/deck-sorting.md § "Remembering the choice").
+  deckSort: text('deck_sort', { enum: ['random', 'added', 'interest'] })
+    .notNull()
+    .default('random'),
+  ...timestamps,
+})
+
 export const deckRelations = relations(deck, ({ one, many }) => ({
   owner: one(user, { fields: [deck.ownerId], references: [user.id] }),
   cards: many(card),
@@ -111,3 +125,4 @@ export type Deck = typeof deck.$inferSelect
 export type CardRow = typeof card.$inferSelect
 export type Plan = typeof plan.$inferSelect
 export type DeckAccess = typeof deckAccess.$inferSelect
+export type UserPreference = typeof userPreference.$inferSelect

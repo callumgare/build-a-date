@@ -12,6 +12,7 @@ import {
   useState,
 } from 'react'
 import { savePlan } from '@/lib/actions/plans'
+import { saveDeckSort } from '@/lib/actions/preferences'
 import { arrangeDeck, type DeckSort, deckSorts, keepArrangement, sortDeck } from '@/lib/deck-order'
 import type { AccessState } from '@/lib/decks'
 import type { DateCard } from '@/types'
@@ -51,6 +52,11 @@ type DeckBuilderProps = {
   editHref?: string
   // Only for owners and editors, who can change the cards from here too.
   deckId?: string
+  // The sort to start on, and whether a new pick is saved to the visitor's
+  // account, which only signed-in visitors have (docs/deck-sorting.md §
+  // "Remembering the choice").
+  initialSort?: DeckSort
+  remembersSort?: boolean
 }
 
 export default function DeckBuilder({
@@ -61,6 +67,8 @@ export default function DeckBuilder({
   access = 'none',
   editHref,
   deckId,
+  initialSort = 'random',
+  remembersSort = false,
 }: DeckBuilderProps) {
   const [arranged, setArranged] = useState(() => arrangeDeck(deckCards, seed))
   const [arrangedFrom, setArrangedFrom] = useState(deckCards)
@@ -91,7 +99,7 @@ export default function DeckBuilder({
   )
   // The card showing its buttons after a tap, for screens without hover.
   const [revealedId, setRevealedId] = useState<string | null>(null)
-  const [sort, setSort] = useState<DeckSort>('random')
+  const [sort, setSort] = useState<DeckSort>(initialSort)
   // Ratings changed on this visit move the card straight away.
   const cards = useMemo(
     () =>
@@ -212,6 +220,14 @@ export default function DeckBuilder({
       else nextTags.add(tag)
       return nextTags
     })
+  }
+
+  // Saving happens in the background. If it fails, the sort still applies on
+  // this visit; it just isn't remembered for the next one.
+  function chooseSort(nextSort: DeckSort) {
+    if (nextSort === sort) return
+    setSort(nextSort)
+    if (remembersSort) saveDeckSort(nextSort).catch(() => {})
   }
 
   // Saves the plan under its own short link, then shares that. Pressing Done
@@ -379,7 +395,7 @@ export default function DeckBuilder({
                 data-active={sort === option.value}
                 type="button"
                 key={option.value}
-                onClick={() => setSort(option.value)}
+                onClick={() => chooseSort(option.value)}
                 aria-pressed={sort === option.value}
               >
                 {option.label}

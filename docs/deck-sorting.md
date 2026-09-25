@@ -18,7 +18,14 @@ On a shared deck (`/d/…`), the ideas that aren't in the plan can be put in a d
 
 - Sorting and the tag filters work together: the filters pick which ideas show, the sort puts them in order.
 - Sorting only changes the deck. Cards in the plan stay in the order they were picked, and **select a random one** still picks at random from the ideas the filters show.
-- The choice isn't saved. Every visit starts on **Random**.
+
+## Remembering the choice
+
+- When someone who's signed in picks a sort, it's saved to their account, and every shared deck they open after that starts on it, on any device. It's one choice for the whole account, not one per deck.
+- It's saved in the background as soon as they pick. If saving fails (say their session has run out), the sort still applies on this visit, it just isn't remembered.
+- Someone who isn't signed in always starts on **Random**, and nothing is saved.
+- **Random** is still a new shuffle on each visit. What's remembered is that they chose **Random**, not the order.
+- It lives in the `user_preference` table (`deck_sort`), one row per account, made the first time they pick a sort. An account with no row starts on **Random**.
 
 ## On the deck's own page
 

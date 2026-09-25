@@ -5,6 +5,7 @@ import DeckBuilder from '@/components/DeckBuilder'
 import { getDb } from '@/db'
 import { getSession } from '@/lib/auth'
 import { getAccessState, getSharedDeck, NotFoundError } from '@/lib/decks'
+import { getDeckSort } from '@/lib/preferences'
 
 async function findDeck(shareId: string) {
   try {
@@ -31,6 +32,9 @@ export default async function SharedDeck({ params }: PageProps<'/d/[shareId]'>) 
   const session = await getSession()
   const access = session ? await getAccessState(getDb(), session.user.id, deck) : 'none'
   const canEdit = access === 'owner' || access === 'editor'
+  // Signed-in visitors start on the sort they last picked (docs/deck-sorting.md
+  // § "Remembering the choice").
+  const sort = session ? await getDeckSort(getDb(), session.user.id) : 'random'
 
   return (
     <DeckBuilder
@@ -39,6 +43,8 @@ export default async function SharedDeck({ params }: PageProps<'/d/[shareId]'>) 
       cards={cards}
       seed={seed}
       access={access}
+      initialSort={sort}
+      remembersSort={Boolean(session)}
       // The deck's own id only goes to people who can open its edit page.
       editHref={canEdit ? `/decks/${deck.id}` : undefined}
       deckId={canEdit ? deck.id : undefined}

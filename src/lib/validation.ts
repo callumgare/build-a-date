@@ -1,4 +1,5 @@
 import { z } from 'zod'
+import type { DeckSort } from './deck-order'
 
 const id = z.string().min(1).max(64)
 
@@ -43,6 +44,8 @@ export const cardNotesInput = z.object({
   interest: z.number().int().min(1).max(5).nullable(),
   notes: z.string().trim().max(2000, 'Notes can be up to 2000 characters'),
 })
+
+export const deckSortInput = z.enum(['random', 'added', 'interest'] satisfies DeckSort[])
 
 export type CardInput = z.input<typeof cardInput>
 

@@ -8,6 +8,8 @@ const { savePlan, saveCardNotes } = vi.hoisted(() => ({ savePlan: vi.fn(), saveC
 vi.mock('@/lib/actions/plans', () => ({ savePlan, saveCardNotes }))
 const deckActions = vi.hoisted(() => ({ saveCard: vi.fn(), deleteCard: vi.fn(), quickAddCard: vi.fn() }))
 vi.mock('@/lib/actions/decks', () => deckActions)
+const { saveDeckSort } = vi.hoisted(() => ({ saveDeckSort: vi.fn() }))
+vi.mock('@/lib/actions/preferences', () => ({ saveDeckSort }))
 vi.mock('next/link', () => ({ default: (props: object) => <a {...props} /> }))
 
 const cards: DateCard[] = [
@@ -24,6 +26,8 @@ beforeEach(() => {
   savePlan.mockReset()
   saveCardNotes.mockReset()
   saveCardNotes.mockResolvedValue({ ok: true, data: undefined })
+  saveDeckSort.mockReset()
+  saveDeckSort.mockResolvedValue({ ok: true, data: undefined })
   window.location.hash = ''
   Object.defineProperty(navigator, 'share', { value: undefined, configurable: true })
 })
@@ -258,6 +262,41 @@ describe('DeckBuilder', () => {
       )
       await user.click(screen.getByRole('button', { name: 'Date added' }))
       await waitFor(() => expect(deckOrder(container)).toEqual(['hike', 'picnic']))
+    })
+  })
+
+  /** @see docs/deck-sorting.md § "Remembering the choice" */
+  describe('remembering the sort', () => {
+    it('starts on the sort it is given', () => {
+      render(<DeckBuilder deckName="Test deck" shareId="share123" cards={cards} seed={1} initialSort="added" />)
+      expect(screen.getByRole('button', { name: 'Date added' })).toHaveAttribute('aria-pressed', 'true')
+    })
+
+    it('saves a new pick for a signed-in visitor', async () => {
+      const user = userEvent.setup()
+      render(<DeckBuilder deckName="Test deck" shareId="share123" cards={cards} seed={1} remembersSort />)
+
+      await user.click(screen.getByRole('button', { name: 'Interest' }))
+      expect(saveDeckSort).toHaveBeenCalledExactlyOnceWith('interest')
+      await user.click(screen.getByRole('button', { name: 'Interest' }))
+      expect(saveDeckSort).toHaveBeenCalledOnce()
+    })
+
+    it('saves nothing for someone signed out', async () => {
+      const user = userEvent.setup()
+      renderBuilder()
+
+      await user.click(screen.getByRole('button', { name: 'Interest' }))
+      expect(saveDeckSort).not.toHaveBeenCalled()
+    })
+
+    it('still sorts when saving fails', async () => {
+      const user = userEvent.setup()
+      saveDeckSort.mockRejectedValue(new Error('offline'))
+      render(<DeckBuilder deckName="Test deck" shareId="share123" cards={cards} seed={1} remembersSort />)
+
+      await user.click(screen.getByRole('button', { name: 'Date added' }))
+      expect(screen.getByRole('button', { name: 'Date added' })).toHaveAttribute('aria-pressed', 'true')
     })
   })
 

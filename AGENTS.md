@@ -8,7 +8,7 @@
 | [docs/historical-plans/2026-09-24-deck-sharing.md](docs/historical-plans/2026-09-24-deck-sharing.md) | Wondering why deck sharing was built the way it was (frozen plan) |
 | [docs/card-notes.md](docs/card-notes.md) | Touching the options on cards on `/d/…` (Add to plan/Discard and Notes, clicking a side of a card, the edit button and adding ideas for editors), the flip-over notes view, card ratings and notes (`interest`/`notes` on `card`), or `saveCardNotes` |
 | [docs/historical-plans/2026-09-24-card-notes.md](docs/historical-plans/2026-09-24-card-notes.md) | Wondering why card notes were built the way they were (frozen plan) |
-| [docs/deck-sorting.md](docs/deck-sorting.md) | Touching the **Sort by** options on `/d/…` (random, date added, interest), `sortDeck` in `src/lib/deck-order.ts`, or the order of ideas on `/decks/…` |
+| [docs/deck-sorting.md](docs/deck-sorting.md) | Touching the **Sort by** options on `/d/…` (random, date added, interest), `sortDeck` in `src/lib/deck-order.ts`, the saved sort (`user_preference`, `saveDeckSort`), or the order of ideas on `/decks/…` |
 | [docs/card-layout.md](docs/card-layout.md) | Touching how cards sit on `/d/…` (the tilt on hover, `randomTilt`/`leanOf`/`untiltedBox` in `src/components/tilt.ts`), or the plan track's padding |
 | [docs/quick-add.md](docs/quick-add.md) | Touching the **Add an idea** / **Quick Add** controls (`AddCardControls`, `useCardEditor`), `quickAddCard`, `src/lib/quick-add.ts`, OpenRouter or `OPENROUTER_API_KEY` |
 | [docs/historical-plans/2026-09-25-quick-add.md](docs/historical-plans/2026-09-25-quick-add.md) | Wondering why Quick Add was built the way it was (frozen plan) |

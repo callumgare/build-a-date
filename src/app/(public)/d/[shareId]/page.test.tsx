@@ -1,6 +1,7 @@
 import type { ComponentProps, ReactElement } from 'react'
 import type DeckBuilder from '@/components/DeckBuilder'
 import * as decks from '@/lib/decks'
+import { saveDeckSort } from '@/lib/preferences'
 import { useTestDb } from '@/test/cloudflare'
 import { createTestDb, createUser } from '@/test/db'
 import { NotFoundPage } from '@/test/next'
@@ -78,6 +79,15 @@ describe('the shared deck page', () => {
     expect((await open()).deckId).toBe(deck.id)
     signIn('asker')
     expect((await open()).deckId).toBeUndefined()
+  })
+
+  /** @see docs/deck-sorting.md § "Remembering the choice" */
+  it('starts signed-in visitors on the sort they last picked, and saves picks only for them', async () => {
+    expect(await open()).toMatchObject({ initialSort: 'random', remembersSort: false })
+    signIn('helper')
+    expect(await open()).toMatchObject({ initialSort: 'random', remembersSort: true })
+    await saveDeckSort(db, 'helper', 'interest')
+    expect(await open()).toMatchObject({ initialSort: 'interest', remembersSort: true })
   })
 
   it("shows the not-found page for a deck that doesn't exist", async () => {
