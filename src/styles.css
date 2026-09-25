@@ -50,6 +50,11 @@
   text-shadow: var(--background-text-shadow);
 }
 
+dialog,
+dialog .text-action {
+  text-shadow: unset;
+}
+
 * {
   box-sizing: border-box;
 }

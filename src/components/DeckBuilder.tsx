@@ -2,6 +2,7 @@
 
 import { AnimatePresence, animate, LayoutGroup, motion, Reorder, useDragControls, useReducedMotion } from 'motion/react'
 import Link from 'next/link'
+import { useRouter } from 'next/navigation'
 import {
   type ComponentProps,
   type KeyboardEvent as ReactKeyboardEvent,
@@ -65,10 +66,6 @@ type DeckBuilderProps = {
   plans?: PlanSummary[]
 }
 
-function planUrl(planId: string) {
-  return new URL(`/p/${planId}`, window.location.origin).href
-}
-
 export default function DeckBuilder({
   deckName,
   shareId,
@@ -110,7 +107,6 @@ export default function DeckBuilder({
   const [saving, setSaving] = useState(false)
   const [saveError, setSaveError] = useState<string | null>(null)
   const [activeTags, setActiveTags] = useState<Set<string>>(() => new Set())
-  const [linkCopied, setLinkCopied] = useState(false)
   const [flight, setFlight] = useState<{ id: string; from: Box } | null>(null)
   const [notesOpen, setNotesOpen] = useState<{ id: string; from: Box } | null>(null)
   // Ratings and notes as they stand after any changes made on this visit.
@@ -132,11 +128,11 @@ export default function DeckBuilder({
       }),
     [sort, deckCards, arranged, notesById],
   )
-  const dialogReference = useRef<HTMLDialogElement>(null)
   const trackReference = useRef<HTMLDivElement>(null)
   // The card moved from the keyboard, whose grip gets focus back afterwards.
   const [movedId, setMovedId] = useState<string | null>(null)
   const reduceMotion = useReducedMotion()
+  const router = useRouter()
 
   const tags = useMemo(() => [...new Set(deckCards.flatMap((card) => card.tags))].sort(), [deckCards])
   const cardEditor = useCardEditor(deckId, tags)
@@ -251,56 +247,37 @@ export default function DeckBuilder({
     if (remembersSort) saveDeckSort(nextSort).catch(() => {})
   }
 
-  // Saves the plan under its own short link, then shares that. Pressing Done
-  // again without changing the plan shares the same link. A plan being
-  // edited is saved over, under the link it already had.
+  // Saves the plan under its own short link, then opens its page with the
+  // share dialog showing (docs/plans.md § "Sharing a plan"). A plan being
+  // edited is saved over, under the link it already had, and isn't saved
+  // again if nothing has changed.
   async function sharePlan() {
     const key = selectedIds.join(',')
     let planId = saved?.key === key ? saved.planId : null
+    setSaveError(null)
 
     if (!planId) {
       setSaving(true)
-      setSaveError(null)
       try {
         const result = plan ? await updatePlan(plan.id, selectedIds) : await savePlan(shareId, selectedIds)
         if (!result.ok) {
           setSaveError(result.error)
+          setSaving(false)
           return
         }
         planId = result.data.planId
         setSaved({ key, planId })
       } catch {
         setSaveError("Couldn't save your plan. Check your connection and try again.")
-        return
-      } finally {
         setSaving(false)
-      }
-    }
-
-    const shareUrl = planUrl(planId)
-    if (navigator.share) {
-      try {
-        await navigator.share({ title: deckName, url: shareUrl })
         return
-      } catch (error) {
-        if (error instanceof DOMException && error.name === 'AbortError') {
-          return
-        }
       }
     }
 
-    setLinkCopied(false)
-    dialogReference.current?.showModal()
-  }
-
-  async function copyLink() {
-    if (!saved) return
-    try {
-      await navigator.clipboard.writeText(planUrl(saved.planId))
-      setLinkCopied(true)
-    } catch {
-      setLinkCopied(false)
-    }
+    // Saved now, so there's nothing left to keep: Create new plan starts
+    // empty, and Edit plan starts from what was saved.
+    writePicks(picksPlace, null)
+    router.push(`/p/${planId}?share`)
   }
 
   const transition = useMemo(
@@ -554,23 +531,6 @@ export default function DeckBuilder({
       )}
 
       {cardEditor.dialogs}
-
-      <dialog className="share-dialog" ref={dialogReference} onClose={() => setLinkCopied(false)}>
-        <p>Share your date plan</p>
-        <div className="share-dialog-actions">
-          <button className="done-button" type="button" onClick={copyLink}>
-            {linkCopied ? 'Copied!' : 'Copy link'}
-          </button>
-          {saved && (
-            <a className="text-action" href={`/p/${saved.planId}`}>
-              Open your plan
-            </a>
-          )}
-          <button className="text-action" type="button" onClick={() => dialogReference.current?.close()}>
-            Close
-          </button>
-        </div>
-      </dialog>
 
       <footer className="site-footer">
         {editHref ? (

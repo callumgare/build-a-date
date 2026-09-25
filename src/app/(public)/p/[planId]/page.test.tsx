@@ -19,8 +19,11 @@ vi.mock('next/link', () => ({ default: (props: object) => <a {...props} /> }))
 let db: ReturnType<typeof createTestDb>
 let deck: Awaited<ReturnType<typeof decks.createDeck>>
 
-function props(planId: string) {
-  return { params: Promise.resolve({ planId }) } as PageProps<'/p/[planId]'>
+function props(planId: string, searchParams: Record<string, string> = {}) {
+  return {
+    params: Promise.resolve({ planId }),
+    searchParams: Promise.resolve(searchParams),
+  } as PageProps<'/p/[planId]'>
 }
 
 beforeEach(async () => {
@@ -107,6 +110,19 @@ describe('the plan page', () => {
     expect(sessionStorage.getItem(`build-a-date:picks:plan:${plan.id}`)).toBeNull()
     // Picks for a new plan from the deck are left alone.
     expect(localStorage.getItem(`build-a-date:picks:deck:${deck.shareId}`)).not.toBeNull()
+  })
+
+  /** @see docs/plans.md § "Sharing a plan" */
+  it('opens the share dialog when it comes straight from Done, and not otherwise', async () => {
+    const card = await decks.saveCard(db, 'owner', deck.id, null, { title: 'Picnic' })
+    const plan = await decks.savePlan(db, deck.shareId, [card.id])
+
+    const { unmount } = render(await PlanPage(props(plan.id)))
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
+    unmount()
+
+    render(await PlanPage(props(plan.id, { share: '' })))
+    expect(screen.getByRole('dialog')).toHaveTextContent('Share this date plan')
   })
 
   it('says so when every idea in it has since been deleted', async () => {

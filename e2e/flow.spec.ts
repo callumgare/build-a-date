@@ -1,5 +1,5 @@
 import { expect, newVisitor, test } from './fixtures'
-import { addVirtualAuthenticator, latestSignInLink, uniqueEmail } from './helpers'
+import { addVirtualAuthenticator, closeShareDialog, latestSignInLink, uniqueEmail } from './helpers'
 
 test('sign up, share a deck, and get a plan back', async ({ page, browser, request }) => {
   const email = uniqueEmail('owner')
@@ -60,7 +60,7 @@ test('sign up, share a deck, and get a plan back', async ({ page, browser, reque
     await guest.getByRole('button', { name: `Add to plan: ${title}` }).click()
   }
   await guest.getByRole('button', { name: 'Done' }).click()
-  await guest.getByRole('link', { name: 'Open your plan' }).click()
+  await closeShareDialog(guest)
 
   await expect(guest).toHaveURL(/\/p\/[a-z0-9]+$/)
   const planUrl = guest.url()

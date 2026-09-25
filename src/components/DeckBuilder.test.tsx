@@ -15,6 +15,8 @@ vi.mock('@/lib/actions/decks', () => deckActions)
 const { saveDeckSort } = vi.hoisted(() => ({ saveDeckSort: vi.fn() }))
 vi.mock('@/lib/actions/preferences', () => ({ saveDeckSort }))
 vi.mock('next/link', () => ({ default: (props: object) => <a {...props} /> }))
+const router = vi.hoisted(() => ({ push: vi.fn(), refresh: vi.fn() }))
+vi.mock('next/navigation', () => ({ useRouter: () => router }))
 
 const cards: DateCard[] = [
   { id: 'picnic', title: 'Picnic', description: '', tags: ['outside'], interest: 2, notes: 'Bring a rug' },
@@ -45,6 +47,7 @@ function keepPicks(ids: string[], key = deckPicks) {
 beforeEach(() => {
   savePlan.mockReset()
   updatePlan.mockReset()
+  router.push.mockReset()
   saveCardNotes.mockReset()
   saveCardNotes.mockResolvedValue({ ok: true, data: undefined })
   saveDeckSort.mockReset()
@@ -95,7 +98,7 @@ describe('DeckBuilder', () => {
       expect(window.location.href).not.toContain('#')
     })
 
-    it('forgets them once Done has saved them, and keeps them again after another change', async () => {
+    it('forgets them once Done has saved them', async () => {
       savePlan.mockResolvedValue({ ok: true, data: { planId: 'plan42' } })
       const user = userEvent.setup()
       renderBuilder()
@@ -103,12 +106,8 @@ describe('DeckBuilder', () => {
       await user.click(screen.getByRole('button', { name: 'Add to plan: Hike' }))
       expect(keptPicks()).toEqual(['hike'])
       await user.click(screen.getByRole('button', { name: 'Done' }))
-      await screen.findByRole('link', { name: 'Open your plan' })
+      await waitFor(() => expect(router.push).toHaveBeenCalled())
       expect(keptPicks()).toBeNull()
-
-      await user.click(screen.getByRole('button', { name: 'Close' }))
-      await user.click(screen.getByRole('button', { name: 'Add to plan: Museum' }))
-      expect(keptPicks()).toEqual(['hike', 'museum'])
     })
 
     it("keeps them when Done couldn't save", async () => {
@@ -155,22 +154,21 @@ describe('DeckBuilder', () => {
     await waitFor(() => expect(screen.queryByRole('button', { name: 'Add to plan: Picnic' })).not.toBeInTheDocument())
   })
 
-  it('saves the plan when Done is pressed and offers its link', async () => {
+  /** @see docs/plans.md § "Sharing a plan" */
+  it('saves the plan when Done is pressed and opens it, ready to share', async () => {
     savePlan.mockResolvedValue({ ok: true, data: { planId: 'plan42' } })
     const user = userEvent.setup()
     renderBuilder()
 
     await user.click(screen.getByRole('button', { name: 'Add to plan: Hike' }))
     await user.click(screen.getByRole('button', { name: 'Add to plan: Museum' }))
+    expect(screen.queryByRole('link', { name: 'Cancel' })).not.toBeInTheDocument()
     await user.click(screen.getByRole('button', { name: 'Done' }))
 
     expect(savePlan).toHaveBeenCalledWith('share123', ['hike', 'museum'])
-    expect(screen.queryByRole('link', { name: 'Cancel' })).not.toBeInTheDocument()
-    expect(await screen.findByRole('link', { name: 'Open your plan' })).toHaveAttribute('href', '/p/plan42')
-
-    // The same plan shares the same link rather than saving again.
-    await user.click(screen.getByRole('button', { name: 'Done', hidden: true }))
-    expect(savePlan).toHaveBeenCalledTimes(1)
+    await waitFor(() => expect(router.push).toHaveBeenCalledExactlyOnceWith('/p/plan42?share'))
+    // Saving till the page changes, so it can't be pressed twice.
+    expect(screen.getByRole('button', { name: 'Saving…' })).toBeDisabled()
   })
 
   it('shows why a plan could not be saved', async () => {
@@ -843,72 +841,35 @@ describe('DeckBuilder', () => {
     })
   })
 
+  /** @see docs/plans.md § "Sharing a plan" */
   describe('sharing the plan', () => {
-    const planUrl = () => `${window.location.origin}/p/plan42`
-
-    beforeEach(() => {
+    it("has no share dialog of its own; the plan's page shares it", async () => {
       savePlan.mockResolvedValue({ ok: true, data: { planId: 'plan42' } })
-    })
-
-    async function pickAndShare() {
+      const share = vi.fn()
+      Object.defineProperty(navigator, 'share', { value: share, configurable: true })
       const user = userEvent.setup()
       renderBuilder()
+
       await user.click(screen.getByRole('button', { name: 'Add to plan: Hike' }))
       await user.click(screen.getByRole('button', { name: 'Done' }))
-      return user
-    }
-
-    it("uses the device's share sheet where there is one", async () => {
-      const share = vi.fn().mockResolvedValue(undefined)
-      Object.defineProperty(navigator, 'share', { value: share, configurable: true })
-      await pickAndShare()
-
-      await waitFor(() => expect(share).toHaveBeenCalledWith({ title: 'Test deck', url: planUrl() }))
-      expect(screen.queryByRole('button', { name: 'Copy link' })).not.toBeInTheDocument()
+      await waitFor(() => expect(router.push).toHaveBeenCalled())
+      expect(share).not.toHaveBeenCalled()
+      expect(screen.queryByRole('button', { name: 'Copy link', hidden: true })).not.toBeInTheDocument()
+      expect(screen.queryByRole('link', { name: 'Open your plan', hidden: true })).not.toBeInTheDocument()
     })
 
-    it('does nothing more when the share sheet is closed', async () => {
-      const share = vi.fn().mockRejectedValue(new DOMException('Share cancelled', 'AbortError'))
-      Object.defineProperty(navigator, 'share', { value: share, configurable: true })
-      await pickAndShare()
-
-      await waitFor(() => expect(share).toHaveBeenCalled())
-      expect(screen.queryByRole('button', { name: 'Copy link' })).not.toBeInTheDocument()
-    })
-
-    it("offers the link to copy when the share sheet doesn't work", async () => {
-      const share = vi.fn().mockRejectedValue(new DOMException('Not allowed', 'NotAllowedError'))
-      Object.defineProperty(navigator, 'share', { value: share, configurable: true })
-      await pickAndShare()
-
-      expect(await screen.findByRole('button', { name: 'Copy link' })).toBeInTheDocument()
-    })
-
-    it('copies the plan link', async () => {
-      const user = await pickAndShare()
-
-      await user.click(await screen.findByRole('button', { name: 'Copy link' }))
-      expect(await navigator.clipboard.readText()).toBe(planUrl())
-      expect(screen.getByRole('button', { name: 'Copied!' })).toBeInTheDocument()
-    })
-
-    it("says the plan couldn't be saved when the server can't be reached", async () => {
+    it("says the plan couldn't be saved when the server can't be reached, and stays put", async () => {
       savePlan.mockRejectedValue(new Error('Failed to fetch'))
-      await pickAndShare()
+      const user = userEvent.setup()
+      renderBuilder()
 
+      await user.click(screen.getByRole('button', { name: 'Add to plan: Hike' }))
+      await user.click(screen.getByRole('button', { name: 'Done' }))
       expect(await screen.findByRole('alert')).toHaveTextContent(
         "Couldn't save your plan. Check your connection and try again.",
       )
-    })
-
-    it('saves again once the plan has changed', async () => {
-      const user = await pickAndShare()
-      await user.click(await screen.findByRole('button', { name: 'Close' }))
-
-      await user.click(screen.getByRole('button', { name: 'Add to plan: Museum' }))
-      await user.click(screen.getByRole('button', { name: 'Done' }))
-      await waitFor(() => expect(savePlan).toHaveBeenCalledTimes(2))
-      expect(savePlan).toHaveBeenLastCalledWith('share123', ['hike', 'museum'])
+      expect(router.push).not.toHaveBeenCalled()
+      expect(screen.getByRole('button', { name: 'Done' })).toBeEnabled()
     })
   })
 
@@ -950,15 +911,15 @@ describe('DeckBuilder', () => {
       await user.click(screen.getByRole('button', { name: 'Update Plan' }))
       expect(updatePlan).toHaveBeenCalledWith('plan42', ['hike', 'picnic', 'museum'])
       expect(savePlan).not.toHaveBeenCalled()
-      expect(await screen.findByRole('link', { name: 'Open your plan' })).toHaveAttribute('href', '/p/plan42')
+      await waitFor(() => expect(router.push).toHaveBeenCalledWith('/p/plan42?share'))
     })
 
-    it("shares the plan's link without saving when nothing has changed", async () => {
+    it('goes to the plan, ready to share, without saving when nothing has changed', async () => {
       const user = userEvent.setup()
       renderEditor()
 
       await user.click(screen.getByRole('button', { name: 'Update Plan' }))
-      expect(await screen.findByRole('link', { name: 'Open your plan' })).toHaveAttribute('href', '/p/plan42')
+      expect(router.push).toHaveBeenCalledWith('/p/plan42?share')
       expect(updatePlan).not.toHaveBeenCalled()
     })
 

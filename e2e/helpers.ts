@@ -77,3 +77,13 @@ export async function createDeck(page: Page, name: string, { empty = false } = {
   await expect(page.getByRole('heading', { name })).toBeVisible()
   return page.getByLabel('Share link').inputValue()
 }
+
+// Done and Update Plan land on the plan's page with its share dialog open
+// (docs/plans.md § "Sharing a plan"). Checks that, and closes it.
+export async function closeShareDialog(page: Page) {
+  const dialog = page.getByRole('dialog', { name: 'Share this date plan' })
+  await expect(dialog).toBeVisible()
+  await expect(page).toHaveURL(/\/p\/[a-z0-9]+$/)
+  await dialog.getByRole('button', { name: 'Close' }).click()
+  await expect(dialog).toBeHidden()
+}

@@ -1,6 +1,6 @@
 import type { Locator, Page } from '@playwright/test'
 import { expect, newVisitor, test } from './fixtures'
-import { createDeck, signUp } from './helpers'
+import { closeShareDialog, createDeck, signUp } from './helpers'
 
 /** @see docs/card-notes.md § "Who can change them" */
 test('someone with the link rates an idea and leaves notes the owner can see', async ({ page, browser, request }) => {
@@ -69,7 +69,7 @@ test("the words of a note stay off the plan and the deck's edit page", async ({ 
   await card.hover()
   await guest.getByRole('button', { name: 'Add to plan: Stargazing' }).click()
   await guest.getByRole('button', { name: 'Done' }).click()
-  await guest.getByRole('link', { name: 'Open your plan' }).click()
+  await closeShareDialog(guest)
   await expect(guest).toHaveURL(/\/p\/[a-z0-9]+$/)
   const plan = guest.getByRole('region', { name: 'The plan' })
   await expect(plan.getByText('Stargazing')).toBeVisible()

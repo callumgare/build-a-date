@@ -1,6 +1,6 @@
 import type { Page } from '@playwright/test'
 import { expect, newVisitor, test } from './fixtures'
-import { createDeck, signUp } from './helpers'
+import { closeShareDialog, createDeck, signUp } from './helpers'
 
 async function pick(page: Page, title: string) {
   await page.locator('[data-deck-card-id]').filter({ hasText: title }).hover()
@@ -23,7 +23,7 @@ test('someone with the link edits a saved plan, and it keeps its link', async ({
   await pick(guest, 'Stargazing')
   await pick(guest, 'Picnic in the Park')
   await guest.getByRole('button', { name: 'Done' }).click()
-  await guest.getByRole('link', { name: 'Open your plan' }).click()
+  await closeShareDialog(guest)
   await expect(guest).toHaveURL(/\/p\/[a-z0-9]+$/)
   const planUrl = guest.url()
   await guestContext.close()
@@ -44,7 +44,7 @@ test('someone with the link edits a saved plan, and it keeps its link', async ({
   await partner.getByRole('button', { name: 'Discard: Stargazing' }).click()
   await pick(partner, 'Board Game Night')
   await partner.getByRole('button', { name: 'Update Plan' }).click()
-  await partner.getByRole('link', { name: 'Open your plan' }).click()
+  await closeShareDialog(partner)
 
   await expect(partner).toHaveURL(planUrl)
   const plan = partner.getByRole('region', { name: 'The plan' })
@@ -64,7 +64,7 @@ test('Cancel goes back to the plan as it was, and forgets what was changed', asy
   await guest.goto(shareUrl)
   await pick(guest, 'Picnic in the Park')
   await guest.getByRole('button', { name: 'Done' }).click()
-  await guest.getByRole('link', { name: 'Open your plan' }).click()
+  await closeShareDialog(guest)
   await expect(guest).toHaveURL(/\/p\/[a-z0-9]+$/)
   const planUrl = guest.url()
 
@@ -95,7 +95,7 @@ test("the owner sees the deck's plans on the shared deck, and a new one straight
   await expect(guest.getByRole('region', { name: 'Plans' })).toHaveCount(0)
   await pick(guest, 'Stargazing')
   await guest.getByRole('button', { name: 'Done' }).click()
-  await expect(guest.getByRole('link', { name: 'Open your plan' })).toBeVisible()
+  await closeShareDialog(guest)
   await guestContext.close()
 
   await page.goto(shareUrl)
@@ -105,6 +105,8 @@ test("the owner sees the deck's plans on the shared deck, and a new one straight
 
   await pick(page, 'Picnic in the Park')
   await page.getByRole('button', { name: 'Done' }).click()
+  await closeShareDialog(page)
+  await page.goBack()
   await expect(plans.getByRole('heading', { name: 'Plans (2)' })).toBeVisible()
 })
 
@@ -123,7 +125,7 @@ test('unsaved changes to a plan survive a reload, but not going back to the plan
   await pick(guest, 'Stargazing')
   await pick(guest, 'Picnic in the Park')
   await guest.getByRole('button', { name: 'Done' }).click()
-  await guest.getByRole('link', { name: 'Open your plan' }).click()
+  await closeShareDialog(guest)
   await expect(guest).toHaveURL(/\/p\/[a-z0-9]+$/)
   const planUrl = guest.url()
 
@@ -165,7 +167,7 @@ test('Create new plan starts with nothing picked once a plan has been saved', as
   await guest.goto(shareUrl)
   await pick(guest, 'Stargazing')
   await guest.getByRole('button', { name: 'Done' }).click()
-  await guest.getByRole('link', { name: 'Open your plan' }).click()
+  await closeShareDialog(guest)
   await expect(guest).toHaveURL(/\/p\/[a-z0-9]+$/)
 
   await guest.getByRole('link', { name: 'Create new plan' }).click()
@@ -185,7 +187,7 @@ test('someone rates an idea from the plan page, and it shows in the corner', asy
   await guest.goto(shareUrl)
   await pick(guest, 'Stargazing')
   await guest.getByRole('button', { name: 'Done' }).click()
-  await guest.getByRole('link', { name: 'Open your plan' }).click()
+  await closeShareDialog(guest)
 
   const card = guest.locator('[data-card-id]').filter({ hasText: 'Stargazing' })
   await card.hover()

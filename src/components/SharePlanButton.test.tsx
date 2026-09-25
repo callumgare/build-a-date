@@ -53,4 +53,49 @@ describe('SharePlanButton', () => {
     expect(await navigator.clipboard.readText()).toBe(`${window.location.origin}/p/plan42`)
     expect(screen.getByRole('button', { name: 'Copied!' })).toBeInTheDocument()
   })
+
+  /** @see docs/plans.md § "Sharing a plan" */
+  describe('straight after Done or Update Plan', () => {
+    beforeEach(() => {
+      window.history.replaceState(null, '', '/p/plan42?share')
+    })
+
+    it('opens the dialog by itself, and takes ?share off the address', () => {
+      render(<SharePlanButton title="Our date" openOnLoad />)
+      expect(screen.getByRole('dialog')).toHaveAttribute('open')
+      expect(screen.getByRole('button', { name: 'Copy link' })).toBeInTheDocument()
+      expect(window.location.search).toBe('')
+      expect(screen.queryByRole('link', { name: 'Open your plan' })).not.toBeInTheDocument()
+    })
+
+    it('copies the plan link without ?share', async () => {
+      const user = userEvent.setup()
+      render(<SharePlanButton title="Our date" openOnLoad />)
+      window.history.replaceState(null, '', '/p/plan42?share')
+
+      await user.click(screen.getByRole('button', { name: 'Copy link' }))
+      expect(await navigator.clipboard.readText()).toBe(`${window.location.origin}/p/plan42`)
+    })
+
+    it("offers the device's share sheet from the dialog where there is one", async () => {
+      const share = vi.fn().mockResolvedValue(undefined)
+      setShare(share)
+      const user = userEvent.setup()
+      render(<SharePlanButton title="Our date" openOnLoad />)
+
+      await user.click(screen.getByRole('button', { name: 'Share…' }))
+      expect(share).toHaveBeenCalledWith({ title: 'Our date', url: `${window.location.origin}/p/plan42` })
+      expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
+    })
+
+    it('has no Share… without a share sheet', () => {
+      render(<SharePlanButton title="Our date" openOnLoad />)
+      expect(screen.queryByRole('button', { name: 'Share…' })).not.toBeInTheDocument()
+    })
+  })
+
+  it("doesn't open the dialog by itself otherwise", () => {
+    render(<SharePlanButton title="Our date" />)
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
+  })
 })

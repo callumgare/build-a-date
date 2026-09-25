@@ -23,8 +23,10 @@ export async function generateMetadata({ params }: PageProps<'/p/[planId]'>): Pr
   return { title: `A plan from ${deck.name}` }
 }
 
-export default async function PlanPage({ params }: PageProps<'/p/[planId]'>) {
+export default async function PlanPage({ params, searchParams }: PageProps<'/p/[planId]'>) {
   const { plan, deck, cards } = await findPlan((await params).planId)
+  // Done and Update Plan land here with ?share (docs/plans.md § "Sharing a plan").
+  const justSaved = (await searchParams)?.share !== undefined
   const session = await getSession()
   const access = session ? await getAccessState(getDb(), session.user.id, deck) : 'none'
   // Owners and editors can change the cards from here, as on the shared deck
@@ -46,7 +48,7 @@ export default async function PlanPage({ params }: PageProps<'/p/[planId]'>) {
       <section className="plan-section" aria-label="The plan">
         <p className="lede">Here&apos;s the plan</p>
         <div className="plan-actions" data-visible="true">
-          <SharePlanButton title={deck.name} />
+          <SharePlanButton title={deck.name} openOnLoad={justSaved} />
           <Link className="text-action" href={`/p/${plan.id}/edit`}>
             Edit plan
           </Link>
