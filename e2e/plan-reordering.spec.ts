@@ -107,3 +107,50 @@ test("letting go of a drag doesn't do the option on that side of the card", asyn
 
   await guestContext.close()
 })
+
+/** @see docs/card-layout.md § "Reordering the plan" - scrolls with the drag */
+for (const end of ['right', 'left'] as const) {
+  test(`dragging a card up to the ${end} end of a plan that scrolls scrolls it`, async ({ page, browser, request }) => {
+    await signUp(page, request, 'Alex')
+    const shareUrl = await createDeck(page, 'Ideas for Sam')
+
+    const guestContext = await newVisitor(browser)
+    const guest = await guestContext.newPage()
+    await guest.setViewportSize({ width: 480, height: 800 })
+    await guest.goto(shareUrl)
+    const titles = await guest
+      .locator('[data-deck-card-id]')
+      .evaluateAll((cards) => cards.slice(0, 4).map((card) => card.querySelector('button')?.ariaLabel ?? ''))
+    for (const label of titles) {
+      const title = label.replace(/^Add to plan: /, '')
+      await guest.locator('[data-deck-card-id]').filter({ hasText: title }).hover()
+      await guest.getByRole('button', { name: label }).click()
+      await expect(guest.getByRole('button', { name: `Discard: ${title}` })).toBeAttached()
+    }
+
+    // Scrolled all the way away from the end the card is taken to.
+    const track = guest.locator('.plan-track')
+    const scrollLeft = () => track.evaluate((element) => element.scrollLeft)
+    const furthest = await track.evaluate((element, end) => {
+      element.scrollLeft = end === 'right' ? 0 : element.scrollWidth
+      return element.scrollLeft
+    }, end)
+    const trackBox = await track.boundingBox()
+    const cards = guest.locator('[data-card-id]')
+    const card = end === 'right' ? cards.first() : cards.last()
+    await card.hover()
+    const box = await card.boundingBox()
+    if (!trackBox || !box) throw new Error('Plan has no size')
+    const y = box.y + box.height * 0.5
+    await guest.mouse.move(box.x + box.width * 0.5, y)
+    await guest.mouse.down()
+    await guest.mouse.move(end === 'right' ? trackBox.x + trackBox.width - 10 : trackBox.x + 10, y, { steps: 20 })
+
+    // Held still at the end, it keeps going.
+    if (end === 'right') await expect.poll(scrollLeft).toBeGreaterThan(furthest + 100)
+    else await expect.poll(scrollLeft).toBeLessThan(furthest - 100)
+    await guest.mouse.up()
+
+    await guestContext.close()
+  })
+}

@@ -5,10 +5,51 @@ export const maxRotate = 1
 // And how much bigger it grows as it lifts.
 export const hoverScale = 1.04
 
-// Picks a new lean for every hover, so a card tips a different way each time.
-export function randomTilt(random = Math.random): number {
-  const side = random() < 0.5 ? -1 : 1
-  return Math.round(side * (minRotate + random() * (maxRotate - minRotate)) * 100) / 100
+type Point = { x: number; y: number }
+type Rect = { left: number; top: number; width: number; height: number }
+
+// The lean a card takes as the mouse comes onto it: tipped away from where it
+// came in, as if the pointer had nudged it there. Worked out like a push on
+// the card's edge, turning it about its centre, so coming in near a corner
+// tips it the most and coming straight at the middle of an edge barely at
+// all. `movement` is which way the mouse was going; without it the push is
+// taken as straight in from the nearest edge. Positive is clockwise.
+export function entryLean(point: Point, rect: Rect, movement?: Point): number {
+  const halfWidth = rect.width / 2
+  const halfHeight = rect.height / 2
+  if (!halfWidth || !halfHeight) return 0
+  // Where on the card, from -1 to 1 across and down from its centre.
+  const across = clamp((point.x - rect.left - halfWidth) / halfWidth, -1, 1)
+  const down = clamp((point.y - rect.top - halfHeight) / halfHeight, -1, 1)
+
+  let push = movement && (movement.x || movement.y) ? movement : null
+  if (!push) push = Math.abs(across) >= Math.abs(down) ? { x: -Math.sign(across), y: 0 } : { x: 0, y: -Math.sign(down) }
+  const length = Math.hypot(push.x, push.y)
+  if (!length) return 0
+
+  const turn = clamp((across * push.y - down * push.x) / length, -1, 1)
+  if (Math.abs(turn) < 0.01) return 0
+  return round(Math.sign(turn) * (minRotate + Math.abs(turn) * (maxRotate - minRotate)))
+}
+
+// How far a card leans while it's dragged, at most, and how fast it has to go
+// to lean that far, in pixels a second (docs/card-layout.md § "Reordering
+// the plan").
+export const maxDragRotate = 5
+export const fullLeanSpeed = 1500
+
+// A dragged card leans back from the way it's going, like a card held by its
+// bottom edge, and straightens up as it slows down.
+export function dragLean(velocity: number): number {
+  return round(-clamp(velocity / fullLeanSpeed, -1, 1) * maxDragRotate) || 0
+}
+
+function clamp(value: number, min: number, max: number) {
+  return Math.min(max, Math.max(min, value))
+}
+
+function round(value: number) {
+  return Math.round(value * 100) / 100
 }
 
 // Reads how far an element is turned, in degrees, from its computed

@@ -3,7 +3,7 @@
 import { animate } from 'motion/react'
 import { type MouseEvent as ReactMouseEvent, type PointerEvent as ReactPointerEvent, useEffect, useState } from 'react'
 import cardStyles from './Card.module.css'
-import { hoverScale, leanOf, randomTilt, untiltedBox } from './tilt'
+import { entryLean, hoverScale, leanOf, untiltedBox } from './tilt'
 
 // What's on a card's options band and in its corners, shared by the builder
 // (/d/…) and the plan page (/p/…).
@@ -50,14 +50,18 @@ export function useCardTaps() {
   return { revealedId, setRevealedId, clickCard }
 }
 
-// Cards sit straight, and lift a little bigger and tip to one side while the
-// mouse is over them, a different way each time (docs/card-layout.md
-// § "Tilting on hover"). Plain pointer events rather than Motion's
-// onHoverStart, which runs a frame late, once the event no longer has a
-// currentTarget. Touch is left out, so a tap doesn't leave a card leaning.
+// Cards sit straight, and lift a little bigger and tip away from where the
+// mouse came onto them (docs/card-layout.md § "Tilting on hover"). Plain
+// pointer events rather than Motion's onHoverStart, which runs a frame late,
+// once the event no longer has a currentTarget. Touch is left out, so a tap
+// doesn't leave a card leaning.
 export function tiltCard(event: ReactPointerEvent<HTMLElement>) {
   if (event.pointerType === 'touch') return
-  animate(event.currentTarget, { rotate: randomTilt(), scale: hoverScale }, hoverSpring)
+  const lean = entryLean({ x: event.clientX, y: event.clientY }, event.currentTarget.getBoundingClientRect(), {
+    x: event.movementX ?? 0,
+    y: event.movementY ?? 0,
+  })
+  animate(event.currentTarget, { rotate: lean, scale: hoverScale }, hoverSpring)
 }
 
 export function leaveCard(event: ReactPointerEvent<HTMLElement>) {

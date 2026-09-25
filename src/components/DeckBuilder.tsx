@@ -1,6 +1,6 @@
 'use client'
 
-import { AnimatePresence, LayoutGroup, motion, Reorder, useDragControls, useReducedMotion } from 'motion/react'
+import { AnimatePresence, animate, LayoutGroup, motion, Reorder, useDragControls, useReducedMotion } from 'motion/react'
 import Link from 'next/link'
 import {
   type ComponentProps,
@@ -34,12 +34,13 @@ import {
 import AddCardControls from './decks/AddCardControls'
 import PlanList, { type PlanSummary } from './decks/PlanList'
 import { useCardEditor } from './decks/useCardEditor'
+import { edgeScrollSpeed } from './edgeScroll'
 import FlyingCard from './FlyingCard'
 import { frameFor } from './frames'
 import InstallHint from './InstallHint'
 import { readPicks, writePicks } from './keptPicks'
 import Stars from './Stars'
-import type { Box } from './tilt'
+import { type Box, dragLean } from './tilt'
 
 type DeckBuilderProps = {
   deckName: string
@@ -603,6 +604,7 @@ function PlanCard({ value, title, onMove, className, children, ...props }: PlanC
   // Set as soon as the card starts moving. Motion's onDragEnd comes a frame
   // after the click that letting go makes, too late to stop it.
   const dragged = useRef(false)
+  const { followDrag, stopFollowing } = useDragFollower()
 
   function startDrag(event: ReactPointerEvent<HTMLElement>) {
     dragged.current = false
@@ -627,9 +629,12 @@ function PlanCard({ value, title, onMove, className, children, ...props }: PlanC
       dragListener={false}
       dragControls={dragControls}
       onPointerDown={startDrag}
-      onDragStart={() => {
+      onDragStart={(event, info) => {
         dragged.current = true
+        followDrag(event.target, info.point.x)
       }}
+      onDrag={(_, info) => followDrag(null, info.point.x)}
+      onDragEnd={stopFollowing}
       // Caught on the way down, before the card or any button on it sees it.
       onClickCapture={(event) => {
         if (!dragged.current) return
@@ -655,3 +660,91 @@ function PlanCard({ value, title, onMove, className, children, ...props }: PlanC
     </Reorder.Item>
   )
 }
+
+// Each frame of a drag, leans the card back from the way it's going, and
+// scrolls the plan when the card is taken up to either end of it
+// (docs/card-layout.md § "Reordering the plan"). Motion's Reorder only
+// scrolls a group's parents, not the plan track, which is the group itself.
+// Motion keeps the card under the pointer as the track scrolls.
+function useDragFollower() {
+  const drag = useRef<{
+    card: HTMLElement
+    startX: number
+    pointerX: number
+    lastX: number
+    lastTime: number
+    velocity: number
+    lean: number
+    frame: number
+  } | null>(null)
+
+  function step(time: number) {
+    const state = drag.current
+    if (!state) return
+    const seconds = Math.max(0.001, (time - state.lastTime) / 1000)
+    // Smoothed, so the lean doesn't twitch with every uneven mouse move.
+    const speed = (state.pointerX - state.lastX) / seconds
+    state.velocity += (speed - state.velocity) * Math.min(1, seconds * 12)
+    state.lastX = state.pointerX
+    state.lastTime = time
+
+    const lean = dragLean(state.velocity)
+    if (Math.abs(lean - state.lean) >= 0.1 || (lean === 0 && state.lean !== 0)) {
+      state.lean = lean
+      animate(state.card, { rotate: lean }, dragSpring)
+    }
+
+    const track = state.card.parentElement
+    if (track) {
+      const scroll = edgeScrollSpeed(
+        state.card.getBoundingClientRect(),
+        track.getBoundingClientRect(),
+        state.pointerX - state.startX,
+      )
+      if (scroll) track.scrollLeft += scroll * seconds
+    }
+    state.frame = requestAnimationFrame(step)
+  }
+
+  // Motion gives the pointer in page coordinates, which is fine for its
+  // speed and for how far it's gone since the drag started.
+  function followDrag(target: EventTarget | null, pointerX: number) {
+    if (drag.current) {
+      drag.current.pointerX = pointerX
+      return
+    }
+    const card = target instanceof Element ? target.closest<HTMLElement>('[data-card-id]') : null
+    if (!card) return
+    drag.current = {
+      card,
+      startX: pointerX,
+      pointerX,
+      lastX: pointerX,
+      lastTime: performance.now(),
+      velocity: 0,
+      lean: 0,
+      frame: requestAnimationFrame(step),
+    }
+  }
+
+  // Straightens the card up again once it's let go, still lifted, as the
+  // mouse is still over it.
+  function stopFollowing() {
+    const state = drag.current
+    if (!state) return
+    cancelAnimationFrame(state.frame)
+    drag.current = null
+    animate(state.card, { rotate: 0 }, dragSpring)
+  }
+
+  useEffect(
+    () => () => {
+      if (drag.current) cancelAnimationFrame(drag.current.frame)
+    },
+    [],
+  )
+
+  return { followDrag, stopFollowing }
+}
+
+const dragSpring = { type: 'spring', stiffness: 300, damping: 24 } as const

@@ -1,29 +1,75 @@
-import { leanOf, maxRotate, minRotate, randomTilt, untiltedBox } from './tilt'
+import { dragLean, entryLean, leanOf, maxDragRotate, maxRotate, minRotate, untiltedBox } from './tilt'
 
-/** @see docs/card-layout.md § "Tilting on hover" */
-describe('randomTilt', () => {
-  // Stands in for Math.random, handing out `values` in turn.
-  function sequence(...values: number[]) {
-    let index = 0
-    return () => values[index++ % values.length]
-  }
+/** @see docs/card-layout.md § "Tilting on hover" - away from where the mouse came in */
+describe('entryLean', () => {
+  // A 150 × 200 card with its top left corner at (100, 100).
+  const card = { left: 100, top: 100, width: 150, height: 200 }
 
-  it('keeps every lean small but noticeable', () => {
-    for (const value of [0, 0.25, 0.5, 0.75, 0.999]) {
-      const lean = Math.abs(randomTilt(sequence(0.2, value)))
-      expect(lean).toBeGreaterThanOrEqual(minRotate)
-      expect(lean).toBeLessThanOrEqual(maxRotate)
+  it('tips the top away from a mouse coming in near the top of either side', () => {
+    expect(entryLean({ x: 100, y: 110 }, card, { x: 4, y: 0 })).toBeGreaterThan(0)
+    expect(entryLean({ x: 250, y: 110 }, card, { x: -4, y: 0 })).toBeLessThan(0)
+  })
+
+  it('tips the bottom away from a mouse coming in near the bottom of either side', () => {
+    expect(entryLean({ x: 100, y: 290 }, card, { x: 4, y: 0 })).toBeLessThan(0)
+    expect(entryLean({ x: 250, y: 290 }, card, { x: -4, y: 0 })).toBeGreaterThan(0)
+  })
+
+  it('tips the side a mouse comes down onto away from it', () => {
+    expect(entryLean({ x: 110, y: 100 }, card, { x: 0, y: 4 })).toBeLessThan(0)
+    expect(entryLean({ x: 240, y: 100 }, card, { x: 0, y: 4 })).toBeGreaterThan(0)
+  })
+
+  it('tips further the nearer the corner the mouse comes in', () => {
+    const nearCorner = entryLean({ x: 100, y: 100 }, card, { x: 4, y: 0 })
+    const nearMiddle = entryLean({ x: 100, y: 180 }, card, { x: 4, y: 0 })
+    expect(nearCorner).toBeGreaterThan(nearMiddle)
+    expect(nearMiddle).toBeGreaterThan(0)
+  })
+
+  it('keeps every lean small', () => {
+    for (const [x, y] of [
+      [100, 100],
+      [250, 300],
+      [175, 100],
+      [100, 200],
+    ]) {
+      for (const movement of [{ x: 5, y: -3 }, { x: -1, y: 9 }, undefined]) {
+        const lean = Math.abs(entryLean({ x, y }, card, movement))
+        if (lean) expect(lean).toBeGreaterThanOrEqual(minRotate)
+        expect(lean).toBeLessThanOrEqual(maxRotate)
+      }
     }
   })
 
-  it('tips cards both ways', () => {
-    expect(randomTilt(sequence(0.2, 0.5))).toBeLessThan(0)
-    expect(randomTilt(sequence(0.8, 0.5))).toBeGreaterThan(0)
+  it('lifts a card straight when the mouse comes straight at the middle of an edge', () => {
+    expect(entryLean({ x: 100, y: 200 }, card, { x: 4, y: 0 })).toBe(0)
+    expect(entryLean({ x: 175, y: 100 }, card, { x: 0, y: 4 })).toBe(0)
   })
 
-  it('picks a different lean each time', () => {
-    const leans = new Set(Array.from({ length: 20 }, () => randomTilt()))
-    expect(leans.size).toBeGreaterThan(1)
+  it('takes the push as straight in from the nearest edge when the mouse gave no movement', () => {
+    expect(entryLean({ x: 100, y: 110 }, card)).toBe(entryLean({ x: 100, y: 110 }, card, { x: 1, y: 0 }))
+    expect(entryLean({ x: 240, y: 100 }, card, { x: 0, y: 0 })).toBe(
+      entryLean({ x: 240, y: 100 }, card, { x: 0, y: 1 }),
+    )
+  })
+})
+
+/** @see docs/card-layout.md § "Reordering the plan" - leans back from the drag */
+describe('dragLean', () => {
+  it('leans the top of a card back from the way it is dragged', () => {
+    expect(dragLean(600)).toBeLessThan(0)
+    expect(dragLean(-600)).toBeGreaterThan(0)
+  })
+
+  it('leans further the faster it goes, up to a limit', () => {
+    expect(Math.abs(dragLean(900))).toBeGreaterThan(Math.abs(dragLean(300)))
+    expect(dragLean(100_000)).toBe(-maxDragRotate)
+    expect(dragLean(-100_000)).toBe(maxDragRotate)
+  })
+
+  it('stands a card that has stopped straight', () => {
+    expect(dragLean(0)).toBe(0)
   })
 })
 
