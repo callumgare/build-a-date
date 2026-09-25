@@ -313,6 +313,27 @@ describe('DeckBuilder', () => {
       expect(within(notes).getByRole('textbox', { name: 'Notes' })).toHaveValue('Bring a rug')
     })
 
+    /** @see docs/card-notes.md § "Rating and notes on the card" */
+    it('jots the rating and notes in the corner of the card, and follows changes', async () => {
+      const user = userEvent.setup()
+      const { container } = renderBuilder()
+      const deckCard = (id: string) => container.querySelector(`[data-deck-card-id="${id}"]`) as HTMLElement
+
+      expect(within(deckCard('picnic')).getByText('Rated 2 out of 5. Has notes.')).toBeInTheDocument()
+      expect(within(deckCard('museum')).queryByText(/Rated|Has notes/)).not.toBeInTheDocument()
+
+      await user.click(screen.getByRole('button', { name: 'Notes on Museum' }))
+      const notes = await screen.findByRole('dialog', { name: 'Museum' })
+      await user.click(within(notes).getByRole('radio', { name: '4 stars' }))
+      await user.click(within(notes).getByRole('button', { name: 'Done' }))
+      await waitFor(() => expect(screen.queryByRole('dialog', { name: 'Museum' })).not.toBeInTheDocument())
+      expect(within(deckCard('museum')).getByText('Rated 4 out of 5.')).toBeInTheDocument()
+
+      await user.click(screen.getByRole('button', { name: 'Add to plan: Picnic' }))
+      const plan = screen.getByRole('region', { name: 'Your plan' })
+      expect(within(plan).getByText('Rated 2 out of 5. Has notes.')).toBeInTheDocument()
+    })
+
     /** @see docs/card-notes.md § "Saving" - a rating saves as soon as a star is clicked */
     it('saves a rating straight away, and clears it when the same star is clicked again', async () => {
       const user = userEvent.setup()

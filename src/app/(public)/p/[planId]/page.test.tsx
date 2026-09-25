@@ -46,6 +46,7 @@ describe('the plan page', () => {
     render(await PlanPage(props(plan.id)))
     expect(screen.getByText('Picnic')).toBeInTheDocument()
     expect(screen.queryByText(/Somewhere shady/)).not.toBeInTheDocument()
+    expect(screen.queryByText(/Rated|Has notes/)).not.toBeInTheDocument()
   })
 
   it('says so when every idea in it has since been deleted', async () => {

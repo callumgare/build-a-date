@@ -6,12 +6,14 @@ import { createPortal } from 'react-dom'
 import type { DateCard } from '../types'
 import Card from './Card'
 import styles from './Card.module.css'
+import type { Notes } from './CardNotes'
 import type { Frame } from './frames'
 import type { Box } from './tilt'
 
 type FlyingCardProps = {
   card: DateCard
   frame: Frame
+  scrawl?: Notes
   // Where the deck card sits, as if it weren't tilted, and how far it leans.
   from: Box
   track: RefObject<HTMLElement | null>
@@ -23,7 +25,7 @@ type FlyingCardProps = {
 // card animating up from the deck would be cut off at the track's edge. This
 // flies a stand-in above the page instead, while the real card waits hidden
 // in its slot.
-export default function FlyingCard({ card, frame, from, track, transition, onDone }: FlyingCardProps) {
+export default function FlyingCard({ card, frame, scrawl, from, track, transition, onDone }: FlyingCardProps) {
   const [scope, animate] = useAnimate<HTMLDivElement>()
 
   useLayoutEffect(() => {
@@ -79,7 +81,7 @@ export default function FlyingCard({ card, frame, from, track, transition, onDon
 
   return createPortal(
     <div className={`${styles.card} ${styles.flying}`} ref={scope} aria-hidden="true">
-      <Card card={card} frame={frame} />
+      <Card card={card} frame={frame} scrawl={scrawl} />
     </div>,
     document.body,
   )

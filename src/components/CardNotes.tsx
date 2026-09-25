@@ -220,7 +220,7 @@ export default function CardNotes({
           style={{ width: from.width, height: from.height, ...frontScale }}
           aria-hidden="true"
         >
-          <Card card={card} frame={frame} />
+          <Card card={card} frame={frame} scrawl={values} />
         </div>
 
         <div className={`${styles.face} ${styles.back}`}>

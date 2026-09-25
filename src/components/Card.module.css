@@ -167,6 +167,51 @@
   pointer-events: auto;
 }
 
+/* The rating and notes, jotted in the bottom right corner like pencil on the
+   card (docs/card-notes.md § "Rating and notes on the card"). The bottom left
+   is the edit button's. Each mark is drawn twice: a wide stroke in the card's
+   colour, then the ink, so frame lines underneath fade out behind it. */
+.scrawl {
+  --paper: #f5ede0;
+  position: absolute;
+  right: calc(var(--edge) + 1.5cqw);
+  bottom: calc(var(--edge) + 1cqw);
+  display: flex;
+  align-items: center;
+  gap: 1.2cqw;
+  rotate: -5deg;
+  pointer-events: none;
+}
+
+.card:hover .scrawl {
+  --paper: #fdf5e9;
+}
+
+.scrawl svg {
+  display: block;
+  height: 8cqw;
+  overflow: visible;
+  fill: none;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.scrawl svg[data-mark='notes'] {
+  margin-left: 1.5cqw;
+}
+
+.scrawlPaper {
+  stroke: var(--paper);
+  stroke-width: 4.5;
+  opacity: 0.85;
+}
+
+.scrawlInk {
+  stroke: #2c4057;
+  stroke-width: 1.6;
+  opacity: 0.88;
+}
+
 @media (prefers-reduced-motion: reduce) {
   .actions,
   .edit {

@@ -325,6 +325,7 @@ export default function DeckBuilder({
                       card={card}
                       frame={frameFor(card.id)}
                       actions={<CardActions title={card.title} primary="Discard" actions={actions} />}
+                      scrawl={notesById.get(card.id)}
                     />
                     {deckId && <EditButton title={card.title} onClick={() => editCard(card)} />}
                   </motion.div>
@@ -420,6 +421,7 @@ export default function DeckBuilder({
                       card={card}
                       frame={frameFor(card.id)}
                       actions={<CardActions title={card.title} primary="Add to plan" actions={actions} />}
+                      scrawl={notesById.get(card.id)}
                     />
                     {deckId && <EditButton title={card.title} onClick={() => editCard(card)} />}
                   </motion.div>
@@ -450,6 +452,7 @@ export default function DeckBuilder({
           key={flight.id}
           card={flyingCard}
           frame={frameFor(flyingCard.id)}
+          scrawl={notesById.get(flyingCard.id)}
           from={flight.from}
           track={trackReference}
           transition={transition}
