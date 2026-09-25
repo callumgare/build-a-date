@@ -142,12 +142,19 @@ export default function CardNotes({
         ? animate(flyer, pose(rect, to, 0), flip)
         : animate(flyer, { opacity: 0, scale: 0.9 }, { duration: 0.2 }))
     }
-    dialogReference.current?.close()
+    // The dialog closes when this unmounts, not here, so it goes in the same
+    // paint as the deck card shows again. Closed first, Firefox can paint a
+    // frame with neither before the parent re-renders.
     onClosed()
   }
 
   useLayoutEffect(() => {
-    dialogReference.current?.showModal()
+    const dialog = dialogReference.current
+    dialog?.showModal()
+    return () => dialog?.close()
+  }, [])
+
+  useLayoutEffect(() => {
     const flyer = scope.current
     if (reduceMotion) {
       animate(flyer, settled, { duration: 0 })
