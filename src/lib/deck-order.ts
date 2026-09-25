@@ -80,14 +80,19 @@ export type DeckSort = (typeof deckSorts)[number]['value']
 // Puts the deck in the order the visitor picked (docs/deck-sorting.md § "Sort
 // options"). `added` is the deck as it's stored, which is the order its cards
 // were added in, since a new card always goes at the end. `arranged` is the
-// same cards shuffled by `arrangeDeck`, and breaks ties between ideas with
-// the same rating.
+// same cards shuffled by `arrangeDeck`. Ideas with the same rating go in
+// order of title, ignoring case and with numbers in number order.
+const byTitle = new Intl.Collator(undefined, { sensitivity: 'base', numeric: true })
+
 export function sortDeck(
   sort: DeckSort,
   { added, arranged, interest }: { added: DateCard[]; arranged: DateCard[]; interest: (id: string) => number | null },
 ): DateCard[] {
   if (sort === 'added') return [...added].reverse()
   if (sort === 'interest')
-    return [...arranged].sort((first, second) => (interest(second.id) ?? 0) - (interest(first.id) ?? 0))
+    return [...arranged].sort(
+      (first, second) =>
+        (interest(second.id) ?? 0) - (interest(first.id) ?? 0) || byTitle.compare(first.title, second.title),
+    )
   return arranged
 }

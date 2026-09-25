@@ -84,6 +84,7 @@ describe('keepArrangement', () => {
   })
 })
 
+/** @see docs/deck-sorting.md § "Sort options" */
 describe('sortDeck', () => {
   const added = cards.slice(0, 6)
   const arranged = arrangeDeck(added, 5)
@@ -111,10 +112,21 @@ describe('sortDeck', () => {
     ])
   })
 
-  it('puts the most stars first for Interest, unrated last, ties in shuffled order', () => {
-    const sorted = ids(sortDeck('interest', { added, arranged, interest }))
-    const inShuffle = (group: string[]) => ids(arranged).filter((id) => group.includes(id))
-    expect(sorted).toEqual(['card-1', ...inShuffle(['card-0', 'card-3']), ...inShuffle(['card-2', 'card-4', 'card-5'])])
+  it('puts the most stars first for Interest, unrated last, ties by title', () => {
+    expect(ids(sortDeck('interest', { added, arranged, interest }))).toEqual([
+      'card-1',
+      'card-0',
+      'card-3',
+      'card-2',
+      'card-4',
+      'card-5',
+    ])
+  })
+
+  it('orders ties by title ignoring case, with numbers in number order', () => {
+    const titled = ['b idea', 'Card 10', 'A idea', 'Card 2'].map((title, index) => ({ ...cards[index], title }))
+    const sorted = sortDeck('interest', { added: titled, arranged: titled, interest: () => 4 })
+    expect(sorted.map((card) => card.title)).toEqual(['A idea', 'b idea', 'Card 2', 'Card 10'])
   })
 
   it('leaves the input alone', () => {

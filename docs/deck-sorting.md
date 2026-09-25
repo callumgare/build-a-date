@@ -8,7 +8,7 @@ On a shared deck (`/d/…`), the ideas that aren't in the plan can be put in a d
 | --- | --- |
 | **Random** (the default) | A new shuffle on every visit, with matching card frames kept apart. |
 | **Date added** | Newest first. |
-| **Interest** | Most stars first, then fewer. Unrated ideas go last. Ideas with the same rating keep their random order. |
+| **Interest** | Most stars first, then fewer. Unrated ideas go last. Ideas with the same rating go in order of title (A to Z, ignoring case, with numbers in number order so "Walk 2" comes before "Walk 10"). |
 
 **Date added** uses the order the cards are stored in, which is `position` on the `card` table. A new card always goes on the end, and nothing reorders cards, so this is the order they were added in. There's no separate "added at" field.
 
