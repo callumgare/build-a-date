@@ -169,6 +169,13 @@ describe('DeckEditor', () => {
     expect(screen.getByRole('button', { name: 'Copied!' })).toBeInTheDocument()
   })
 
+  /** @see docs/deck-sorting.md § "On the deck's own page" */
+  it('shows the most recently added ideas first', () => {
+    renderEditor()
+    const ideas = screen.getAllByRole('button', { name: /^Edit / }).map((card) => card.getAttribute('aria-label'))
+    expect(ideas).toEqual(['Edit Museum', 'Edit Picnic'])
+  })
+
   describe('opening a card from the keyboard', () => {
     it.each(['{Enter}', ' '])('opens a card in the editor with %j', async (key) => {
       const user = userEvent.setup()

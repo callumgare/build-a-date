@@ -38,6 +38,8 @@ export default function DeckEditor({ deck, role, access, shareUrl, cards, plans 
   const [pending, startTransition] = useTransition()
 
   const deckTags = useMemo(() => [...new Set(cards.flatMap((card) => card.tags))].sort(), [cards])
+  // Newest first (docs/deck-sorting.md § "On the deck's own page").
+  const newestFirst = useMemo(() => [...cards].reverse(), [cards])
   const cardEditor = useCardEditor(deck.id, deckTags)
 
   function rename(event: FormEvent<HTMLFormElement>) {
@@ -147,7 +149,7 @@ export default function DeckEditor({ deck, role, access, shareUrl, cards, plans 
       </h3>
       <div className="card-grid editor-grid">
         <AddCardControls onAdd={cardEditor.addCard} onQuickAdd={cardEditor.quickAdd} />
-        {cards.map((card) => (
+        {newestFirst.map((card) => (
           // biome-ignore lint/a11y/useSemanticElements: a div so descriptions can hold links (see clickOnActivationKey)
           <div
             className={cardStyles.card}

@@ -19,3 +19,7 @@ On a shared deck (`/d/…`), the ideas that aren't in the plan can be put in a d
 - Sorting and the tag filters work together: the filters pick which ideas show, the sort puts them in order.
 - Sorting only changes the deck. Cards in the plan stay in the order they were picked, and **select a random one** still picks at random from the ideas the filters show.
 - The choice isn't saved. Every visit starts on **Random**.
+
+## On the deck's own page
+
+The **Ideas** grid on a deck's page (`/decks/…`) has no **Sort by** buttons. It always shows the most recently added ideas first, straight after the **Add an idea** spot, using the same `position` order as **Date added** above. A card that's just been added shows up at the front.
