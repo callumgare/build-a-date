@@ -9,6 +9,7 @@ import {
   deleteCard,
   deleteDeck,
   leaveDeck,
+  quickAddCard,
   removeEditor,
   renameDeck,
   requestEditAccess,
@@ -103,6 +104,88 @@ describe('changing a deck', () => {
 
   it('turns a card without a title into a message', async () => {
     expect(await saveCard(deckId, null, { title: '' })).toEqual({ ok: false, error: 'Give the idea a title' })
+  })
+})
+
+describe('quickAddCard', () => {
+  let deckId: string
+  const openRouter = vi.fn<typeof fetch>()
+
+  function sentPrompt() {
+    return JSON.parse(String(openRouter.mock.calls[0]?.[1]?.body)).messages[1].content as string
+  }
+
+  beforeEach(async () => {
+    deckId = (await decks.createDeck(db, 'owner', { name: 'Weekend', template: 'empty' })).id
+    resetEnv({ OPENROUTER_API_KEY: 'test-key' })
+    openRouter.mockReset()
+    openRouter.mockImplementation(async () =>
+      Response.json({
+        choices: [
+          { message: { content: '{"title":"Boat Hire","description":"","tags":["outside"],"date":"Wednesdays"}' } },
+        ],
+      }),
+    )
+    vi.stubGlobal('fetch', openRouter)
+  })
+
+  afterEach(() => vi.unstubAllGlobals())
+
+  /** @see docs/quick-add.md § "What comes back" - nothing is saved until the form is */
+  it('hands back a draft without saving anything', async () => {
+    expect(await quickAddCard(deckId, 'Boat hire, open on wednesdays')).toEqual({
+      ok: true,
+      data: { title: 'Boat Hire', description: '', tags: ['outside'], date: 'Wednesdays' },
+    })
+    expect(await decks.getDeckCards(db, deckId)).toEqual([])
+  })
+
+  /** @see docs/quick-add.md § "Matching the deck's style" */
+  it("shows the model the deck's own cards and tags", async () => {
+    await decks.saveCard(db, 'owner', deckId, null, { title: 'Berlin Bar', tags: ['night', 'food & drink'] })
+    await quickAddCard(deckId, 'Boat hire')
+    expect(sentPrompt()).toContain('Tags already used in the deck: food & drink, night')
+    expect(sentPrompt()).toContain('"title": "Berlin Bar"')
+  })
+
+  /** @see docs/quick-add.md § "Matching the deck's style" - an empty deck borrows the starter cards */
+  it('falls back to the starter cards for a deck with none of its own', async () => {
+    await quickAddCard(deckId, 'Boat hire')
+    expect(sentPrompt()).toContain('"title": "Picnic in the Park"')
+    expect(sentPrompt()).toContain('at home, creative, culture')
+  })
+
+  /** @see docs/deck-sharing.md § "Who can do what" */
+  it('works for an editor, but not for someone without access', async () => {
+    const deck = await decks.getOwnedDeck(db, 'owner', deckId)
+    signIn('helper')
+    expect(await quickAddCard(deckId, 'Boat hire')).toEqual({ ok: false, error: 'Deck not found' })
+    expect(openRouter).not.toHaveBeenCalled()
+
+    await decks.requestEditAccess(db, 'helper', deck.shareId)
+    await decks.respondToAccessRequest(db, 'owner', deckId, 'helper', true)
+    expect((await quickAddCard(deckId, 'Boat hire')).ok).toBe(true)
+  })
+
+  it('asks for something to go on when the box is empty', async () => {
+    expect(await quickAddCard(deckId, '   ')).toEqual({
+      ok: false,
+      error: 'Type a little about the idea, or paste a link',
+    })
+  })
+
+  /** @see docs/quick-add.md § "Setting it up" */
+  it('says Quick Add is not set up when there is no OpenRouter key', async () => {
+    resetEnv()
+    expect(await quickAddCard(deckId, 'Boat hire')).toEqual({
+      ok: false,
+      error: 'Quick Add isn’t set up on this server yet.',
+    })
+  })
+
+  it('sends someone signed out to sign in', async () => {
+    signInAs(null)
+    await expect(quickAddCard(deckId, 'Boat hire')).rejects.toThrow('Redirected to /sign-in')
   })
 })
 

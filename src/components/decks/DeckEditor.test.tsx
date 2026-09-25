@@ -1,5 +1,5 @@
 /** @vitest-environment jsdom */
-import { render, screen, waitFor } from '@testing-library/react'
+import { render, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import type { DeckRole } from '@/lib/decks'
 import type { DateCard } from '@/types'
@@ -12,6 +12,7 @@ const actions = vi.hoisted(() => ({
   leaveDeck: vi.fn(),
   saveCard: vi.fn(),
   deleteCard: vi.fn(),
+  quickAddCard: vi.fn(),
   respondToAccessRequest: vi.fn(),
   removeEditor: vi.fn(),
 }))
@@ -186,6 +187,105 @@ describe('DeckEditor', () => {
       screen.getByRole('link', { name: 'the gallery' }).focus()
       await user.keyboard('{Enter}')
       expect(screen.queryByRole('dialog', { name: 'Edit idea' })).not.toBeInTheDocument()
+    })
+  })
+
+  /** @see docs/quick-add.md § "Adding an idea" */
+  describe('adding an idea', () => {
+    it('opens an empty form from Add an idea', async () => {
+      const user = userEvent.setup()
+      renderEditor()
+
+      await user.click(screen.getByRole('button', { name: 'Add an idea' }))
+      expect(await screen.findByRole('heading', { name: 'New idea' })).toBeInTheDocument()
+      expect(screen.getByRole('textbox', { name: /^Title/ })).toHaveValue('')
+    })
+
+    it('fills in the form from what was typed into Quick Add', async () => {
+      const user = userEvent.setup()
+      actions.quickAddCard.mockResolvedValue({
+        ok: true,
+        data: {
+          title: 'Boat Hire at Fairfield Boathouse',
+          description: '[More info](https://link.com)',
+          tags: ['outside', 'relaxed'],
+          date: 'Wednesdays',
+        },
+      })
+      renderEditor()
+
+      await user.click(screen.getByRole('button', { name: 'Quick Add' }))
+      const dialog = await screen.findByRole('dialog', { name: 'Quick Add' })
+      await user.type(
+        within(dialog).getByRole('textbox', { name: /^Describe the idea/ }),
+        'Boat Hire at Fairfield Boathouse, open on wednesdays https://link.com',
+      )
+      await user.click(within(dialog).getByRole('button', { name: 'Fill in the details' }))
+
+      expect(actions.quickAddCard).toHaveBeenCalledWith(
+        'deck1',
+        'Boat Hire at Fairfield Boathouse, open on wednesdays https://link.com',
+      )
+      expect(await screen.findByRole('heading', { name: 'New idea' })).toBeInTheDocument()
+      expect(screen.queryByRole('dialog', { name: 'Quick Add' })).not.toBeInTheDocument()
+      expect(screen.getByRole('textbox', { name: /^Title/ })).toHaveValue('Boat Hire at Fairfield Boathouse')
+      expect(screen.getByRole('textbox', { name: /^Description/ })).toHaveValue('[More info](https://link.com)')
+      expect(screen.getByRole('textbox', { name: /^When/ })).toHaveValue('Wednesdays')
+      expect(screen.getByRole('textbox', { name: /^Tags/ })).toHaveValue('outside, relaxed')
+
+      // Nothing is saved until the form is.
+      expect(actions.saveCard).not.toHaveBeenCalled()
+      await user.click(screen.getByRole('button', { name: 'Save' }))
+      expect(actions.saveCard).toHaveBeenCalledWith('deck1', null, {
+        title: 'Boat Hire at Fairfield Boathouse',
+        description: '[More info](https://link.com)',
+        tags: ['outside', 'relaxed'],
+        date: 'Wednesdays',
+      })
+    })
+
+    it('starts the next Add an idea empty again', async () => {
+      const user = userEvent.setup()
+      actions.quickAddCard.mockResolvedValue({
+        ok: true,
+        data: { title: 'Golf', description: '', tags: [], date: '' },
+      })
+      renderEditor()
+
+      await user.click(screen.getByRole('button', { name: 'Quick Add' }))
+      await user.type(screen.getByRole('textbox', { name: /^Describe the idea/ }), 'Golf')
+      await user.click(screen.getByRole('button', { name: 'Fill in the details' }))
+      await user.click(await screen.findByRole('button', { name: 'Cancel' }))
+
+      await user.click(screen.getByRole('button', { name: 'Add an idea' }))
+      expect(await screen.findByRole('textbox', { name: /^Title/ })).toHaveValue('')
+    })
+
+    it('shows why Quick Add could not fill in the details, and keeps what was typed', async () => {
+      const user = userEvent.setup()
+      actions.quickAddCard.mockResolvedValue({ ok: false, error: 'Quick Add isn’t set up on this server yet.' })
+      renderEditor()
+
+      await user.click(screen.getByRole('button', { name: 'Quick Add' }))
+      const box = screen.getByRole('textbox', { name: /^Describe the idea/ })
+      await user.type(box, 'Golf')
+      await user.click(screen.getByRole('button', { name: 'Fill in the details' }))
+
+      expect(await screen.findByRole('alert')).toHaveTextContent('Quick Add isn’t set up on this server yet.')
+      expect(box).toHaveValue('Golf')
+      expect(screen.queryByRole('heading', { name: 'New idea' })).not.toBeInTheDocument()
+    })
+
+    it('closes Quick Add on Cancel without asking for anything', async () => {
+      const user = userEvent.setup()
+      renderEditor()
+
+      await user.click(screen.getByRole('button', { name: 'Quick Add' }))
+      await user.click(
+        within(screen.getByRole('dialog', { name: 'Quick Add' })).getByRole('button', { name: 'Cancel' }),
+      )
+      expect(screen.queryByRole('textbox', { name: /^Describe the idea/ })).not.toBeInTheDocument()
+      expect(actions.quickAddCard).not.toHaveBeenCalled()
     })
   })
 

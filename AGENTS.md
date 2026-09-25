@@ -10,6 +10,8 @@
 | [docs/historical-plans/2026-09-24-card-notes.md](docs/historical-plans/2026-09-24-card-notes.md) | Wondering why card notes were built the way they were (frozen plan) |
 | [docs/deck-sorting.md](docs/deck-sorting.md) | Touching the **Sort by** options on `/d/…` (random, date added, interest), or `sortDeck` in `src/lib/deck-order.ts` |
 | [docs/card-layout.md](docs/card-layout.md) | Touching how cards sit on `/d/…` (the tilt on hover, `randomTilt`/`leanOf`/`untiltedBox` in `src/components/tilt.ts`), or the plan track's padding |
+| [docs/quick-add.md](docs/quick-add.md) | Touching the **Add an idea** / **Quick Add** spot on a deck's page, `quickAddCard`, `src/lib/quick-add.ts`, OpenRouter or `OPENROUTER_API_KEY` |
+| [docs/historical-plans/2026-09-25-quick-add.md](docs/historical-plans/2026-09-25-quick-add.md) | Wondering why Quick Add was built the way it was (frozen plan) |
 | [docs/testing.md](docs/testing.md) | Writing or fixing a test: where it goes, what's real, and the `src/test/` stand-ins for Next, Cloudflare and Better Auth |
 | [docs/historical-plans/2026-09-25-test-coverage.md](docs/historical-plans/2026-09-25-test-coverage.md) | Wondering why the test suite is laid out the way it is (frozen plan) |
 

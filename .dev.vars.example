@@ -2,3 +2,8 @@ BETTER_AUTH_URL=http://localhost:3000
 BETTER_AUTH_SECRET=replace-with-output-of-openssl-rand-base64-32
 # Leave empty to print emails to the terminal instead of sending them.
 RESEND_API_KEY=
+# For Quick Add on a deck's page (docs/quick-add.md). Get one at
+# https://openrouter.ai/keys. Leave empty and Quick Add says it isn't set up.
+OPENROUTER_API_KEY=
+# Optional: any OpenRouter model slug, in place of the default.
+# OPENROUTER_MODEL=google/gemini-2.5-flash

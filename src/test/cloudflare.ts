@@ -9,7 +9,14 @@ export const env = {
   BETTER_AUTH_URL: 'http://localhost:3000',
   BETTER_AUTH_SECRET: 'test-secret-that-is-at-least-32-chars',
   EMAIL_FROM: 'Dates <hi@example.com>',
-} as { BETTER_AUTH_URL: string; BETTER_AUTH_SECRET: string; EMAIL_FROM: string; RESEND_API_KEY?: string }
+} as {
+  BETTER_AUTH_URL: string
+  BETTER_AUTH_SECRET: string
+  EMAIL_FROM: string
+  RESEND_API_KEY?: string
+  OPENROUTER_API_KEY?: string
+  OPENROUTER_MODEL?: string
+}
 
 const localEnv = { ...env }
 

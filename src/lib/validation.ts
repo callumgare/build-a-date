@@ -26,6 +26,12 @@ export const cardInput = z.object({
     .transform((date) => date || null),
 })
 
+export const quickAddInput = z
+  .string()
+  .trim()
+  .min(1, 'Type a little about the idea, or paste a link')
+  .max(2000, 'Keep it under 2000 characters')
+
 export const planInput = z.object({
   shareId: id,
   cardIds: z.array(id).min(1).max(50),

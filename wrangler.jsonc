@@ -25,7 +25,7 @@
     "BETTER_AUTH_URL": "https://build-a-date.cals.cafe",
     "EMAIL_FROM": "Build-a-Date <hello@build-a-date.cals.cafe>"
   },
-  // BETTER_AUTH_SECRET and RESEND_API_KEY are secrets: `wrangler secret put`
+  // BETTER_AUTH_SECRET, RESEND_API_KEY and OPENROUTER_API_KEY are secrets: `wrangler secret put`
   // for production, .dev.vars locally.
   "routes": [{ "pattern": "build-a-date.cals.cafe", "custom_domain": true }],
   // Local dev serves on localhost rather than posing as the custom domain

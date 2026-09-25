@@ -8,6 +8,7 @@ interface __BaseEnv_CloudflareEnv {
 	BETTER_AUTH_URL: string;
 	BETTER_AUTH_SECRET: string;
 	RESEND_API_KEY: string;
+	OPENROUTER_API_KEY: string;
 	WORKER_SELF_REFERENCE: Service<typeof import("./.open-next/worker").default>;
 }
 declare namespace Cloudflare {
@@ -21,6 +22,7 @@ declare namespace Cloudflare {
 		BETTER_AUTH_URL: string;
 		BETTER_AUTH_SECRET: string;
 		RESEND_API_KEY: string;
+	OPENROUTER_API_KEY: string;
 		WORKER_SELF_REFERENCE: Service<typeof import("./.open-next/worker").default>;
 	}
 	interface Env extends __BaseEnv_CloudflareEnv {}

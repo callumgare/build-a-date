@@ -4,11 +4,13 @@ import { getCloudflareContext } from '@opennextjs/cloudflare'
 import { revalidatePath } from 'next/cache'
 import { notFound, redirect } from 'next/navigation'
 import { z } from 'zod'
+import { starterCards } from '@/data/starter-cards'
 import { getDb } from '@/db'
 import { requireUser } from '../auth'
 import * as decks from '../decks'
 import { editRequestEmail, sendEmail } from '../email'
-import { type CardInput, cardInput, deckInput, newDeckInput } from '../validation'
+import { type CardDraft, extractIdea, QuickAddError } from '../quick-add'
+import { type CardInput, cardInput, deckInput, newDeckInput, quickAddInput } from '../validation'
 import { type ActionResult, fail, ok } from './result'
 
 export async function createDeck(input: { name: string; template: 'empty' | 'suggestions' }): Promise<ActionResult> {
@@ -54,6 +56,26 @@ export async function saveCard(
     revalidatePath(`/decks/${deckId}`)
     return ok({ id: saved.id })
   } catch (error) {
+    return fail(error)
+  }
+}
+
+// Reads what someone typed (and any pages it links to) into a draft for the
+// card form. Nothing is saved: the form opens filled in for them to check
+// (docs/quick-add.md).
+export async function quickAddCard(deckId: string, text: string): Promise<ActionResult<CardDraft>> {
+  const user = await requireUser()
+  try {
+    const db = getDb()
+    await decks.getEditableDeck(db, user.id, deckId)
+    const cards = (await decks.getDeckCards(db, deckId)).map(decks.toDateCard)
+    // A new deck has no style of its own yet, so the starter cards stand in.
+    const examples =
+      cards.length > 0 ? cards : starterCards.map(({ title, description = '', tags }) => ({ title, description, tags }))
+    const tags = [...new Set(examples.flatMap((card) => card.tags))].sort()
+    return ok(await extractIdea(getCloudflareContext().env, { text: quickAddInput.parse(text), examples, tags }))
+  } catch (error) {
+    if (error instanceof QuickAddError) return { ok: false, error: error.message }
     return fail(error)
   }
 }

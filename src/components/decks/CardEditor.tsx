@@ -2,6 +2,7 @@
 
 import { type FormEvent, useEffect, useRef, useState, useTransition } from 'react'
 import { deleteCard, saveCard } from '@/lib/actions/decks'
+import type { CardDraft } from '@/lib/quick-add'
 import type { DateCard } from '@/types'
 import Card from '../Card'
 import cardStyles from '../Card.module.css'
@@ -12,6 +13,8 @@ type CardEditorProps = {
   // The card being edited, or null to add one. The editor is open whenever
   // this isn't undefined.
   card: DateCard | null | undefined
+  // What a new card's fields start with, e.g. from Quick Add.
+  draft?: CardDraft
   deckTags: string[]
   onClose: () => void
 }
@@ -23,7 +26,7 @@ function parseTags(text: string) {
     .filter(Boolean)
 }
 
-export default function CardEditor({ deckId, card, deckTags, onClose }: CardEditorProps) {
+export default function CardEditor({ deckId, card, draft, deckTags, onClose }: CardEditorProps) {
   const dialogReference = useRef<HTMLDialogElement>(null)
   const open = card !== undefined
 
@@ -36,7 +39,16 @@ export default function CardEditor({ deckId, card, deckTags, onClose }: CardEdit
   return (
     <dialog className="share-dialog editor-dialog" ref={dialogReference} onClose={onClose} aria-label="Edit idea">
       {/* Keyed so each opening starts from that card's saved values. */}
-      {open && <CardForm key={card?.id ?? 'new'} deckId={deckId} card={card} deckTags={deckTags} onDone={onClose} />}
+      {open && (
+        <CardForm
+          key={card?.id ?? 'new'}
+          deckId={deckId}
+          card={card}
+          draft={draft}
+          deckTags={deckTags}
+          onDone={onClose}
+        />
+      )}
     </dialog>
   )
 }
@@ -44,18 +56,21 @@ export default function CardEditor({ deckId, card, deckTags, onClose }: CardEdit
 function CardForm({
   deckId,
   card,
+  draft,
   deckTags,
   onDone,
 }: {
   deckId: string
   card: DateCard | null
+  draft?: CardDraft
   deckTags: string[]
   onDone: () => void
 }) {
-  const [title, setTitle] = useState(card?.title ?? '')
-  const [description, setDescription] = useState(card?.description ?? '')
-  const [tagText, setTagText] = useState(card?.tags.join(', ') ?? '')
-  const [date, setDate] = useState(card?.date ?? '')
+  const initial = card ?? draft
+  const [title, setTitle] = useState(initial?.title ?? '')
+  const [description, setDescription] = useState(initial?.description ?? '')
+  const [tagText, setTagText] = useState(initial?.tags.join(', ') ?? '')
+  const [date, setDate] = useState(initial?.date ?? '')
   const [error, setError] = useState<string | null>(null)
   const [pending, startTransition] = useTransition()
 
