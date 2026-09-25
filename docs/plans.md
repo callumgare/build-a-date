@@ -35,6 +35,7 @@ The cards are `PlanView` in `src/components/PlanView.tsx`. The options, tilt and
 - **Update Plan** (in place of **Done**) saves over the plan, so its link stays the same, then goes to the plan ready to share, like **Done** (see [Sharing a plan](#sharing-a-plan)). If nothing has changed, it goes there without saving.
 - **Cancel** goes back to the plan page without saving, and drops the unsaved changes, so the next edit starts from the saved plan.
 - Leaving without either, and coming back to the plan page, drops the changes too. A reload of the edit page keeps them (see [Picks are kept in the browser](#picks-are-kept-in-the-browser)). The plan page forgets them with `ForgetPlanEdits`, when it mounts and when the browser brings it back from its back-forward cache.
+- **Delete plan** takes the place of **Clear plan** (see [Deleting a plan](#deleting-a-plan)).
 - The buttons stay showing even when every card has been taken out, so **Cancel** is still there. **Update Plan** can't be pressed then, as a plan needs at least one card.
 - The same rules apply as for a new plan: only cards from the deck, in the order given, without repeats, and at least one card (`updatePlan` in `src/lib/decks.ts`).
 - Saving replaces the plan. No history of earlier versions is kept.
@@ -51,6 +52,12 @@ There's no link to open the plan, since that's the page it's on. While saving, t
 
 The builder goes to `/p/<planId>?share`, and the plan page opens the dialog when it sees `share` (`openOnLoad` on `SharePlanButton`). The dialog then takes `?share` off the address, so a reload doesn't open it again. The link it shares never includes it either.
 
+## Deleting a plan
+
+**Delete plan** on the edit page deletes the plan, after the browser asks to confirm. Its link stops working (it shows the not-found page), and it drops out of the deck's list of plans. The browser then goes to the deck (`/d/…`), with nothing picked, and any unsaved changes to the plan are forgotten. If deleting fails, the edit page stays and shows why.
+
+Anyone who can edit a plan can delete it (`deletePlan` in `src/lib/decks.ts`). The deck and its other plans aren't touched.
+
 ## Who can edit a plan
 
-Anyone with the plan's link, signed in or not. Plans are made without an account, so there's no owner to check against. The plan page already links to the deck, and anyone with the deck's link can already build plans and change the notes, so a plan link doesn't give anything new.
+Anyone with the plan's link, signed in or not. The same goes for deleting it. Plans are made without an account, so there's no owner to check against. The plan page already links to the deck, and anyone with the deck's link can already build plans and change the notes, so a plan link doesn't give anything new.

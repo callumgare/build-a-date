@@ -2,7 +2,7 @@ import { useTestDb } from '@/test/cloudflare'
 import { createTestDb, createUser } from '@/test/db'
 import { revalidatePath } from '@/test/next'
 import * as decks from '../decks'
-import { saveCardNotes, savePlan, updatePlan } from './plans'
+import { deletePlan, saveCardNotes, savePlan, updatePlan } from './plans'
 
 vi.mock('@/db', () => import('@/test/cloudflare'))
 vi.mock('next/cache', () => import('@/test/next'))
@@ -62,6 +62,23 @@ describe('updatePlan', () => {
     if (!saved.ok) throw new Error(saved.error)
     expect(await updatePlan(saved.data.planId, [])).toMatchObject({ ok: false })
     expect(await updatePlan('nope', [cardId])).toEqual({ ok: false, error: 'Plan not found' })
+  })
+})
+
+/** @see docs/plans.md § "Deleting a plan" */
+describe('deletePlan', () => {
+  it('deletes the plan, for anyone, and refreshes the plan lists', async () => {
+    const saved = await savePlan(deck.shareId, [cardId])
+    if (!saved.ok) throw new Error(saved.error)
+    vi.mocked(revalidatePath).mockClear()
+
+    expect(await deletePlan(saved.data.planId)).toEqual({ ok: true, data: undefined })
+    await expect(decks.getPlan(db, saved.data.planId)).rejects.toThrow('Plan not found')
+    expect(revalidatePath).toHaveBeenCalledWith('/decks/[deckId]', 'page')
+  })
+
+  it('turns an unknown plan into a message', async () => {
+    expect(await deletePlan('nope')).toEqual({ ok: false, error: 'Plan not found' })
   })
 })
 

@@ -4,12 +4,13 @@ import userEvent from '@testing-library/user-event'
 import type { DateCard } from '@/types'
 import DeckBuilder from './DeckBuilder'
 
-const { savePlan, updatePlan, saveCardNotes } = vi.hoisted(() => ({
+const { savePlan, updatePlan, deletePlan, saveCardNotes } = vi.hoisted(() => ({
   savePlan: vi.fn(),
   updatePlan: vi.fn(),
+  deletePlan: vi.fn(),
   saveCardNotes: vi.fn(),
 }))
-vi.mock('@/lib/actions/plans', () => ({ savePlan, updatePlan, saveCardNotes }))
+vi.mock('@/lib/actions/plans', () => ({ savePlan, updatePlan, deletePlan, saveCardNotes }))
 const deckActions = vi.hoisted(() => ({ saveCard: vi.fn(), deleteCard: vi.fn(), quickAddCard: vi.fn() }))
 vi.mock('@/lib/actions/decks', () => deckActions)
 const { saveDeckSort } = vi.hoisted(() => ({ saveDeckSort: vi.fn() }))
@@ -47,6 +48,7 @@ function keepPicks(ids: string[], key = deckPicks) {
 beforeEach(() => {
   savePlan.mockReset()
   updatePlan.mockReset()
+  deletePlan.mockReset()
   router.push.mockReset()
   saveCardNotes.mockReset()
   saveCardNotes.mockResolvedValue({ ok: true, data: undefined })
@@ -978,11 +980,59 @@ describe('DeckBuilder', () => {
       const user = userEvent.setup()
       renderEditor()
 
-      await user.click(screen.getByRole('button', { name: 'Clear plan' }))
+      await user.click(screen.getByRole('button', { name: 'Discard: Hike' }))
+      await user.click(screen.getByRole('button', { name: 'Discard: Picnic' }))
       expect(keptPicks(planPicks)).toEqual([])
       // Nothing to save, but still a way out.
       expect(screen.getByRole('button', { name: 'Update Plan' })).toBeDisabled()
       expect(screen.getByRole('link', { name: 'Cancel' })).toBeInTheDocument()
+    })
+
+    /** @see docs/plans.md § "Deleting a plan" */
+    describe('deleting it', () => {
+      afterEach(() => vi.restoreAllMocks())
+
+      it('has Delete plan in place of Clear plan', () => {
+        renderEditor()
+        expect(screen.getByRole('button', { name: 'Delete plan' })).toBeInTheDocument()
+        expect(screen.queryByRole('button', { name: 'Clear plan' })).not.toBeInTheDocument()
+      })
+
+      it('deletes it once confirmed, and goes back to the deck', async () => {
+        vi.spyOn(window, 'confirm').mockReturnValue(true)
+        deletePlan.mockResolvedValue({ ok: true, data: undefined })
+        keepPicks(['museum'], planPicks)
+        const user = userEvent.setup()
+        renderEditor()
+
+        await user.click(screen.getByRole('button', { name: 'Delete plan' }))
+        expect(window.confirm).toHaveBeenCalled()
+        expect(deletePlan).toHaveBeenCalledWith('plan42')
+        await waitFor(() => expect(router.push).toHaveBeenCalledWith('/d/share123'))
+        expect(keptPicks(planPicks)).toBeNull()
+      })
+
+      it('does nothing unless confirmed', async () => {
+        vi.spyOn(window, 'confirm').mockReturnValue(false)
+        const user = userEvent.setup()
+        renderEditor()
+
+        await user.click(screen.getByRole('button', { name: 'Delete plan' }))
+        expect(deletePlan).not.toHaveBeenCalled()
+        expect(router.push).not.toHaveBeenCalled()
+      })
+
+      it("says why it couldn't be deleted, and stays put", async () => {
+        vi.spyOn(window, 'confirm').mockReturnValue(true)
+        deletePlan.mockResolvedValue({ ok: false, error: 'Plan not found' })
+        const user = userEvent.setup()
+        renderEditor()
+
+        await user.click(screen.getByRole('button', { name: 'Delete plan' }))
+        expect(await screen.findByRole('alert')).toHaveTextContent('Plan not found')
+        expect(router.push).not.toHaveBeenCalled()
+        expect(screen.getByRole('button', { name: 'Delete plan' })).toBeEnabled()
+      })
     })
 
     it('says Update Plan rather than Done', () => {

@@ -3,7 +3,7 @@
 import { revalidatePath } from 'next/cache'
 import { getDb } from '@/db'
 import * as decks from '../decks'
-import { cardNotesInput, planInput, planUpdateInput } from '../validation'
+import { cardNotesInput, planIdInput, planInput, planUpdateInput } from '../validation'
 import { type ActionResult, fail, ok } from './result'
 
 // Public: anyone with a deck's share link can save a plan from it.
@@ -34,6 +34,17 @@ export async function updatePlan(planId: string, cardIds: string[]): Promise<Act
     const saved = await decks.updatePlan(getDb(), input.planId, input.cardIds)
     revalidatePlanLists()
     return ok({ planId: saved.id })
+  } catch (error) {
+    return fail(error)
+  }
+}
+
+// Public too, like editing it (docs/plans.md § "Deleting a plan").
+export async function deletePlan(planId: string): Promise<ActionResult> {
+  try {
+    await decks.deletePlan(getDb(), planIdInput.parse(planId))
+    revalidatePlanLists()
+    return ok(undefined)
   } catch (error) {
     return fail(error)
   }

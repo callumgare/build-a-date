@@ -252,6 +252,13 @@ export async function updatePlan(db: Database, planId: string, cardIds: string[]
   return saved
 }
 
+// Anyone with a plan's link can delete it, as they can edit it (docs/plans.md
+// § "Who can edit a plan").
+export async function deletePlan(db: Database, planId: string) {
+  const [deleted] = await db.delete(plan).where(eq(plan.id, planId)).returning({ id: plan.id })
+  if (!deleted) throw new NotFoundError('Plan not found')
+}
+
 // A plan's cards in the order they were picked, leaving out any since deleted.
 export async function getPlan(db: Database, planId: string) {
   const [found] = await db

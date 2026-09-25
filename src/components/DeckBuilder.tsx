@@ -14,7 +14,7 @@ import {
   useRef,
   useState,
 } from 'react'
-import { savePlan, updatePlan } from '@/lib/actions/plans'
+import { deletePlan, savePlan, updatePlan } from '@/lib/actions/plans'
 import { saveDeckSort } from '@/lib/actions/preferences'
 import { arrangeDeck, type DeckSort, deckSorts, keepArrangement, sortDeck } from '@/lib/deck-order'
 import type { AccessState } from '@/lib/decks'
@@ -105,6 +105,7 @@ export default function DeckBuilder({
     plan ? { key: plan.cardIds.join(','), planId: plan.id } : null,
   )
   const [saving, setSaving] = useState(false)
+  const [deleting, setDeleting] = useState(false)
   const [saveError, setSaveError] = useState<string | null>(null)
   const [activeTags, setActiveTags] = useState<Set<string>>(() => new Set())
   const [flight, setFlight] = useState<{ id: string; from: Box } | null>(null)
@@ -280,6 +281,29 @@ export default function DeckBuilder({
     router.push(`/p/${planId}?share`)
   }
 
+  // Deletes the plan being edited, once they've said yes, and goes back to the
+  // deck to start a new one (docs/plans.md § "Deleting a plan").
+  async function removePlan() {
+    if (!plan) return
+    if (!window.confirm("Delete this plan? Its link will stop working. This can't be undone.")) return
+    setDeleting(true)
+    setSaveError(null)
+    try {
+      const result = await deletePlan(plan.id)
+      if (!result.ok) {
+        setSaveError(result.error)
+        setDeleting(false)
+        return
+      }
+    } catch {
+      setSaveError("Couldn't delete the plan. Check your connection and try again.")
+      setDeleting(false)
+      return
+    }
+    writePicks(picksPlace, null)
+    router.push(`/d/${shareId}`)
+  }
+
   const transition = useMemo(
     () => (reduceMotion ? { duration: 0 } : { type: 'spring' as const, stiffness: 430, damping: 38, mass: 0.8 }),
     [reduceMotion],
@@ -313,7 +337,7 @@ export default function DeckBuilder({
               className="done-button"
               type="button"
               onClick={sharePlan}
-              disabled={saving || selectedIds.length === 0}
+              disabled={saving || deleting || selectedIds.length === 0}
             >
               {saving ? 'Saving…' : plan ? 'Update Plan' : 'Done'}
             </button>
@@ -324,9 +348,15 @@ export default function DeckBuilder({
                 Cancel
               </Link>
             )}
-            <button className="text-action" type="button" onClick={() => setSelectedIds([])}>
-              Clear plan
-            </button>
+            {plan ? (
+              <button className="text-action" type="button" onClick={removePlan} disabled={saving || deleting}>
+                {deleting ? 'Deleting…' : 'Delete plan'}
+              </button>
+            ) : (
+              <button className="text-action" type="button" onClick={() => setSelectedIds([])}>
+                Clear plan
+              </button>
+            )}
           </div>
           {saveError && (
             <p className="form-error" role="alert">

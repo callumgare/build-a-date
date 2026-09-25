@@ -80,6 +80,31 @@ test('Cancel goes back to the plan as it was, and forgets what was changed', asy
   await guestContext.close()
 })
 
+/** @see docs/plans.md § "Deleting a plan" */
+test('someone with the link deletes a plan from its edit page', async ({ page, browser, request }) => {
+  await signUp(page, request, 'Alex')
+  const shareUrl = await createDeck(page, 'Ideas for Sam')
+
+  const guestContext = await newVisitor(browser)
+  const guest = await guestContext.newPage()
+  await guest.goto(shareUrl)
+  await pick(guest, 'Stargazing')
+  await guest.getByRole('button', { name: 'Done' }).click()
+  await closeShareDialog(guest)
+  const planUrl = guest.url()
+
+  await guest.getByRole('link', { name: 'Edit plan' }).click()
+  await expect(guest.getByRole('button', { name: 'Clear plan' })).toHaveCount(0)
+  guest.once('dialog', (dialog) => dialog.accept())
+  await guest.getByRole('button', { name: 'Delete plan' }).click()
+  await expect(guest).toHaveURL(shareUrl)
+  await expect(guest.locator('[data-card-id]')).toHaveCount(0)
+
+  const response = await guest.goto(planUrl)
+  expect(response?.status()).toBe(404)
+  await guestContext.close()
+})
+
 /** @see docs/deck-sharing.md § "Who can do what" - owners and editors see the deck's plans */
 test("the owner sees the deck's plans on the shared deck, and a new one straight away", async ({
   page,

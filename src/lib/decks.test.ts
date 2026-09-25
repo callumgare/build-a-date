@@ -6,6 +6,7 @@ import {
   createDeck,
   deleteCard,
   deleteDeck,
+  deletePlan,
   getAccessState,
   getDeckCards,
   getEditableDeck,
@@ -165,6 +166,19 @@ describe('plans', () => {
     expect(updated).toMatchObject({ id: saved.id, cardIds: [b.id, a.id] })
     expect((await getPlan(db, saved.id)).cards.map((card) => card.title)).toEqual(['B', 'A'])
     expect(await listPlans(db, deck.id)).toHaveLength(1)
+  })
+
+  /** @see docs/plans.md § "Deleting a plan" */
+  it('deletes a plan, leaving the deck and its other plans', async () => {
+    const deck = await createDeck(db, owner, { name: 'Deck', template: 'empty' })
+    const a = await saveCard(db, owner, deck.id, null, { title: 'A' })
+    const doomed = await savePlan(db, deck.shareId, [a.id])
+    const kept = await savePlan(db, deck.shareId, [a.id])
+
+    await deletePlan(db, doomed.id)
+    expect((await listPlans(db, deck.id)).map((row) => row.id)).toEqual([kept.id])
+    expect(await getDeckCards(db, deck.id)).toHaveLength(1)
+    await expect(deletePlan(db, doomed.id)).rejects.toThrow('Plan not found')
   })
 
   it('refuses to change an unknown plan, or empty one', async () => {
