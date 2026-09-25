@@ -17,6 +17,39 @@
   --line: rgba(229, 188, 129, 0.48);
   --background-color: rgb(17, 31, 82);
   --defocused-background-color: color-mix(var(--background-color) 80%, transparent);
+  /* A soft dark halo that keeps text readable over the busier parts of the
+     background picture. */
+  --background-text-shadow:
+    2px 2px 4px var(--background-color),
+    2px -2px 4px var(--background-color),
+    -2px -2px 4px var(--background-color),
+    -2px 2px 4px var(--background-color),
+    4px 4px 8px var(--background-color),
+    4px -4px 8px var(--background-color),
+    -4px -4px 8px var(--background-color),
+    -4px 4px 8px var(--background-color),
+    0 0 14px var(--background-color);
+}
+
+/* Text that sits straight on the background gets the halo. text-shadow is
+   inherited, so it goes on the text itself rather than on whole sections,
+   which also hold cards, panels and dialogs. */
+h1,
+.lede,
+.hero-actions,
+.plan-actions,
+.filter-label,
+.empty-results,
+.add-card-controls,
+.add-card,
+.site-header,
+.site-footer,
+.section-heading,
+.text-action,
+.subheading,
+.plan-list,
+.muted:not(.panel *, dialog *) {
+  text-shadow: var(--background-text-shadow);
 }
 
 * {
@@ -97,7 +130,8 @@ button:focus-visible {
 }
 
 .page-shell:has(.site-header) .star--1 {
-  top: 120px;
+  top: 100px;
+  right: 35%;
 }
 
 .star--2 {
@@ -371,18 +405,13 @@ fieldset.filters {
   margin-bottom: 12px;
 }
 
-/* Plain text, so the labels don't read as buttons. A soft dark halo keeps
-   them readable over the busier parts of the background. */
+/* Plain text, so the labels don't read as buttons. */
 .filter-label {
   margin-right: 2px;
   color: #f8f2e8;
   font-size: 0.8rem;
   font-style: italic;
   letter-spacing: 0.03em;
-  text-shadow:
-    0 0 4px var(--background-color),
-    0 0 8px var(--background-color),
-    0 0 14px var(--background-color);
 }
 
 /* Hover and focus only hint at the accent, so they never read as selected.
