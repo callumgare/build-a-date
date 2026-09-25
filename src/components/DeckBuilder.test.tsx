@@ -100,25 +100,25 @@ describe('DeckBuilder', () => {
       expect(window.location.href).not.toContain('#')
     })
 
-    it('forgets them once Done has saved them', async () => {
+    it('forgets them once Save plan has saved them', async () => {
       savePlan.mockResolvedValue({ ok: true, data: { planId: 'plan42' } })
       const user = userEvent.setup()
       renderBuilder()
 
       await user.click(screen.getByRole('button', { name: 'Add to plan: Hike' }))
       expect(keptPicks()).toEqual(['hike'])
-      await user.click(screen.getByRole('button', { name: 'Done' }))
+      await user.click(screen.getByRole('button', { name: 'Save plan' }))
       await waitFor(() => expect(router.push).toHaveBeenCalled())
       expect(keptPicks()).toBeNull()
     })
 
-    it("keeps them when Done couldn't save", async () => {
+    it("keeps them when Save plan couldn't save", async () => {
       savePlan.mockResolvedValue({ ok: false, error: 'Deck not found' })
       const user = userEvent.setup()
       renderBuilder()
 
       await user.click(screen.getByRole('button', { name: 'Add to plan: Hike' }))
-      await user.click(screen.getByRole('button', { name: 'Done' }))
+      await user.click(screen.getByRole('button', { name: 'Save plan' }))
       await screen.findByRole('alert')
       expect(keptPicks()).toEqual(['hike'])
     })
@@ -157,7 +157,7 @@ describe('DeckBuilder', () => {
   })
 
   /** @see docs/plans.md § "Sharing a plan" */
-  it('saves the plan when Done is pressed and opens it, ready to share', async () => {
+  it('saves the plan when Save plan is pressed and opens it, ready to share', async () => {
     savePlan.mockResolvedValue({ ok: true, data: { planId: 'plan42' } })
     const user = userEvent.setup()
     renderBuilder()
@@ -165,7 +165,7 @@ describe('DeckBuilder', () => {
     await user.click(screen.getByRole('button', { name: 'Add to plan: Hike' }))
     await user.click(screen.getByRole('button', { name: 'Add to plan: Museum' }))
     expect(screen.queryByRole('link', { name: 'Cancel' })).not.toBeInTheDocument()
-    await user.click(screen.getByRole('button', { name: 'Done' }))
+    await user.click(screen.getByRole('button', { name: 'Save plan' }))
 
     expect(savePlan).toHaveBeenCalledWith('share123', ['hike', 'museum'])
     await waitFor(() => expect(router.push).toHaveBeenCalledExactlyOnceWith('/p/plan42?share'))
@@ -179,7 +179,7 @@ describe('DeckBuilder', () => {
     renderBuilder()
 
     await user.click(screen.getByRole('button', { name: 'Add to plan: Hike' }))
-    await user.click(screen.getByRole('button', { name: 'Done' }))
+    await user.click(screen.getByRole('button', { name: 'Save plan' }))
     expect(await screen.findByRole('alert')).toHaveTextContent('Deck not found')
   })
 
@@ -754,7 +754,7 @@ describe('DeckBuilder', () => {
       const grip = await screen.findByRole('button', { name: 'Move Hike' })
       grip.focus()
       await user.keyboard('{ArrowLeft}')
-      await user.click(screen.getByRole('button', { name: 'Done' }))
+      await user.click(screen.getByRole('button', { name: 'Save plan' }))
       expect(savePlan).toHaveBeenCalledWith('share123', ['hike', 'picnic'])
     })
 
@@ -853,7 +853,7 @@ describe('DeckBuilder', () => {
       renderBuilder()
 
       await user.click(screen.getByRole('button', { name: 'Add to plan: Hike' }))
-      await user.click(screen.getByRole('button', { name: 'Done' }))
+      await user.click(screen.getByRole('button', { name: 'Save plan' }))
       await waitFor(() => expect(router.push).toHaveBeenCalled())
       expect(share).not.toHaveBeenCalled()
       expect(screen.queryByRole('button', { name: 'Copy link', hidden: true })).not.toBeInTheDocument()
@@ -866,12 +866,12 @@ describe('DeckBuilder', () => {
       renderBuilder()
 
       await user.click(screen.getByRole('button', { name: 'Add to plan: Hike' }))
-      await user.click(screen.getByRole('button', { name: 'Done' }))
+      await user.click(screen.getByRole('button', { name: 'Save plan' }))
       expect(await screen.findByRole('alert')).toHaveTextContent(
         "Couldn't save your plan. Check your connection and try again.",
       )
       expect(router.push).not.toHaveBeenCalled()
-      expect(screen.getByRole('button', { name: 'Done' })).toBeEnabled()
+      expect(screen.getByRole('button', { name: 'Save plan' })).toBeEnabled()
     })
   })
 
@@ -1035,10 +1035,10 @@ describe('DeckBuilder', () => {
       })
     })
 
-    it('says Update Plan rather than Done', () => {
+    it('says Update Plan rather than Save plan', () => {
       renderEditor()
       expect(screen.getByRole('button', { name: 'Update Plan' })).toBeInTheDocument()
-      expect(screen.queryByRole('button', { name: 'Done' })).not.toBeInTheDocument()
+      expect(screen.queryByRole('button', { name: 'Save plan' })).not.toBeInTheDocument()
     })
 
     it('goes back to the plan on Cancel, dropping the unsaved changes', async () => {

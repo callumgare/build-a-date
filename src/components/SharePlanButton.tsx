@@ -9,7 +9,7 @@ function planUrl() {
 
 type SharePlanButtonProps = {
   title: string
-  // Straight after Done or Update Plan, the dialog is already open
+  // Straight after Save plan or Update Plan, the dialog is already open
   // (docs/plans.md § "Sharing a plan").
   openOnLoad?: boolean
 }
@@ -31,7 +31,7 @@ export default function SharePlanButton({ title, openOnLoad = false }: SharePlan
 
   // The device's share sheet, where there is one, and the dialog otherwise
   // or if the sheet fails. The sheet only opens from a press, so it's a
-  // button in the dialog too, rather than opening by itself after Done.
+  // button in the dialog too, rather than opening by itself after Save plan.
   async function share({ fromDialog = false } = {}) {
     if (navigator.share) {
       try {

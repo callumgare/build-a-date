@@ -25,7 +25,7 @@ test('the owner renames a deck, changes its ideas and deletes it', async ({ page
   await expect(guest.getByRole('heading', { name: 'Ideas for Jo' })).toBeVisible()
   await guest.locator('[data-deck-card-id]').filter({ hasText: 'Stargazing' }).hover()
   await guest.getByRole('button', { name: 'Add to plan: Stargazing' }).click()
-  await guest.getByRole('button', { name: 'Done' }).click()
+  await guest.getByRole('button', { name: 'Save plan' }).click()
   await closeShareDialog(guest)
   await expect(guest).toHaveURL(/\/p\/[a-z0-9]+$/)
   await expect(guest.getByRole('region', { name: 'The plan' }).getByText('Stargazing')).toBeVisible()

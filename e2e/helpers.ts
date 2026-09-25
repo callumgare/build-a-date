@@ -78,7 +78,7 @@ export async function createDeck(page: Page, name: string, { empty = false } = {
   return page.getByLabel('Share link').inputValue()
 }
 
-// Done and Update Plan land on the plan's page with its share dialog open
+// Save plan and Update Plan land on the plan's page with its share dialog open
 // (docs/plans.md § "Sharing a plan"). Checks that, and closes it.
 export async function closeShareDialog(page: Page) {
   const dialog = page.getByRole('dialog', { name: 'Share this date plan' })

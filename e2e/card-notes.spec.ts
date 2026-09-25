@@ -68,7 +68,7 @@ test("the words of a note stay off the plan and the deck's edit page", async ({ 
   await expect(notes).toBeHidden()
   await card.hover()
   await guest.getByRole('button', { name: 'Add to plan: Stargazing' }).click()
-  await guest.getByRole('button', { name: 'Done' }).click()
+  await guest.getByRole('button', { name: 'Save plan' }).click()
   await closeShareDialog(guest)
   await expect(guest).toHaveURL(/\/p\/[a-z0-9]+$/)
   const plan = guest.getByRole('region', { name: 'The plan' })

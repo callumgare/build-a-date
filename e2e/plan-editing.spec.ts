@@ -22,7 +22,7 @@ test('someone with the link edits a saved plan, and it keeps its link', async ({
   await guest.goto(shareUrl)
   await pick(guest, 'Stargazing')
   await pick(guest, 'Picnic in the Park')
-  await guest.getByRole('button', { name: 'Done' }).click()
+  await guest.getByRole('button', { name: 'Save plan' }).click()
   await closeShareDialog(guest)
   await expect(guest).toHaveURL(/\/p\/[a-z0-9]+$/)
   const planUrl = guest.url()
@@ -63,7 +63,7 @@ test('Cancel goes back to the plan as it was, and forgets what was changed', asy
   const guest = await guestContext.newPage()
   await guest.goto(shareUrl)
   await pick(guest, 'Picnic in the Park')
-  await guest.getByRole('button', { name: 'Done' }).click()
+  await guest.getByRole('button', { name: 'Save plan' }).click()
   await closeShareDialog(guest)
   await expect(guest).toHaveURL(/\/p\/[a-z0-9]+$/)
   const planUrl = guest.url()
@@ -89,7 +89,7 @@ test('someone with the link deletes a plan from its edit page', async ({ page, b
   const guest = await guestContext.newPage()
   await guest.goto(shareUrl)
   await pick(guest, 'Stargazing')
-  await guest.getByRole('button', { name: 'Done' }).click()
+  await guest.getByRole('button', { name: 'Save plan' }).click()
   await closeShareDialog(guest)
   const planUrl = guest.url()
 
@@ -119,7 +119,7 @@ test("the owner sees the deck's plans on the shared deck, and a new one straight
   await guest.goto(shareUrl)
   await expect(guest.getByRole('region', { name: 'Plans' })).toHaveCount(0)
   await pick(guest, 'Stargazing')
-  await guest.getByRole('button', { name: 'Done' }).click()
+  await guest.getByRole('button', { name: 'Save plan' }).click()
   await closeShareDialog(guest)
   await guestContext.close()
 
@@ -129,7 +129,7 @@ test("the owner sees the deck's plans on the shared deck, and a new one straight
   await expect(plans.getByText('1 idea')).toBeVisible()
 
   await pick(page, 'Picnic in the Park')
-  await page.getByRole('button', { name: 'Done' }).click()
+  await page.getByRole('button', { name: 'Save plan' }).click()
   await closeShareDialog(page)
   await page.goBack()
   await expect(plans.getByRole('heading', { name: 'Plans (2)' })).toBeVisible()
@@ -149,7 +149,7 @@ test('unsaved changes to a plan survive a reload, but not going back to the plan
   await guest.goto(shareUrl)
   await pick(guest, 'Stargazing')
   await pick(guest, 'Picnic in the Park')
-  await guest.getByRole('button', { name: 'Done' }).click()
+  await guest.getByRole('button', { name: 'Save plan' }).click()
   await closeShareDialog(guest)
   await expect(guest).toHaveURL(/\/p\/[a-z0-9]+$/)
   const planUrl = guest.url()
@@ -182,7 +182,7 @@ test('unsaved changes to a plan survive a reload, but not going back to the plan
   await guestContext.close()
 })
 
-/** @see docs/plans.md § "Picks are kept in the browser" - forgotten once Done has saved them */
+/** @see docs/plans.md § "Picks are kept in the browser" - forgotten once Save plan has saved them */
 test('Create new plan starts with nothing picked once a plan has been saved', async ({ page, browser, request }) => {
   await signUp(page, request, 'Alex')
   const shareUrl = await createDeck(page, 'Ideas for Sam')
@@ -191,7 +191,7 @@ test('Create new plan starts with nothing picked once a plan has been saved', as
   const guest = await guestContext.newPage()
   await guest.goto(shareUrl)
   await pick(guest, 'Stargazing')
-  await guest.getByRole('button', { name: 'Done' }).click()
+  await guest.getByRole('button', { name: 'Save plan' }).click()
   await closeShareDialog(guest)
   await expect(guest).toHaveURL(/\/p\/[a-z0-9]+$/)
 
@@ -211,7 +211,7 @@ test('someone rates an idea from the plan page, and it shows in the corner', asy
   const guest = await guestContext.newPage()
   await guest.goto(shareUrl)
   await pick(guest, 'Stargazing')
-  await guest.getByRole('button', { name: 'Done' }).click()
+  await guest.getByRole('button', { name: 'Save plan' }).click()
   await closeShareDialog(guest)
 
   const card = guest.locator('[data-card-id]').filter({ hasText: 'Stargazing' })

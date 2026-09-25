@@ -113,7 +113,7 @@ describe('the plan page', () => {
   })
 
   /** @see docs/plans.md § "Sharing a plan" */
-  it('opens the share dialog when it comes straight from Done, and not otherwise', async () => {
+  it('opens the share dialog when it comes straight from Save plan, and not otherwise', async () => {
     const card = await decks.saveCard(db, 'owner', deck.id, null, { title: 'Picnic' })
     const plan = await decks.savePlan(db, deck.shareId, [card.id])
 

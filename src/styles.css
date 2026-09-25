@@ -52,7 +52,7 @@
 
 dialog,
 dialog .text-action {
-  text-shadow: unset;
+  text-shadow: initial;
 }
 
 * {
@@ -90,6 +90,10 @@ body::before {
 }
 
 .app-root {
+  /* Its width is the page's without a desktop scrollbar, which 100vw would
+     count, for the plan track to reach out to (docs/card-layout.md § "The
+     plan track"). */
+  container-type: inline-size;
   overflow-x: clip;
 }
 
@@ -109,8 +113,11 @@ button:focus-visible {
 }
 
 .page-shell {
+  /* In container units, which measure .app-root, so the plan track and its
+     scrollbar can work out the gap beside the page from it. */
+  --page-width: min(1240px, 100cqw - 40px);
   position: relative;
-  width: min(1240px, calc(100% - 40px));
+  width: var(--page-width);
   margin: 0 auto;
   padding: 72px 0 96px;
 }
@@ -299,14 +306,46 @@ h1 {
   grid-auto-flow: column;
   justify-content: safe center;
   gap: clamp(12px, 3vw, 20px);
-  /* Room for a hovered card as it grows and tilts (docs/card-layout.md
-     § "Tilting on hover"), which the scrolling would otherwise clip. */
-  padding: 16px 14px 24px;
-  margin: 0 -14px;
+  /* Reaches out to both edges of the screen, up to but not under a desktop
+     scrollbar, so cards scroll all the way to them, while the padding lines
+     the first and last card up with the page (docs/card-layout.md § "The plan
+     track"). 100cqw is .app-root's width, which leaves the scrollbar out. No
+     percentages, which don't work out in the scrollbar's styles. The padding
+     also leaves room for a hovered card as it grows and tilts (§ "Tilting on
+     hover"). */
+  --bleed: calc((100cqw - var(--page-width)) / 2);
+  padding: 16px max(14px, var(--bleed)) 24px;
+  margin: 0 calc(-1 * var(--bleed));
   overflow-x: auto;
   overflow-y: hidden;
   overscroll-behavior-inline: contain;
   scrollbar-color: var(--accent) transparent;
+}
+
+/* The scrollbar keeps in line with the page's content while the track runs
+   on to the edges of the screen (docs/card-layout.md § "The plan track").
+   Only Chromium and Safari can inset a scrollbar, and Chromium ignores these
+   while scrollbar-color is set, so they take its place there. Firefox keeps
+   a full-width scrollbar. */
+@supports selector(::-webkit-scrollbar) {
+  .plan-track {
+    scrollbar-color: auto;
+  }
+
+  .plan-track::-webkit-scrollbar {
+    height: 10px;
+  }
+
+  .plan-track::-webkit-scrollbar-track {
+    margin-inline: max(14px, var(--bleed));
+    background: transparent;
+  }
+
+  .plan-track::-webkit-scrollbar-thumb {
+    border: 2px solid transparent;
+    border-radius: 999px;
+    background: var(--accent) padding-box;
+  }
 }
 
 .empty-slot {
@@ -972,7 +1011,7 @@ textarea:focus-visible {
 
 @media (max-width: 640px) {
   .page-shell {
-    width: min(100% - 24px, 1240px);
+    --page-width: min(100cqw - 24px, 1240px);
     padding: 28px 0 64px;
   }
 

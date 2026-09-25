@@ -314,7 +314,7 @@ describe('DeckEditor', () => {
     it('says where plans will come from when there are none', () => {
       renderEditor()
       expect(
-        screen.getByText('When someone builds a plan from your link and presses Done, it shows up here.'),
+        screen.getByText('When someone builds a plan from your link and presses Save plan, it shows up here.'),
       ).toBeInTheDocument()
     })
   })

@@ -55,7 +55,7 @@ describe('SharePlanButton', () => {
   })
 
   /** @see docs/plans.md § "Sharing a plan" */
-  describe('straight after Done or Update Plan', () => {
+  describe('straight after Save plan or Update Plan', () => {
     beforeEach(() => {
       window.history.replaceState(null, '', '/p/plan42?share')
     })

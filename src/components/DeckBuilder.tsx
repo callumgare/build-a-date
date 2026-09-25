@@ -59,7 +59,7 @@ type DeckBuilderProps = {
   // "Remembering the choice").
   initialSort?: DeckSort
   remembersSort?: boolean
-  // A saved plan to start from, which Done then saves over rather than
+  // A saved plan to start from, which Update Plan then saves over rather than
   // making a new one (docs/plans.md § "Editing a plan").
   plan?: { id: string; cardIds: string[] }
   // The deck's plans, only for owners and editors, as on the deck's page.
@@ -99,7 +99,7 @@ export default function DeckBuilder({
   // Bumped when the kept picks change the plan, which lays the cards out
   // afresh rather than flying them up from the deck.
   const [layoutGeneration, setLayoutGeneration] = useState(0)
-  // The plan as last saved. While editing a plan, Done shares its link until
+  // The plan as last saved. While editing a plan, Update Plan shares its link until
   // something changes.
   const [saved, setSaved] = useState<{ key: string; planId: string } | null>(() =>
     plan ? { key: plan.cardIds.join(','), planId: plan.id } : null,
@@ -155,7 +155,7 @@ export default function DeckBuilder({
   }, [])
 
   // Nothing is kept when there's nothing unsaved: no picks, or the plan as it
-  // was last saved. So once Done has saved a new plan, the deck starts empty
+  // was last saved. So once Save plan has saved a new plan, the deck starts empty
   // next time (docs/plans.md § "Picks are kept in the browser").
   const baselineKey = saved?.key ?? ''
   useEffect(() => {
@@ -339,7 +339,7 @@ export default function DeckBuilder({
               onClick={sharePlan}
               disabled={saving || deleting || selectedIds.length === 0}
             >
-              {saving ? 'Saving…' : plan ? 'Update Plan' : 'Done'}
+              {saving ? 'Saving…' : plan ? 'Update Plan' : 'Save plan'}
             </button>
             {plan && (
               // Unsaved changes are dropped, so the edit page starts from the

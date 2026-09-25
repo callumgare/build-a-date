@@ -23,7 +23,7 @@ export async function generateMetadata({ params }: PageProps<'/p/[planId]/edit'>
   return { title: `Edit a plan from ${deck.name}` }
 }
 
-// The builder, starting from a saved plan, which Done saves over
+// The builder, starting from a saved plan, which Update Plan saves over
 // (docs/plans.md § "Editing a plan"). Anyone with the plan's link can.
 export default async function EditPlan({ params }: PageProps<'/p/[planId]/edit'>) {
   // A new shuffle for every visit, as on the shared deck.

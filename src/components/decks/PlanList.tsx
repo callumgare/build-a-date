@@ -10,7 +10,7 @@ export default function PlanList({ plans }: { plans: PlanSummary[] }) {
         Plans <small>({plans.length})</small>
       </h3>
       {plans.length === 0 ? (
-        <p className="muted">When someone builds a plan from your link and presses Done, it shows up here.</p>
+        <p className="muted">When someone builds a plan from your link and presses Save plan, it shows up here.</p>
       ) : (
         <ul className="plan-list">
           {plans.map((plan) => (

@@ -15,9 +15,15 @@ The lean is a Motion `rotate` value, so layout animations measure cards as if th
 
 The plan track has extra padding so a hovered card's edges and corners aren't clipped by its horizontal scrolling.
 
+## The plan track
+
+The plan track reaches across the whole width of the screen, past the edges of the page's column, so cards scroll right out to the edges of the screen instead of being cut off at the page's edges. It stops at a desktop scrollbar rather than running underneath it.
+
+Its own scrollbar doesn't run the full width. It starts and ends in line with the page's content, in Chromium and Safari. Firefox can't inset a scrollbar, so there it runs the full width of the track. While it's scrolled to the start, the first card lines up with the page's content, and at the end the last one does. A short plan stays centred.
+
 ## Reordering the plan
 
-The cards in the plan can be put in a different order. The plan starts in the order the cards were picked (see [deck-sorting.md](deck-sorting.md) § "How it fits with filters and the plan"), and the new order is the one that's shared when **Done** is pressed.
+The cards in the plan can be put in a different order. The plan starts in the order the cards were picked (see [deck-sorting.md](deck-sorting.md) § "How it fits with filters and the plan"), and the new order is the one that's shared when **Save plan** is pressed.
 
 - **By dragging it.** With a mouse, a card in the plan can be dragged from anywhere on it, and the other cards slide out of its way. A press that doesn't move is still a click, so the options on each side work as before.
 - **The grip.** A card in the plan has a grip, six white dots in a half circle of shade rising from the middle of its bottom edge. The shade is the same colour as the one behind the options at the top of the card, but it spreads a little further and fades out slowly, well past the grip. Only the grip itself takes clicks, not the shade around it. It shows whenever the card's options do (see [card-notes.md](card-notes.md) § "When the options show"). Cards in the deck don't have one.

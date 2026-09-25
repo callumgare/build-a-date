@@ -1,6 +1,6 @@
 # Plans
 
-A plan is the cards someone picked from a shared deck (`/d/…`), in their order. Pressing **Done** saves it under its own link (`/p/…`), which is what gets shared (see [Sharing a plan](#sharing-a-plan)).
+A plan is the cards someone picked from a shared deck (`/d/…`), in their order. Pressing **Save plan** saves it under its own link (`/p/…`), which is what gets shared (see [Sharing a plan](#sharing-a-plan)).
 
 Owners and editors see every plan made from the deck listed on the deck's page and on the shared deck ([deck-sharing.md](deck-sharing.md) § "Who can do what").
 
@@ -10,7 +10,7 @@ A plan lists card ids, not copies (the `plan` table's `card_ids`). Editing a car
 
 The picks in progress are kept in the browser. They aren't in the URL, so a link to `/d/…` never carries anyone's picks. The helpers are in `src/components/keptPicks.ts`.
 
-- **One set per deck.** Picks for a new plan are kept in local storage under `build-a-date:picks:deck:<shareId>`, so each deck remembers its own, the next time it's opened in any tab. Once **Done** has saved them as a plan they're forgotten, so **Create new plan** (or a reload) starts with nothing picked. Changing the plan again on the same page keeps it again, until the next **Done**.
+- **One set per deck.** Picks for a new plan are kept in local storage under `build-a-date:picks:deck:<shareId>`, so each deck remembers its own, the next time it's opened in any tab. Once **Save plan** has saved them as a plan they're forgotten, so **Create new plan** (or a reload) starts with nothing picked. Changing the plan again on the same page keeps it again, until the next **Save plan**.
 - **One set per plan being edited, for a reload only.** Changes to a saved plan are kept under `build-a-date:picks:plan:<planId>` in session storage, apart from the deck's own picks. A reload of the edit page keeps them. They're forgotten when they're saved (**Update Plan**), on **Cancel**, when the plan page is shown again (by a link, the back button or a reload), and when the tab is closed. So **Edit plan** always starts from the saved plan, including changes other people have made to it.
 - **Nothing kept for nothing.** When there's nothing unsaved (no picks, or the plan as it was last saved), the entry is removed. An emptied plan that's being edited is kept as empty.
 - **Straight into the plan.** After a reload, the kept picks are in the plan from the first frame. They don't fly up from the deck.
@@ -32,7 +32,7 @@ The cards are `PlanView` in `src/components/PlanView.tsx`. The options, tilt and
 
 **Edit plan** goes to `/p/[planId]/edit`. It's the shared deck's builder with the plan's cards already in the plan, and **Editing a plan** under the deck's name. Cards can be added, discarded and reordered as usual.
 
-- **Update Plan** (in place of **Done**) saves over the plan, so its link stays the same, then goes to the plan ready to share, like **Done** (see [Sharing a plan](#sharing-a-plan)). If nothing has changed, it goes there without saving.
+- **Update Plan** (in place of **Save plan**) saves over the plan, so its link stays the same, then goes to the plan ready to share, like **Save plan** (see [Sharing a plan](#sharing-a-plan)). If nothing has changed, it goes there without saving.
 - **Cancel** goes back to the plan page without saving, and drops the unsaved changes, so the next edit starts from the saved plan.
 - Leaving without either, and coming back to the plan page, drops the changes too. A reload of the edit page keeps them (see [Picks are kept in the browser](#picks-are-kept-in-the-browser)). The plan page forgets them with `ForgetPlanEdits`, when it mounts and when the browser brings it back from its back-forward cache.
 - **Delete plan** takes the place of **Clear plan** (see [Deleting a plan](#deleting-a-plan)).
@@ -42,7 +42,7 @@ The cards are `PlanView` in `src/components/PlanView.tsx`. The options, tilt and
 
 ## Sharing a plan
 
-Once **Done** or **Update Plan** has saved the plan, the browser goes to the plan's page with its share dialog already open. The builder has no share dialog of its own. The dialog is the same one the plan page's **Share** button opens:
+Once **Save plan** or **Update Plan** has saved the plan, the browser goes to the plan's page with its share dialog already open. The builder has no share dialog of its own. The dialog is the same one the plan page's **Share** button opens:
 
 - **Copy link** copies the plan's link.
 - **Share…** opens the device's share sheet, on devices that have one. Browsers only open the sheet straight after a press, so it can't open by itself when the page loads.
