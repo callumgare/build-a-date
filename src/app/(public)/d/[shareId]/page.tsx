@@ -30,6 +30,7 @@ export default async function SharedDeck({ params }: PageProps<'/d/[shareId]'>) 
   const seed = Math.floor(Math.random() * 2 ** 32)
   const session = await getSession()
   const access = session ? await getAccessState(getDb(), session.user.id, deck) : 'none'
+  const canEdit = access === 'owner' || access === 'editor'
 
   return (
     <DeckBuilder
@@ -39,7 +40,8 @@ export default async function SharedDeck({ params }: PageProps<'/d/[shareId]'>) 
       seed={seed}
       access={access}
       // The deck's own id only goes to people who can open its edit page.
-      editHref={access === 'owner' || access === 'editor' ? `/decks/${deck.id}` : undefined}
+      editHref={canEdit ? `/decks/${deck.id}` : undefined}
+      deckId={canEdit ? deck.id : undefined}
     />
   )
 }

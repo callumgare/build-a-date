@@ -10,6 +10,8 @@ The first spot in the **Ideas** grid on a deck's page (`/decks/…`) has no outl
 2. An **or** between two short rules, the same divider as under **Pick a card below** on `/d/…`.
 3. A **Quick Add** button, which opens a dialog with one box to type into.
 
+The same three things take the last spot in the deck on the shared deck (`/d/…`) for owners and editors (see [card-notes.md](card-notes.md) § "Editing a card"). Both are `src/components/decks/AddCardControls.tsx`, and `useCardEditor` in `src/components/decks/useCardEditor.tsx` wires Quick Add to the card form on both pages.
+
 Pressing **Fill in the details** sends the text off. While it's working the button says **Filling in…**, and it usually takes a few seconds, longer when there are pages to read. When it's done, the Quick Add dialog closes and the usual **New idea** form opens with the fields filled in. If it can't fill anything in, the dialog stays open with the reason and the text still in the box.
 
 Anyone who can edit the deck can use it, the owner or an editor (see [deck-sharing.md](deck-sharing.md) § "Who can do what").

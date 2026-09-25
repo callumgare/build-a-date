@@ -56,6 +56,19 @@ export function arrangeDeck(cards: DateCard[], seed: number) {
   return spreadFrames(shuffle(cards, seed))
 }
 
+// The deck after someone edits it from the shared page, which hands the page
+// the cards again with a new seed: rather than shuffle again, cards stay where
+// they were, with their new text, and new cards go first, where whoever added
+// them can see them (docs/card-notes.md § "Editing a card").
+export function keepArrangement(arranged: DateCard[], cards: DateCard[]): DateCard[] {
+  const cardsById = new Map(cards.map((card) => [card.id, card]))
+  const kept = new Set(arranged.map((card) => card.id))
+  return [
+    ...cards.filter((card) => !kept.has(card.id)).reverse(),
+    ...arranged.flatMap((card) => cardsById.get(card.id) ?? []),
+  ]
+}
+
 export const deckSorts = [
   { value: 'random', label: 'Random' },
   { value: 'added', label: 'Date added' },

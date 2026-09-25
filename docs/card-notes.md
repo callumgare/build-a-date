@@ -29,6 +29,17 @@ When the options show depends on the device:
 
 The options sit the same distance from the top of every card. A card's text always starts below the band of frame art at its top (the frame's top inset), and even the shortest band is taller than the options, so they never cover the title or description. The shade doesn't take clicks, so links in the description keep working while the options are showing.
 
+## Editing a card
+
+Owners and editors (see [deck-sharing.md](deck-sharing.md) § "Who can do what") can change the deck's ideas without leaving `/d/…`:
+
+- A small round pencil button sits in the bottom left corner of every card, in the deck and in the plan. It shows whenever the card's options do (see [When the options show](#when-the-options-show)). A click on it doesn't add, discard or open the notes. It opens the same **Edit idea** form as the deck's edit page, with **Save**, **Delete** and **Cancel**.
+- **Add an idea** and **Quick Add** take the last spot in the deck, after the cards. They're the same as the first spot in the grid on the edit page (see [quick-add.md](quick-add.md) § "Adding an idea").
+
+Nobody else sees either. The page only gets the deck's own id (`deckId` on `DeckBuilder`) for people who can edit it.
+
+Saving or deleting a card refreshes the page with the deck's new cards. The deck doesn't shuffle again: the cards stay where they were, with their new text, and a new card goes first. `keepArrangement` in `src/lib/deck-order.ts` does this. A card in the plan that's deleted drops out of the plan. Ratings and notes changed on this visit stay as they were.
+
 ## Opening a card's notes
 
 Pressing **Notes** lifts the card out of the deck or the plan. It flips over and grows until it fills most of the screen. It keeps the card's 3:4 shape and is never wider than 540px, so it doesn't get too big on a desktop. The back of the card has:

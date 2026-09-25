@@ -109,8 +109,67 @@
   pointer-events: auto;
 }
 
+/* The pencil in the bottom left corner that opens the card form, for people
+   who can edit the deck (docs/card-notes.md § "Editing a card"). It shows
+   whenever the options at the top do. */
+.edit {
+  position: absolute;
+  bottom: 5cqw;
+  left: 5cqw;
+  z-index: 1;
+  display: grid;
+  place-items: center;
+  width: clamp(24px, 14cqw, 34px);
+  aspect-ratio: 1;
+  padding: 0;
+  border: 0;
+  border-radius: 50%;
+  color: #fff;
+  background: rgba(4, 23, 31, 0.62);
+  box-shadow: 0 2px 6px rgba(4, 23, 31, 0.3);
+  cursor: pointer;
+  opacity: 0;
+  transition:
+    opacity 0.15s ease,
+    background-color 0.15s ease;
+  pointer-events: none;
+}
+
+.edit svg {
+  width: 55%;
+  height: 55%;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 2;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.edit:hover {
+  background: rgba(4, 23, 31, 0.85);
+}
+
+.edit:focus-visible {
+  outline: 2px solid #fff;
+  outline-offset: 2px;
+}
+
+@media (hover: hover) {
+  .card:hover .edit {
+    opacity: 1;
+    pointer-events: auto;
+  }
+}
+
+.card[data-revealed='true'] .edit,
+.card:has(:focus-visible) .edit {
+  opacity: 1;
+  pointer-events: auto;
+}
+
 @media (prefers-reduced-motion: reduce) {
-  .actions {
+  .actions,
+  .edit {
     transition: none;
   }
 }

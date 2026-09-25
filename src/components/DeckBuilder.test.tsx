@@ -6,6 +6,8 @@ import DeckBuilder from './DeckBuilder'
 
 const { savePlan, saveCardNotes } = vi.hoisted(() => ({ savePlan: vi.fn(), saveCardNotes: vi.fn() }))
 vi.mock('@/lib/actions/plans', () => ({ savePlan, saveCardNotes }))
+const deckActions = vi.hoisted(() => ({ saveCard: vi.fn(), deleteCard: vi.fn(), quickAddCard: vi.fn() }))
+vi.mock('@/lib/actions/decks', () => deckActions)
 vi.mock('next/link', () => ({ default: (props: object) => <a {...props} /> }))
 
 const cards: DateCard[] = [
@@ -368,6 +370,120 @@ describe('DeckBuilder', () => {
       const notes = await screen.findByRole('dialog', { name: 'Museum' })
       await user.click(within(notes).getByRole('radio', { name: '3 stars' }))
       expect(await within(notes).findByRole('alert')).toHaveTextContent('Card not found')
+    })
+  })
+
+  /** @see docs/card-notes.md § "Editing a card" */
+  describe('editing the deck', () => {
+    function renderForEditor(deckCards = cards, seed = 1) {
+      return <DeckBuilder deckName="Test deck" shareId="share123" cards={deckCards} seed={seed} deckId="deck1" />
+    }
+
+    function deckOrder(container: HTMLElement) {
+      return [...container.querySelectorAll('[data-deck-card-id]')].map((card) =>
+        card.getAttribute('data-deck-card-id'),
+      )
+    }
+
+    beforeEach(() => {
+      for (const action of Object.values(deckActions)) {
+        action.mockReset()
+        action.mockResolvedValue({ ok: true, data: undefined })
+      }
+    })
+
+    afterEach(() => vi.restoreAllMocks())
+
+    it("gives no way to edit to someone who can't", () => {
+      renderBuilder()
+      expect(screen.queryByRole('button', { name: 'Edit Picnic' })).not.toBeInTheDocument()
+      expect(screen.queryByRole('button', { name: 'Add an idea' })).not.toBeInTheDocument()
+      expect(screen.queryByRole('button', { name: 'Quick Add' })).not.toBeInTheDocument()
+    })
+
+    it("opens a card's edit form from its edit button, without adding it to the plan", async () => {
+      vi.spyOn(window, 'matchMedia').mockImplementation(
+        (query) => ({ matches: query === '(hover: hover)', media: query }) as MediaQueryList,
+      )
+      const user = userEvent.setup()
+      render(renderForEditor())
+
+      await user.click(screen.getByRole('button', { name: 'Edit Picnic' }))
+      const form = await screen.findByRole('dialog', { name: 'Edit idea' })
+      expect(within(form).getByRole('textbox', { name: /^Title/ })).toHaveValue('Picnic')
+      expect(screen.getByRole('button', { name: 'Add to plan: Picnic' })).toBeInTheDocument()
+      expect(window.location.hash).toBe('')
+
+      await user.clear(within(form).getByRole('textbox', { name: /^Title/ }))
+      await user.type(within(form).getByRole('textbox', { name: /^Title/ }), 'Picnic by the river')
+      await user.click(within(form).getByRole('button', { name: 'Save' }))
+      expect(deckActions.saveCard).toHaveBeenCalledWith('deck1', 'picnic', {
+        title: 'Picnic by the river',
+        description: '',
+        tags: ['outside'],
+        date: '',
+      })
+    })
+
+    it('has an edit button on cards in the plan too', async () => {
+      window.location.hash = '#museum'
+      const { container } = render(renderForEditor())
+      expect(await screen.findByRole('button', { name: 'Discard: Museum' })).toBeInTheDocument()
+      const planCard = container.querySelector('[data-card-id="museum"]') as HTMLElement
+      expect(within(planCard).getByRole('button', { name: 'Edit Museum' })).toBeInTheDocument()
+    })
+
+    it("doesn't mark a side of the card while the mouse is over the edit button", () => {
+      const { container } = render(renderForEditor())
+      const card = container.querySelector('[data-deck-card-id="picnic"]') as HTMLElement
+      fireEvent.pointerMove(screen.getByRole('button', { name: 'Edit Picnic' }), { pointerType: 'mouse' })
+      expect(card.dataset.side).toBeUndefined()
+    })
+
+    /** @see docs/quick-add.md § "Adding an idea" */
+    it('offers Add an idea and Quick Add in the last spot in the deck', async () => {
+      const user = userEvent.setup()
+      deckActions.quickAddCard.mockResolvedValue({
+        ok: true,
+        data: { title: 'Golf', description: '', tags: [], date: '' },
+      })
+      const { container } = render(renderForEditor())
+      const grid = container.querySelector('.card-grid') as HTMLElement
+      expect(grid.lastElementChild).toContainElement(screen.getByRole('button', { name: 'Add an idea' }))
+
+      await user.click(screen.getByRole('button', { name: 'Add an idea' }))
+      expect(await screen.findByRole('heading', { name: 'New idea' })).toBeInTheDocument()
+      expect(screen.getByRole('textbox', { name: /^Title/ })).toHaveValue('')
+      await user.click(screen.getByRole('button', { name: 'Cancel' }))
+
+      await user.click(screen.getByRole('button', { name: 'Quick Add' }))
+      await user.type(screen.getByRole('textbox', { name: /^Describe the idea/ }), 'Golf')
+      await user.click(screen.getByRole('button', { name: 'Fill in the details' }))
+      expect(deckActions.quickAddCard).toHaveBeenCalledWith('deck1', 'Golf')
+      expect(await screen.findByRole('textbox', { name: /^Title/ })).toHaveValue('Golf')
+    })
+
+    it("doesn't reshuffle when the edited cards come back, and puts a new card first", async () => {
+      const { container, rerender } = render(renderForEditor())
+      const before = deckOrder(container)
+
+      const golf: DateCard = { id: 'golf', title: 'Golf', description: '', tags: [] }
+      rerender(renderForEditor([{ ...cards[0], title: 'Picnic by the river' }, cards[1], cards[2], golf], 99))
+      expect(deckOrder(container)).toEqual(['golf', ...before])
+      expect(screen.getByRole('button', { name: 'Add to plan: Picnic by the river' })).toBeInTheDocument()
+
+      rerender(renderForEditor([cards[1], cards[2], golf], 7))
+      await waitFor(() => expect(deckOrder(container)).toEqual(['golf', ...before.filter((id) => id !== 'picnic')]))
+    })
+
+    it('drops a deleted card from the plan', async () => {
+      window.location.hash = '#museum'
+      const { rerender } = render(renderForEditor())
+      expect(await screen.findByRole('button', { name: 'Discard: Museum' })).toBeInTheDocument()
+
+      rerender(renderForEditor([cards[0], cards[2]]))
+      await waitFor(() => expect(window.location.hash).toBe(''))
+      expect(screen.queryByRole('button', { name: 'Discard: Museum' })).not.toBeInTheDocument()
     })
   })
 

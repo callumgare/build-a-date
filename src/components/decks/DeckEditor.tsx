@@ -3,14 +3,13 @@
 import { type FormEvent, type KeyboardEvent, useMemo, useState, useTransition } from 'react'
 import { deleteDeck, leaveDeck, renameDeck } from '@/lib/actions/decks'
 import type { DeckRole } from '@/lib/decks'
-import type { CardDraft } from '@/lib/quick-add'
 import type { DateCard } from '@/types'
 import Card from '../Card'
 import cardStyles from '../Card.module.css'
 import { frameFor } from '../frames'
-import CardEditor from './CardEditor'
+import AddCardControls from './AddCardControls'
 import { AccessRequests, type DeckPerson, Editors } from './DeckAccess'
-import QuickAdd from './QuickAdd'
+import { useCardEditor } from './useCardEditor'
 
 type DeckEditorProps = {
   deck: { id: string; name: string; shareId: string }
@@ -33,17 +32,13 @@ function clickOnActivationKey(event: KeyboardEvent<HTMLElement>) {
 }
 
 export default function DeckEditor({ deck, role, access, shareUrl, cards, plans }: DeckEditorProps) {
-  // undefined: closed, null: adding a card.
-  const [editing, setEditing] = useState<DateCard | null | undefined>(undefined)
-  const [quickAdding, setQuickAdding] = useState(false)
-  // What Quick Add read, for the new card's form to start with.
-  const [draft, setDraft] = useState<CardDraft | undefined>(undefined)
   const [renaming, setRenaming] = useState(false)
   const [copied, setCopied] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [pending, startTransition] = useTransition()
 
   const deckTags = useMemo(() => [...new Set(cards.flatMap((card) => card.tags))].sort(), [cards])
+  const cardEditor = useCardEditor(deck.id, deckTags)
 
   function rename(event: FormEvent<HTMLFormElement>) {
     event.preventDefault()
@@ -151,15 +146,7 @@ export default function DeckEditor({ deck, role, access, shareUrl, cards, plans 
         Ideas <small>({cards.length})</small>
       </h3>
       <div className="card-grid editor-grid">
-        <div className="add-slot">
-          <button className="add-card" type="button" onClick={() => setEditing(null)}>
-            Add an idea
-          </button>
-          <span className="empty-slot-divider">or</span>
-          <button className="done-button" type="button" onClick={() => setQuickAdding(true)}>
-            Quick Add
-          </button>
-        </div>
+        <AddCardControls onAdd={cardEditor.addCard} onQuickAdd={cardEditor.quickAdd} />
         {cards.map((card) => (
           // biome-ignore lint/a11y/useSemanticElements: a div so descriptions can hold links (see clickOnActivationKey)
           <div
@@ -167,7 +154,7 @@ export default function DeckEditor({ deck, role, access, shareUrl, cards, plans 
             key={card.id}
             role="button"
             tabIndex={0}
-            onClick={() => setEditing(card)}
+            onClick={() => cardEditor.editCard(card)}
             onKeyDown={clickOnActivationKey}
             aria-label={`Edit ${card.title}`}
           >
@@ -204,26 +191,7 @@ export default function DeckEditor({ deck, role, access, shareUrl, cards, plans 
 
       {role === 'owner' && <Editors deckId={deck.id} people={access} />}
 
-      <QuickAdd
-        deckId={deck.id}
-        open={quickAdding}
-        onClose={() => setQuickAdding(false)}
-        onDraft={(read) => {
-          setQuickAdding(false)
-          setDraft(read)
-          setEditing(null)
-        }}
-      />
-      <CardEditor
-        deckId={deck.id}
-        card={editing}
-        draft={draft}
-        deckTags={deckTags}
-        onClose={() => {
-          setEditing(undefined)
-          setDraft(undefined)
-        }}
-      />
+      {cardEditor.dialogs}
     </section>
   )
 }

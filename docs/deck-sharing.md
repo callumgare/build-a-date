@@ -10,7 +10,7 @@ A deck's share link (`/d/…`) lets anyone build a plan from it. The same page a
 | Editor (an accepted request) | ✓ | ✓ | ✓ | | |
 | Owner | ✓ | ✓ | ✓ | ✓ | ✓ |
 
-Ratings and notes are covered in [card-notes.md](card-notes.md).
+Ratings and notes are covered in [card-notes.md](card-notes.md). Owners and editors can add, edit and delete ideas from the shared deck (`/d/…`) as well as from the deck's edit page (see [card-notes.md](card-notes.md) § "Editing a card").
 
 A pending request gives nothing beyond what anyone with the link already has.
 

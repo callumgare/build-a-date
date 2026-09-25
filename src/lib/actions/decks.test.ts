@@ -102,6 +102,20 @@ describe('changing a deck', () => {
     expect(revalidatePath).toHaveBeenCalledWith(`/decks/${deckId}`)
   })
 
+  /** @see docs/card-notes.md § "Editing a card" - saving or deleting refreshes the shared deck */
+  it('refreshes the shared deck as well as the edit page when a card changes', async () => {
+    const { shareId } = await decks.getOwnedDeck(db, 'owner', deckId)
+    const added = await saveCard(deckId, null, { title: 'Picnic' })
+    if (!added.ok) throw new Error(added.error)
+    expect(revalidatePath).toHaveBeenCalledWith(`/decks/${deckId}`)
+    expect(revalidatePath).toHaveBeenCalledWith(`/d/${shareId}`)
+
+    vi.mocked(revalidatePath).mockClear()
+    await deleteCard(deckId, added.data.id)
+    expect(revalidatePath).toHaveBeenCalledWith(`/decks/${deckId}`)
+    expect(revalidatePath).toHaveBeenCalledWith(`/d/${shareId}`)
+  })
+
   it('turns a card without a title into a message', async () => {
     expect(await saveCard(deckId, null, { title: '' })).toEqual({ ok: false, error: 'Give the idea a title' })
   })

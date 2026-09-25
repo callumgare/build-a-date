@@ -65,6 +65,21 @@ describe('the shared deck page', () => {
     expect(await open()).toMatchObject({ access: 'pending', editHref: undefined })
   })
 
+  /** @see docs/card-notes.md § "Editing a card" - only people who can edit get the deck's id */
+  it('lets owners and editors edit cards from the page, and only them', async () => {
+    await decks.requestEditAccess(db, 'helper', deck.shareId)
+    await decks.respondToAccessRequest(db, 'owner', deck.id, 'helper', true)
+    await decks.requestEditAccess(db, 'asker', deck.shareId)
+
+    expect((await open()).deckId).toBeUndefined()
+    signIn('owner')
+    expect((await open()).deckId).toBe(deck.id)
+    signIn('helper')
+    expect((await open()).deckId).toBe(deck.id)
+    signIn('asker')
+    expect((await open()).deckId).toBeUndefined()
+  })
+
   it("shows the not-found page for a deck that doesn't exist", async () => {
     await expect(open('nope')).rejects.toThrow(NotFoundPage)
   })

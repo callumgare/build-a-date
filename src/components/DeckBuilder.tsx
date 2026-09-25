@@ -12,12 +12,14 @@ import {
   useState,
 } from 'react'
 import { savePlan } from '@/lib/actions/plans'
-import { arrangeDeck, type DeckSort, deckSorts, sortDeck } from '@/lib/deck-order'
+import { arrangeDeck, type DeckSort, deckSorts, keepArrangement, sortDeck } from '@/lib/deck-order'
 import type { AccessState } from '@/lib/decks'
 import type { DateCard } from '@/types'
 import Card from './Card'
 import cardStyles from './Card.module.css'
 import CardNotes, { type Notes } from './CardNotes'
+import AddCardControls from './decks/AddCardControls'
+import { useCardEditor } from './decks/useCardEditor'
 import FlyingCard from './FlyingCard'
 import { frameFor } from './frames'
 import InstallHint from './InstallHint'
@@ -47,6 +49,8 @@ type DeckBuilderProps = {
   // Whether the visitor can edit the deck, has asked to, or neither.
   access?: AccessState
   editHref?: string
+  // Only for owners and editors, who can change the cards from here too.
+  deckId?: string
 }
 
 export default function DeckBuilder({
@@ -56,8 +60,16 @@ export default function DeckBuilder({
   seed,
   access = 'none',
   editHref,
+  deckId,
 }: DeckBuilderProps) {
-  const arranged = useMemo(() => arrangeDeck(deckCards, seed), [deckCards, seed])
+  const [arranged, setArranged] = useState(() => arrangeDeck(deckCards, seed))
+  const [arrangedFrom, setArrangedFrom] = useState(deckCards)
+  // Cards edited from here come back from the server, which shouldn't
+  // reshuffle the deck.
+  if (arrangedFrom !== deckCards) {
+    setArrangedFrom(deckCards)
+    setArranged(keepArrangement(arranged, deckCards))
+  }
   const cardsById = useMemo(() => new Map(deckCards.map((card) => [card.id, card])), [deckCards])
   // Picks in progress live in the URL hash, which only the browser can see,
   // so they're read in after the first render.
@@ -95,6 +107,7 @@ export default function DeckBuilder({
   const reduceMotion = useReducedMotion()
 
   const tags = useMemo(() => [...new Set(deckCards.flatMap((card) => card.tags))].sort(), [deckCards])
+  const cardEditor = useCardEditor(deckId, tags)
 
   const availableCards = cards.filter(
     (card) => !selectedIds.includes(card.id) && [...activeTags].every((tag) => card.tags.includes(tag)),
@@ -182,6 +195,11 @@ export default function DeckBuilder({
     document.addEventListener('pointerdown', hide)
     return () => document.removeEventListener('pointerdown', hide)
   }, [revealedId])
+
+  function editCard(card: DateCard) {
+    setRevealedId(null)
+    cardEditor.editCard(card)
+  }
 
   function removeCard(id: string) {
     setSelectedIds((currentIds) => currentIds.filter((selectedId) => selectedId !== id))
@@ -308,6 +326,7 @@ export default function DeckBuilder({
                       frame={frameFor(card.id)}
                       actions={<CardActions title={card.title} primary="Discard" actions={actions} />}
                     />
+                    {deckId && <EditButton title={card.title} onClick={() => editCard(card)} />}
                   </motion.div>
                 )
               })}
@@ -402,10 +421,17 @@ export default function DeckBuilder({
                       frame={frameFor(card.id)}
                       actions={<CardActions title={card.title} primary="Add to plan" actions={actions} />}
                     />
+                    {deckId && <EditButton title={card.title} onClick={() => editCard(card)} />}
                   </motion.div>
                 )
               })}
             </AnimatePresence>
+            {deckId && (
+              // The last spot in the deck, moving along with the cards.
+              <motion.div layout transition={transition}>
+                <AddCardControls onAdd={cardEditor.addCard} onQuickAdd={cardEditor.quickAdd} />
+              </motion.div>
+            )}
           </motion.div>
 
           {availableCards.length === 0 && (
@@ -448,6 +474,8 @@ export default function DeckBuilder({
           onClosed={() => setNotesOpen(null)}
         />
       )}
+
+      {cardEditor.dialogs}
 
       <dialog className="share-dialog" ref={dialogReference} onClose={() => setLinkCopied(false)}>
         <p>Share your date plan</p>
@@ -514,10 +542,10 @@ function sideOf(event: { clientX: number; currentTarget: Element }): Side {
 
 // Marks which option a click would pick, so its label can go bold. Set on the
 // element directly, as it changes with every move of the mouse. Nothing is
-// marked over a link, since a click there follows the link instead.
+// marked over a link, or the edit button, since a click there does that instead.
 function showHoveredSide(event: ReactPointerEvent<HTMLElement>) {
   if (event.pointerType === 'touch') return
-  const overLink = event.target instanceof Element && event.target.closest('a')
+  const overLink = event.target instanceof Element && event.target.closest(`a, .${cardStyles.edit}`)
   if (overLink) delete event.currentTarget.dataset.side
   else event.currentTarget.dataset.side = sideOf(event)
 }
@@ -556,5 +584,18 @@ function CardActions({ title, primary, actions }: CardActionsProps) {
         Notes
       </button>
     </>
+  )
+}
+
+// Opens the card form from the card's bottom left corner, for people who can
+// edit the deck (docs/card-notes.md § "Editing a card").
+function EditButton({ title, onClick }: { title: string; onClick: () => void }) {
+  return (
+    <button className={cardStyles.edit} type="button" aria-label={`Edit ${title}`} onClick={onClick}>
+      <svg viewBox="0 0 24 24" aria-hidden="true">
+        <path d="M4 20h4L19 9l-4-4L4 16v4Z" />
+        <path d="m13.5 6.5 4 4" />
+      </svg>
+    </button>
   )
 }

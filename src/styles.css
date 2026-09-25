@@ -812,19 +812,24 @@ textarea:focus-visible {
   opacity: 0.75;
 }
 
-/* Sits in the grid where a card would, like the plan's empty slot but
-   without its dashed outline. */
-.add-slot {
+/* Add an idea or Quick Add. It sits in the grid where a card would (first on
+   the edit page, last on the shared deck), like the plan's empty slot but
+   without its dashed outline. On the shared deck it's wrapped for Motion's
+   layout animation, hence a descendant rather than a child selector. */
+.add-card-controls {
   display: flex;
   flex-direction: column;
   gap: 0.5em;
   align-items: center;
   justify-content: center;
-  aspect-ratio: 3 / 4;
-  padding: 27px 24px;
   color: var(--accent);
   font-size: clamp(1.25rem, 2.5vw, 1.6rem);
   text-align: center;
+}
+
+.card-grid .add-card-controls {
+  aspect-ratio: 3 / 4;
+  padding: 27px 24px;
 }
 
 .add-card {
@@ -842,7 +847,7 @@ textarea:focus-visible {
   text-decoration-thickness: 1px;
 }
 
-.add-slot .done-button {
+.add-card-controls .done-button {
   margin-top: 0.3em;
 }
 
@@ -977,9 +982,12 @@ textarea:focus-visible {
     font-size: 1.2rem;
   }
 
-  .add-slot {
-    padding: 12px;
+  .add-card-controls {
     font-size: 1.2rem;
+  }
+
+  .card-grid .add-card-controls {
+    padding: 12px;
   }
 
   .card-grid {

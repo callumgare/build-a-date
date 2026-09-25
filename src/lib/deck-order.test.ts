@@ -1,6 +1,6 @@
 import { frameFor } from '@/components/frames'
 import type { DateCard } from '@/types'
-import { arrangeDeck, shuffle, sortDeck, spreadFrames } from './deck-order'
+import { arrangeDeck, keepArrangement, shuffle, sortDeck, spreadFrames } from './deck-order'
 
 const cards: DateCard[] = Array.from({ length: 40 }, (_, index) => ({
   id: `card-${index}`,
@@ -66,6 +66,24 @@ describe('arrangeDeck', () => {
 })
 
 /** @see docs/deck-sorting.md § "Sort options" */
+/** @see docs/card-notes.md § "Editing a card" - the deck doesn't shuffle again */
+describe('keepArrangement', () => {
+  const [a, b, c] = cards
+
+  it('keeps cards where they were, with their new text', () => {
+    expect(keepArrangement([c, a, b], [a, { ...b, title: 'Edited' }, c])).toEqual([c, a, { ...b, title: 'Edited' }])
+  })
+
+  it('puts new cards first, newest first', () => {
+    const [d, e] = cards.slice(3, 5)
+    expect(keepArrangement([b, a], [a, b, d, e])).toEqual([e, d, b, a])
+  })
+
+  it('drops deleted cards', () => {
+    expect(keepArrangement([c, a, b], [a, b])).toEqual([a, b])
+  })
+})
+
 describe('sortDeck', () => {
   const added = cards.slice(0, 6)
   const arranged = arrangeDeck(added, 5)

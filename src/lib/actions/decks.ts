@@ -5,7 +5,7 @@ import { revalidatePath } from 'next/cache'
 import { notFound, redirect } from 'next/navigation'
 import { z } from 'zod'
 import { starterCards } from '@/data/starter-cards'
-import { getDb } from '@/db'
+import { type Database, getDb } from '@/db'
 import { requireUser } from '../auth'
 import * as decks from '../decks'
 import { editRequestEmail, sendEmail } from '../email'
@@ -52,8 +52,9 @@ export async function saveCard(
 ): Promise<ActionResult<{ id: string }>> {
   const user = await requireUser()
   try {
-    const saved = await decks.saveCard(getDb(), user.id, deckId, cardId, cardInput.parse(input))
-    revalidatePath(`/decks/${deckId}`)
+    const db = getDb()
+    const saved = await decks.saveCard(db, user.id, deckId, cardId, cardInput.parse(input))
+    await revalidateCards(db, user.id, deckId)
     return ok({ id: saved.id })
   } catch (error) {
     return fail(error)
@@ -83,12 +84,21 @@ export async function quickAddCard(deckId: string, text: string): Promise<Action
 export async function deleteCard(deckId: string, cardId: string): Promise<ActionResult> {
   const user = await requireUser()
   try {
-    await decks.deleteCard(getDb(), user.id, deckId, cardId)
+    const db = getDb()
+    await decks.deleteCard(db, user.id, deckId, cardId)
+    await revalidateCards(db, user.id, deckId)
   } catch (error) {
     return fail(error)
   }
-  revalidatePath(`/decks/${deckId}`)
   return ok(undefined)
+}
+
+// Cards are changed from the deck's edit page and from the shared deck, and
+// both show them (docs/card-notes.md § "Editing a card").
+async function revalidateCards(db: Database, userId: string, deckId: string) {
+  const { deck } = await decks.getEditableDeck(db, userId, deckId)
+  revalidatePath(`/decks/${deckId}`)
+  revalidatePath(`/d/${deck.shareId}`)
 }
 
 // A form action (bound to the share id), so asking works before the page's
