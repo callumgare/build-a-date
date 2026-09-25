@@ -600,6 +600,83 @@ describe('DeckBuilder', () => {
     })
   })
 
+  describe('reordering the plan', () => {
+    function planOrder(container: HTMLElement) {
+      return [...container.querySelectorAll('[data-card-id]')].map((card) => card.getAttribute('data-card-id'))
+    }
+
+    /** @see docs/card-layout.md § "Reordering the plan" - by its grip */
+    it('gives cards in the plan a grip, and cards in the deck none', async () => {
+      window.location.hash = '#museum'
+      renderBuilder()
+      expect(await screen.findByRole('button', { name: 'Move Museum' })).toBeInTheDocument()
+      expect(screen.queryByRole('button', { name: 'Move Picnic' })).not.toBeInTheDocument()
+    })
+
+    /** @see docs/card-layout.md § "Reordering the plan" - from the keyboard, and in the link */
+    it('moves a card along the plan with the arrow keys on its grip', async () => {
+      window.location.hash = '#picnic,museum,hike'
+      const user = userEvent.setup()
+      const { container } = renderBuilder()
+      const grip = await screen.findByRole('button', { name: 'Move Picnic' })
+
+      grip.focus()
+      await user.keyboard('{ArrowRight}')
+      expect(planOrder(container)).toEqual(['museum', 'picnic', 'hike'])
+      expect(window.location.hash).toBe('#museum,picnic,hike')
+      expect(screen.getByRole('button', { name: 'Move Picnic' })).toHaveFocus()
+
+      await user.keyboard('{ArrowRight}{ArrowRight}')
+      expect(planOrder(container)).toEqual(['museum', 'hike', 'picnic'])
+
+      await user.keyboard('{ArrowLeft}')
+      expect(planOrder(container)).toEqual(['museum', 'picnic', 'hike'])
+    })
+
+    /** @see docs/card-layout.md § "Reordering the plan" - the new order is the one that's shared */
+    it('saves the plan in its new order', async () => {
+      savePlan.mockResolvedValue({ ok: true, data: { planId: 'plan42' } })
+      window.location.hash = '#picnic,hike'
+      const user = userEvent.setup()
+      renderBuilder()
+
+      const grip = await screen.findByRole('button', { name: 'Move Hike' })
+      grip.focus()
+      await user.keyboard('{ArrowLeft}')
+      await user.click(screen.getByRole('button', { name: 'Done' }))
+      expect(savePlan).toHaveBeenCalledWith('share123', ['hike', 'picnic'])
+    })
+
+    describe('with a mouse', () => {
+      beforeEach(() => {
+        vi.spyOn(window, 'matchMedia').mockImplementation(
+          (query) => ({ matches: query === '(hover: hover)', media: query }) as MediaQueryList,
+        )
+      })
+
+      afterEach(() => vi.restoreAllMocks())
+
+      /** @see docs/card-layout.md § "Reordering the plan" - not a click */
+      it("doesn't discard the card or open its notes when the grip is pressed", async () => {
+        window.location.hash = '#museum'
+        const user = userEvent.setup()
+        renderBuilder()
+
+        await user.click(await screen.findByRole('button', { name: 'Move Museum' }))
+        expect(screen.getByRole('button', { name: 'Discard: Museum' })).toBeInTheDocument()
+        expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
+      })
+
+      it("doesn't mark a side of the card while the mouse is over the grip", async () => {
+        window.location.hash = '#museum'
+        const { container } = renderBuilder()
+        fireEvent.pointerMove(await screen.findByRole('button', { name: 'Move Museum' }), { pointerType: 'mouse' })
+        const card = container.querySelector('[data-card-id="museum"]') as HTMLElement
+        expect(card.dataset.side).toBeUndefined()
+      })
+    })
+  })
+
   it('empties the plan with Clear plan', async () => {
     const user = userEvent.setup()
     renderBuilder()

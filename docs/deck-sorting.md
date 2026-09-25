@@ -17,7 +17,7 @@ On a shared deck (`/d/…`), the ideas that aren't in the plan can be put in a d
 ## How it fits with filters and the plan
 
 - Sorting and the tag filters work together: the filters pick which ideas show, the sort puts them in order.
-- Sorting only changes the deck. Cards in the plan stay in the order they were picked, and **select a random one** still picks at random from the ideas the filters show.
+- Sorting only changes the deck. Cards in the plan stay in the order they were picked, or were dragged into (see [card-layout.md](card-layout.md) § "Reordering the plan"), and **select a random one** still picks at random from the ideas the filters show.
 
 ## Remembering the choice
 

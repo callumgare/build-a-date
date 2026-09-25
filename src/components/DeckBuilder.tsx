@@ -1,8 +1,10 @@
 'use client'
 
-import { AnimatePresence, animate, LayoutGroup, motion, useReducedMotion } from 'motion/react'
+import { AnimatePresence, animate, LayoutGroup, motion, Reorder, useDragControls, useReducedMotion } from 'motion/react'
 import Link from 'next/link'
 import {
+  type ComponentProps,
+  type KeyboardEvent as ReactKeyboardEvent,
   type MouseEvent as ReactMouseEvent,
   type PointerEvent as ReactPointerEvent,
   useCallback,
@@ -112,6 +114,8 @@ export default function DeckBuilder({
   )
   const dialogReference = useRef<HTMLDialogElement>(null)
   const trackReference = useRef<HTMLDivElement>(null)
+  // The card moved from the keyboard, whose grip gets focus back afterwards.
+  const [movedId, setMovedId] = useState<string | null>(null)
   const reduceMotion = useReducedMotion()
 
   const tags = useMemo(() => [...new Set(deckCards.flatMap((card) => card.tags))].sort(), [deckCards])
@@ -212,6 +216,30 @@ export default function DeckBuilder({
   function removeCard(id: string) {
     setSelectedIds((currentIds) => currentIds.filter((selectedId) => selectedId !== id))
   }
+
+  // Moves a card one place along the plan, from its grip with the arrow keys
+  // (docs/card-layout.md § "Reordering the plan").
+  function moveCard(id: string, by: -1 | 1) {
+    setSelectedIds((currentIds) => {
+      const from = currentIds.indexOf(id)
+      const to = from + by
+      if (from === -1 || to < 0 || to >= currentIds.length) return currentIds
+      const nextIds = [...currentIds]
+      nextIds.splice(from, 1)
+      nextIds.splice(to, 0, id)
+      return nextIds
+    })
+    setMovedId(id)
+  }
+
+  // React moves the card's element to its new place, which can take focus
+  // off its grip.
+  useEffect(() => {
+    if (!movedId) return
+    const grip = document.querySelector<HTMLElement>(`[data-card-id="${CSS.escape(movedId)}"] .${cardStyles.grip}`)
+    if (grip && document.activeElement !== grip) grip.focus()
+    setMovedId(null)
+  }, [movedId])
 
   function toggleTag(tag: string) {
     setActiveTags((currentTags) => {
@@ -316,7 +344,17 @@ export default function DeckBuilder({
             </p>
           )}
 
-          <div className="plan-track" ref={trackReference}>
+          {/* Cards in the plan are dragged by their grip to reorder it
+              (docs/card-layout.md § "Reordering the plan"). */}
+          <Reorder.Group
+            as="div"
+            axis="x"
+            className="plan-track"
+            ref={trackReference}
+            values={selectedIds}
+            onReorder={setSelectedIds}
+            layoutScroll
+          >
             <AnimatePresence initial={false} mode="popLayout">
               {selectedIds.map((id) => {
                 const card = cardsById.get(id)
@@ -324,18 +362,20 @@ export default function DeckBuilder({
                 const actions: SideActions = { primary: () => removeCard(card.id), notes: () => openNotes(card.id) }
 
                 return (
-                  <motion.div
+                  <PlanCard
                     className={`${cardStyles.card} ${flight?.id === card.id || notesOpen?.id === card.id ? cardStyles.inFlight : ''}`}
                     key={card.id}
+                    value={card.id}
+                    title={card.title}
                     data-card-id={card.id}
                     data-revealed={revealedId === card.id}
-                    layout
                     layoutId={`card-${card.id}`}
                     onPointerEnter={tiltCard}
                     transition={transition}
                     onClick={(event) => clickCard(card.id, event, actions)}
                     onPointerMove={showHoveredSide}
                     onPointerLeave={leaveCard}
+                    onMove={(by) => moveCard(card.id, by)}
                   >
                     <Card
                       card={card}
@@ -344,7 +384,7 @@ export default function DeckBuilder({
                       scrawl={notesById.get(card.id)}
                     />
                     {deckId && <EditButton title={card.title} onClick={() => editCard(card)} />}
-                  </motion.div>
+                  </PlanCard>
                 )
               })}
             </AnimatePresence>
@@ -359,7 +399,7 @@ export default function DeckBuilder({
                 </>
               )}
             </motion.div>
-          </div>
+          </Reorder.Group>
         </section>
 
         <section className="deck-section" aria-label="Date ideas">
@@ -561,10 +601,12 @@ function sideOf(event: { clientX: number; currentTarget: Element }): Side {
 
 // Marks which option a click would pick, so its label can go bold. Set on the
 // element directly, as it changes with every move of the mouse. Nothing is
-// marked over a link, or the edit button, since a click there does that instead.
+// marked over a link, the edit button or the grip, since a click there does
+// that instead.
 function showHoveredSide(event: ReactPointerEvent<HTMLElement>) {
   if (event.pointerType === 'touch') return
-  const overLink = event.target instanceof Element && event.target.closest(`a, .${cardStyles.edit}`)
+  const overLink =
+    event.target instanceof Element && event.target.closest(`a, .${cardStyles.edit}, .${cardStyles.grip}`)
   if (overLink) delete event.currentTarget.dataset.side
   else event.currentTarget.dataset.side = sideOf(event)
 }
@@ -616,5 +658,73 @@ function EditButton({ title, onClick }: { title: string; onClick: () => void }) 
         <path d="m13.5 6.5 4 4" />
       </svg>
     </button>
+  )
+}
+
+type PlanCardProps = Omit<ComponentProps<typeof Reorder.Item<string, 'div'>>, 'as' | 'value'> & {
+  value: string
+  title: string
+  onMove: (by: -1 | 1) => void
+}
+
+// A card in the plan, which a mouse can drag from anywhere on it. A touch
+// only drags from the grip, so a swipe across the card still scrolls the plan
+// (docs/card-layout.md § "Reordering the plan"). A press that doesn't move
+// is still a click, but letting go of a drag isn't, anywhere on the card.
+function PlanCard({ value, title, onMove, className, children, ...props }: PlanCardProps) {
+  const dragControls = useDragControls()
+  // Set as soon as the card starts moving. Motion's onDragEnd comes a frame
+  // after the click that letting go makes, too late to stop it.
+  const dragged = useRef(false)
+
+  function startDrag(event: ReactPointerEvent<HTMLElement>) {
+    dragged.current = false
+    const target = event.target instanceof Element ? event.target : null
+    const onGrip = Boolean(target?.closest(`.${cardStyles.grip}`))
+    if (onGrip) event.preventDefault()
+    else if (event.pointerType === 'touch' || target?.closest('a')) return
+    dragControls.start(event)
+  }
+
+  function moveFromKeyboard(event: ReactKeyboardEvent) {
+    const by = event.key === 'ArrowLeft' ? -1 : event.key === 'ArrowRight' ? 1 : null
+    if (!by) return
+    event.preventDefault()
+    onMove(by)
+  }
+
+  return (
+    <Reorder.Item
+      as="div"
+      value={value}
+      dragListener={false}
+      dragControls={dragControls}
+      onPointerDown={startDrag}
+      onDragStart={() => {
+        dragged.current = true
+      }}
+      // Caught on the way down, before the card or any button on it sees it.
+      onClickCapture={(event) => {
+        if (!dragged.current) return
+        dragged.current = false
+        event.stopPropagation()
+        event.preventDefault()
+      }}
+      className={`${className} ${cardStyles.reorderable}`}
+      {...props}
+    >
+      {children}
+      <button
+        className={cardStyles.grip}
+        type="button"
+        aria-label={`Move ${title}`}
+        aria-description="Drag, or use the left and right arrow keys, to move it along the plan"
+        onKeyDown={moveFromKeyboard}
+      >
+        <svg viewBox="0 0 24 12" aria-hidden="true">
+          {[4, 10, 16].flatMap((x) => [2, 8].map((y) => <circle key={`${x}-${y}`} cx={x + 2} cy={y + 1} r="1.6" />))}
+        </svg>
+      </button>
+    </Reorder.Item>
   )
 }

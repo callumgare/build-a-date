@@ -167,6 +167,92 @@
   pointer-events: auto;
 }
 
+/* A mouse drags a card in the plan by its text too, which would otherwise
+   select it. */
+.reorderable {
+  user-select: none;
+  -webkit-user-select: none;
+}
+
+/* The grip at the bottom of a card in the plan (docs/card-layout.md
+   § "Reordering the plan"). A mouse can drag the card from anywhere, but a
+   touch only from here, so a swipe across the card still scrolls the plan.
+   Its dots sit in a half circle of shade rising from the card's bottom edge,
+   the same shade as the options at the top, spreading a little further
+   and fading out slowly. It shows whenever those options do. */
+.grip {
+  position: absolute;
+  bottom: 0;
+  left: 50%;
+  z-index: 1;
+  display: grid;
+  place-items: end center;
+  width: clamp(60px, 38cqw, 92px);
+  aspect-ratio: 2;
+  padding: 0 0 4cqw;
+  border: 0;
+  border-radius: 999px 999px 0 0;
+  color: #fff;
+  background: none;
+  translate: -50%;
+  cursor: grab;
+  opacity: 0;
+  /* Touch drags move the card rather than scroll the plan. */
+  touch-action: none;
+  transition: opacity 0.15s ease;
+  pointer-events: none;
+}
+
+/* The shade reaches well past the grip and fades out slowly, but doesn't
+   take clicks, so the card around the grip still does its options. */
+.grip::before {
+  content: '';
+  position: absolute;
+  bottom: 0;
+  left: 50%;
+  z-index: -1;
+  width: 160%;
+  aspect-ratio: 2;
+  background: radial-gradient(
+    farthest-side at 50% 100%,
+    rgba(4, 23, 31, 0.66),
+    rgba(4, 23, 31, 0.56) 22%,
+    rgba(4, 23, 31, 0.36) 45%,
+    rgba(4, 23, 31, 0.16) 72%,
+    transparent
+  );
+  translate: -50%;
+  pointer-events: none;
+}
+
+.grip svg {
+  width: 32%;
+  fill: currentColor;
+  filter: drop-shadow(0 1px 2px rgba(4, 23, 31, 0.6));
+}
+
+.grip:active {
+  cursor: grabbing;
+}
+
+.grip:focus-visible {
+  outline: 2px solid #fff;
+  outline-offset: -2px;
+}
+
+@media (hover: hover) {
+  .card:hover .grip {
+    opacity: 1;
+    pointer-events: auto;
+  }
+}
+
+.card[data-revealed='true'] .grip,
+.card:has(:focus-visible) .grip {
+  opacity: 1;
+  pointer-events: auto;
+}
+
 /* The rating and notes, jotted in the bottom right corner like pencil on the
    card (docs/card-notes.md § "Rating and notes on the card"). The bottom left
    is the edit button's. Each mark is drawn twice: a wide stroke in the card's
@@ -220,7 +306,8 @@
 
 @media (prefers-reduced-motion: reduce) {
   .actions,
-  .edit {
+  .edit,
+  .grip {
     transition: none;
   }
 }
