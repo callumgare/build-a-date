@@ -60,8 +60,8 @@ The notes aren't shown on plans (`/p/…`), or on the deck's edit page.
 
 On `/d/…`, a card that's been rated or has notes has them jotted in its bottom right corner, drawn to look like pencil on the card (`Scrawl` in `src/components/Card.tsx`):
 
-- A rating is a hand-drawn star outline with the number of stars written beside it.
-- Notes are three wavy lines of squiggle, one above the other, with the middle one shorter, after the rating if there is one. Only the fact that there are notes shows, not the notes themselves. Notes that are only spaces don't count.
+- A rating is a hand-drawn star outline with the number of stars written close beside it, so the star reads as a label for the number.
+- Notes are three wavy lines of squiggle, one above the other, with the middle one shorter, after the rating if there is one, with a wider gap than between the star and the number. Only the fact that there are notes shows, not the notes themselves. Notes that are only spaces don't count.
 
 A card with neither has nothing in its corner. The marks follow changes made on this visit straight away, including while the card is flipping over and back. Screen readers hear them as "Rated 3 out of 5. Has notes." The bottom left corner stays free for the edit button (see [Editing a card](#editing-a-card)).
 

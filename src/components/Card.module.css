@@ -196,8 +196,14 @@
   stroke-linejoin: round;
 }
 
+/* The star labels the number, so it sits tight against it, and the notes
+   stand apart (docs/card-notes.md § "Rating and notes on the card"). */
+.scrawl svg[data-mark='rating'] {
+  margin-left: -1.2cqw;
+}
+
 .scrawl svg[data-mark='notes'] {
-  margin-left: 1.5cqw;
+  margin-left: 2.5cqw;
 }
 
 .scrawlPaper {
