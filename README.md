@@ -4,7 +4,7 @@ Make a deck of date ideas, share the link, and whoever you send it to picks the 
 
 - Accounts use **passkeys**, with no passwords. You sign up with an email link, then add a passkey. You can always sign in with an email link instead, whether you skipped the passkey or lost it, and add a new one from Settings.
 - Each account can have any number of **decks**. A new deck starts empty or with about 30 general suggestions.
-- Anyone with a deck's share link can **build a plan** without an account. Pressing Done saves the plan under its own link (`/p/…`), and it shows up on the deck owner's page.
+- Anyone with a deck's share link can **build a plan** without an account. Pressing Done saves the plan under its own link (`/p/…`), and it shows up on the deck owner's page. Anyone with a plan's link can edit it, and it keeps the same link. See [docs/plans.md](docs/plans.md).
 - Someone with the link can also **ask to help edit** the deck. The owner is emailed, and once they accept, the deck shows up under Shared decks on the other person's account. See [docs/deck-sharing.md](docs/deck-sharing.md).
 
 ## Stack
@@ -14,7 +14,7 @@ Make a deck of date ideas, share the link, and whoever you send it to picks the 
 | Path | What's there |
 | --- | --- |
 | `src/app/(app)` | Signed-in pages and auth pages, which share the site header, including `/d/[shareId]/request` (asking for edit access) |
-| `src/app/(public)` | The pages anyone with a link sees: `/d/[shareId]` (build a plan) and `/p/[planId]` (a saved plan) |
+| `src/app/(public)` | The pages anyone with a link sees: `/d/[shareId]` (build a plan), `/p/[planId]` (a saved plan) and `/p/[planId]/edit` (editing it) |
 | `src/lib/decks.ts` | All deck, card and plan queries. Each takes a `db`, so the tests can pass in SQLite |
 | `src/lib/actions/` | Server actions: auth and validation, then a call into `decks.ts` |
 | `src/lib/auth-config.ts` | Better Auth setup, shared by the app (`auth.ts`) and the schema generator (`auth-cli.ts`) |

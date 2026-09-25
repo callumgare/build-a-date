@@ -1,13 +1,13 @@
 import type { Metadata } from 'next'
 import Link from 'next/link'
 import { notFound } from 'next/navigation'
-import Card from '@/components/Card'
-import cardStyles from '@/components/Card.module.css'
-import { frameFor } from '@/components/frames'
+import ForgetPlanEdits from '@/components/ForgetPlanEdits'
+import PlanView from '@/components/PlanView'
 import SharePlanButton from '@/components/SharePlanButton'
 import Stars from '@/components/Stars'
 import { getDb } from '@/db'
-import { getPlan, NotFoundError } from '@/lib/decks'
+import { getSession } from '@/lib/auth'
+import { getAccessState, getPlan, getSharedDeck, NotFoundError } from '@/lib/decks'
 
 async function findPlan(planId: string) {
   try {
@@ -24,10 +24,20 @@ export async function generateMetadata({ params }: PageProps<'/p/[planId]'>): Pr
 }
 
 export default async function PlanPage({ params }: PageProps<'/p/[planId]'>) {
-  const { deck, cards } = await findPlan((await params).planId)
+  const { plan, deck, cards } = await findPlan((await params).planId)
+  const session = await getSession()
+  const access = session ? await getAccessState(getDb(), session.user.id, deck) : 'none'
+  // Owners and editors can change the cards from here, as on the shared deck
+  // (docs/card-notes.md § "Editing a card"). The card form suggests the
+  // deck's tags, not just the plan's.
+  const canEdit = access === 'owner' || access === 'editor'
+  const deckTags = canEdit
+    ? [...new Set((await getSharedDeck(getDb(), deck.shareId)).cards.flatMap((card) => card.tags))].sort()
+    : undefined
 
   return (
     <main className="page-shell">
+      <ForgetPlanEdits planId={plan.id} />
       <Stars />
       <header className="hero">
         <h1>{deck.name}</h1>
@@ -37,29 +47,20 @@ export default async function PlanPage({ params }: PageProps<'/p/[planId]'>) {
         <p className="lede">Here&apos;s the plan</p>
         <div className="plan-actions" data-visible="true">
           <SharePlanButton title={deck.name} />
+          <Link className="text-action" href={`/p/${plan.id}/edit`}>
+            Edit plan
+          </Link>
           <Link className="text-action" href={`/d/${deck.shareId}`}>
-            Build your own plan
+            Create new plan
           </Link>
         </div>
 
         {cards.length === 0 ? (
           <p className="empty-results">The ideas in this plan have since been removed from the deck.</p>
         ) : (
-          <div className="plan-track">
-            {cards.map((card) => (
-              <div className={cardStyles.card} key={card.id}>
-                <Card card={card} frame={frameFor(card.id)} />
-              </div>
-            ))}
-          </div>
+          <PlanView shareId={deck.shareId} cards={cards} deckId={canEdit ? deck.id : undefined} deckTags={deckTags} />
         )}
       </section>
-
-      <footer className="site-footer">
-        <Link className="text-action" href="/">
-          Make your own deck with Build-a-Date
-        </Link>
-      </footer>
     </main>
   )
 }

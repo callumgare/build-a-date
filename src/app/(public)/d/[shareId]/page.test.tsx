@@ -66,6 +66,23 @@ describe('the shared deck page', () => {
     expect(await open()).toMatchObject({ access: 'pending', editHref: undefined })
   })
 
+  /** @see docs/deck-sharing.md § "Who can do what" - owners and editors see the deck's plans */
+  it("hands the deck's plans to owners and editors, and only them", async () => {
+    const [picnic] = (await open()).cards
+    await decks.savePlan(db, deck.shareId, [picnic.id])
+    await decks.requestEditAccess(db, 'helper', deck.shareId)
+    await decks.respondToAccessRequest(db, 'owner', deck.id, 'helper', true)
+    await decks.requestEditAccess(db, 'asker', deck.shareId)
+
+    expect((await open()).plans).toBeUndefined()
+    for (const id of ['owner', 'helper']) {
+      signIn(id)
+      expect((await open()).plans).toMatchObject([{ cards: 1 }])
+    }
+    signIn('asker')
+    expect((await open()).plans).toBeUndefined()
+  })
+
   /** @see docs/card-notes.md § "Editing a card" - only people who can edit get the deck's id */
   it('lets owners and editors edit cards from the page, and only them', async () => {
     await decks.requestEditAccess(db, 'helper', deck.shareId)

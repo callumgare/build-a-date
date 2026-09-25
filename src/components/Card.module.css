@@ -61,6 +61,16 @@
   background: linear-gradient(rgba(255, 255, 255, 0.9), rgba(255, 255, 255, 0.45) 65%, transparent);
 }
 
+/* On a plan (/p/…) there's only Notes, centred, with no line (docs/card-notes.md
+   § "Card actions"). */
+.actions:not(:has(.primaryAction)) {
+  grid-template-columns: 1fr;
+}
+
+.actions:not(:has(.primaryAction))::before {
+  content: none;
+}
+
 .action {
   height: clamp(20px, 12cqw, 30px);
   padding: 0 2cqw;

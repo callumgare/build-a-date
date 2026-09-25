@@ -1,6 +1,6 @@
 # Card layout
 
-How the cards are arranged on a shared deck (`/d/…`), both in the deck and in the plan track above it.
+How the cards are arranged on a shared deck (`/d/…`), both in the deck and in the plan track above it. Cards on a saved plan (`/p/…`) tilt on hover the same way.
 
 ## Tilting on hover
 
@@ -25,6 +25,6 @@ The cards in the plan can be put in a different order. The plan starts in the or
 - **Not a click.** Pressing the grip, or letting go of a drag over the card, doesn't discard the card or open its notes. A drag doesn't start from a link in the description, which is followed as usual.
 - **Scrolls with the drag.** Dragging a card up to either end of the plan scrolls it, so a card can be moved past cards that are out of sight.
 - **From the keyboard.** The grip is a button (**Move …**). Left and right arrow keys move the card one place along the plan, and the grip keeps focus so it can be moved again.
-- **In the link.** The picks in the URL follow the new order straight away, so a reload keeps it.
+- **Kept in the browser.** The kept picks follow the new order straight away, so a reload keeps it ([plans.md](plans.md) § "Picks are kept in the browser").
 
-The drag is Motion's `Reorder`: the plan track is a `Reorder.Group` and each card in it is a `Reorder.Item` (`PlanCard` in `src/components/DeckBuilder.tsx`) that starts its drag itself, through `useDragControls`, so it can leave touches off the grip alone.
+The cards' hover handlers are in `src/components/cardControls.tsx`, shared with the plan page. The drag is Motion's `Reorder`: the plan track is a `Reorder.Group` and each card in it is a `Reorder.Item` (`PlanCard` in `src/components/DeckBuilder.tsx`) that starts its drag itself, through `useDragControls`, so it can leave touches off the grip alone.

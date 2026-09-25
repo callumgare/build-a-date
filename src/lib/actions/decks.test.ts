@@ -103,12 +103,14 @@ describe('changing a deck', () => {
   })
 
   /** @see docs/card-notes.md § "Editing a card" - saving or deleting refreshes the shared deck */
-  it('refreshes the shared deck as well as the edit page when a card changes', async () => {
+  it('refreshes the shared deck and its plans as well as the edit page when a card changes', async () => {
     const { shareId } = await decks.getOwnedDeck(db, 'owner', deckId)
     const added = await saveCard(deckId, null, { title: 'Picnic' })
     if (!added.ok) throw new Error(added.error)
     expect(revalidatePath).toHaveBeenCalledWith(`/decks/${deckId}`)
     expect(revalidatePath).toHaveBeenCalledWith(`/d/${shareId}`)
+    expect(revalidatePath).toHaveBeenCalledWith('/p/[planId]', 'page')
+    expect(revalidatePath).toHaveBeenCalledWith('/p/[planId]/edit', 'page')
 
     vi.mocked(revalidatePath).mockClear()
     await deleteCard(deckId, added.data.id)

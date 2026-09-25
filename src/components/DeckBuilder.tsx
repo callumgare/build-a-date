@@ -1,19 +1,19 @@
 'use client'
 
-import { AnimatePresence, animate, LayoutGroup, motion, Reorder, useDragControls, useReducedMotion } from 'motion/react'
+import { AnimatePresence, LayoutGroup, motion, Reorder, useDragControls, useReducedMotion } from 'motion/react'
 import Link from 'next/link'
 import {
   type ComponentProps,
   type KeyboardEvent as ReactKeyboardEvent,
-  type MouseEvent as ReactMouseEvent,
   type PointerEvent as ReactPointerEvent,
   useCallback,
   useEffect,
+  useLayoutEffect,
   useMemo,
   useRef,
   useState,
 } from 'react'
-import { savePlan } from '@/lib/actions/plans'
+import { savePlan, updatePlan } from '@/lib/actions/plans'
 import { saveDeckSort } from '@/lib/actions/preferences'
 import { arrangeDeck, type DeckSort, deckSorts, keepArrangement, sortDeck } from '@/lib/deck-order'
 import type { AccessState } from '@/lib/decks'
@@ -21,27 +21,25 @@ import type { DateCard } from '@/types'
 import Card from './Card'
 import cardStyles from './Card.module.css'
 import CardNotes, { type Notes } from './CardNotes'
+import {
+  CardActions,
+  cardBox,
+  EditButton,
+  leaveCard,
+  type SideActions,
+  showHoveredSide,
+  tiltCard,
+  useCardTaps,
+} from './cardControls'
 import AddCardControls from './decks/AddCardControls'
+import PlanList, { type PlanSummary } from './decks/PlanList'
 import { useCardEditor } from './decks/useCardEditor'
 import FlyingCard from './FlyingCard'
 import { frameFor } from './frames'
 import InstallHint from './InstallHint'
+import { readPicks, writePicks } from './keptPicks'
 import Stars from './Stars'
-import { type Box, hoverScale, leanOf, randomTilt, untiltedBox } from './tilt'
-
-function readSelection(cardsById: Map<string, DateCard>): string[] {
-  const seen = new Set<string>()
-
-  return window.location.hash
-    .slice(1)
-    .split(',')
-    .map((id) => decodeURIComponent(id))
-    .filter((id) => cardsById.has(id) && !seen.has(id) && Boolean(seen.add(id)))
-}
-
-function selectionsMatch(first: string[], second: string[]) {
-  return first.length === second.length && first.every((id, index) => id === second[index])
-}
+import type { Box } from './tilt'
 
 type DeckBuilderProps = {
   deckName: string
@@ -59,6 +57,15 @@ type DeckBuilderProps = {
   // "Remembering the choice").
   initialSort?: DeckSort
   remembersSort?: boolean
+  // A saved plan to start from, which Done then saves over rather than
+  // making a new one (docs/plans.md § "Editing a plan").
+  plan?: { id: string; cardIds: string[] }
+  // The deck's plans, only for owners and editors, as on the deck's page.
+  plans?: PlanSummary[]
+}
+
+function planUrl(planId: string) {
+  return new URL(`/p/${planId}`, window.location.origin).href
 }
 
 export default function DeckBuilder({
@@ -71,21 +78,34 @@ export default function DeckBuilder({
   deckId,
   initialSort = 'random',
   remembersSort = false,
+  plan,
+  plans,
 }: DeckBuilderProps) {
   const [arranged, setArranged] = useState(() => arrangeDeck(deckCards, seed))
   const [arrangedFrom, setArrangedFrom] = useState(deckCards)
+  // The picks, in the plan's order. The server can't see what this browser
+  // kept, so they start as the saved plan, or empty, and what was kept is
+  // read in before the first paint.
+  const [selectedIds, setSelectedIds] = useState<string[]>(() => plan?.cardIds ?? [])
   // Cards edited from here come back from the server, which shouldn't
-  // reshuffle the deck.
+  // reshuffle the deck. A card that's been deleted drops out of the plan.
   if (arrangedFrom !== deckCards) {
     setArrangedFrom(deckCards)
     setArranged(keepArrangement(arranged, deckCards))
+    const inDeck = new Set(deckCards.map((card) => card.id))
+    setSelectedIds((currentIds) => currentIds.filter((id) => inDeck.has(id)))
   }
   const cardsById = useMemo(() => new Map(deckCards.map((card) => [card.id, card])), [deckCards])
-  // Picks in progress live in the URL hash, which only the browser can see,
-  // so they're read in after the first render.
-  const [selectedIds, setSelectedIds] = useState<string[]>([])
-  const hashRead = useRef(false)
-  const [saved, setSaved] = useState<{ key: string; url: string } | null>(null)
+  const picksPlace = useMemo(() => ({ shareId, planId: plan?.id }), [shareId, plan?.id])
+  const [picksRead, setPicksRead] = useState(false)
+  // Bumped when the kept picks change the plan, which lays the cards out
+  // afresh rather than flying them up from the deck.
+  const [layoutGeneration, setLayoutGeneration] = useState(0)
+  // The plan as last saved. While editing a plan, Done shares its link until
+  // something changes.
+  const [saved, setSaved] = useState<{ key: string; planId: string } | null>(() =>
+    plan ? { key: plan.cardIds.join(','), planId: plan.id } : null,
+  )
   const [saving, setSaving] = useState(false)
   const [saveError, setSaveError] = useState<string | null>(null)
   const [activeTags, setActiveTags] = useState<Set<string>>(() => new Set())
@@ -99,8 +119,7 @@ export default function DeckBuilder({
         deckCards.map((card) => [card.id, { interest: card.interest ?? null, notes: card.notes ?? '' }]),
       ),
   )
-  // The card showing its buttons after a tap, for screens without hover.
-  const [revealedId, setRevealedId] = useState<string | null>(null)
+  const { revealedId, setRevealedId, clickCard } = useCardTaps()
   const [sort, setSort] = useState<DeckSort>(initialSort)
   // Ratings changed on this visit move the card straight away.
   const cards = useMemo(
@@ -125,24 +144,26 @@ export default function DeckBuilder({
     (card) => !selectedIds.includes(card.id) && [...activeTags].every((tag) => card.tags.includes(tag)),
   )
 
-  useEffect(() => {
-    if (!hashRead.current) return
-    const encodedIds = selectedIds.map(encodeURIComponent).join(',')
-    const nextUrl = `${window.location.pathname}${window.location.search}${encodedIds ? `#${encodedIds}` : ''}`
-    window.history.replaceState(null, '', nextUrl)
-  }, [selectedIds])
-
-  useEffect(() => {
-    function restoreSelection() {
-      const restoredIds = readSelection(cardsById)
-      setSelectedIds((currentIds) => (selectionsMatch(currentIds, restoredIds) ? currentIds : restoredIds))
+  // Kept picks go straight into the plan, before the browser paints, with no
+  // animation (docs/plans.md § "Picks are kept in the browser").
+  // biome-ignore lint/correctness/useExhaustiveDependencies: only what was kept when the page opened
+  useLayoutEffect(() => {
+    const kept = readPicks(picksPlace, cardsById)
+    if (kept && kept.join(',') !== selectedIds.join(',')) {
+      setSelectedIds(kept)
+      setLayoutGeneration((generation) => generation + 1)
     }
+    setPicksRead(true)
+  }, [])
 
-    restoreSelection()
-    hashRead.current = true
-    window.addEventListener('hashchange', restoreSelection)
-    return () => window.removeEventListener('hashchange', restoreSelection)
-  }, [cardsById])
+  // Nothing is kept when there's nothing unsaved: no picks, or the plan as it
+  // was last saved. So once Done has saved a new plan, the deck starts empty
+  // next time (docs/plans.md § "Picks are kept in the browser").
+  const baselineKey = saved?.key ?? ''
+  useEffect(() => {
+    if (!picksRead) return
+    writePicks(picksPlace, selectedIds.join(',') === baselineKey ? null : selectedIds)
+  }, [picksRead, picksPlace, selectedIds, baselineKey])
 
   function selectCard(id: string, from: Box) {
     if (!reduceMotion) setFlight({ id, from })
@@ -168,13 +189,6 @@ export default function DeckBuilder({
     return document.querySelector(`[data-card-id="${CSS.escape(id)}"], [data-deck-card-id="${CSS.escape(id)}"]`)
   }
 
-  // Where the card would be sitting straight, and how far it leans right now
-  // (it may be hovered, or part way back from it), so the animations that
-  // lift it out of place can size it right and turn it level themselves.
-  function cardBox(element: Element) {
-    return untiltedBox(element, leanOf(getComputedStyle(element).transform))
-  }
-
   function openNotes(id: string) {
     const element = cardElement(id)
     if (!element) return
@@ -182,31 +196,9 @@ export default function DeckBuilder({
     setNotesOpen({ id, from: cardBox(element) })
   }
 
-  // A click on either half of a card does what's written on that side
-  // (docs/card-notes.md § "Card actions"). Without hover the first tap only
-  // shows the options, so it can't add or discard the card by accident.
-  function clickCard(id: string, event: ReactMouseEvent<HTMLElement>, actions: SideActions) {
-    if (event.target instanceof Element && event.target.closest('button, a')) return
-    if (!window.matchMedia('(hover: hover)').matches && revealedId !== id) {
-      setRevealedId(id)
-      return
-    }
-    actions[sideOf(event)]()
-  }
-
   const changeNotes = useCallback((id: string, notes: Notes) => {
     setNotesById((current) => new Map(current).set(id, notes))
   }, [])
-
-  // Tapping anywhere else hides the buttons a tap revealed.
-  useEffect(() => {
-    if (!revealedId) return
-    function hide(event: PointerEvent) {
-      if (!(event.target instanceof Element) || !event.target.closest("[data-revealed='true']")) setRevealedId(null)
-    }
-    document.addEventListener('pointerdown', hide)
-    return () => document.removeEventListener('pointerdown', hide)
-  }, [revealedId])
 
   function editCard(card: DateCard) {
     setRevealedId(null)
@@ -259,22 +251,23 @@ export default function DeckBuilder({
   }
 
   // Saves the plan under its own short link, then shares that. Pressing Done
-  // again without changing the plan shares the same link.
+  // again without changing the plan shares the same link. A plan being
+  // edited is saved over, under the link it already had.
   async function sharePlan() {
     const key = selectedIds.join(',')
-    let shareUrl = saved?.key === key ? saved.url : null
+    let planId = saved?.key === key ? saved.planId : null
 
-    if (!shareUrl) {
+    if (!planId) {
       setSaving(true)
       setSaveError(null)
       try {
-        const result = await savePlan(shareId, selectedIds)
+        const result = plan ? await updatePlan(plan.id, selectedIds) : await savePlan(shareId, selectedIds)
         if (!result.ok) {
           setSaveError(result.error)
           return
         }
-        shareUrl = new URL(`/p/${result.data.planId}`, window.location.origin).href
-        setSaved({ key, url: shareUrl })
+        planId = result.data.planId
+        setSaved({ key, planId })
       } catch {
         setSaveError("Couldn't save your plan. Check your connection and try again.")
         return
@@ -283,6 +276,7 @@ export default function DeckBuilder({
       }
     }
 
+    const shareUrl = planUrl(planId)
     if (navigator.share) {
       try {
         await navigator.share({ title: deckName, url: shareUrl })
@@ -301,7 +295,7 @@ export default function DeckBuilder({
   async function copyLink() {
     if (!saved) return
     try {
-      await navigator.clipboard.writeText(saved.url)
+      await navigator.clipboard.writeText(planUrl(saved.planId))
       setLinkCopied(true)
     } catch {
       setLinkCopied(false)
@@ -313,6 +307,7 @@ export default function DeckBuilder({
     [reduceMotion],
   )
   const endFlight = useCallback(() => setFlight(null), [])
+  const showActions = Boolean(plan) || selectedIds.length > 0
   const flyingCard = flight && cardsById.get(flight.id)
   const notesCard = notesOpen && cardsById.get(notesOpen.id)
 
@@ -322,18 +317,35 @@ export default function DeckBuilder({
 
       <header className="hero">
         <h1>{deckName}</h1>
+        {plan && <p className="lede">Editing a plan</p>}
       </header>
 
       <Stars />
 
-      <LayoutGroup id="date-builder">
+      {/* A new group for kept picks, so the cards that were in the deck have
+          nothing to fly up from. */}
+      <LayoutGroup id={`date-builder-${layoutGeneration}`} key={layoutGeneration}>
         <section className="plan-section" aria-label="Your plan">
           {/* Always laid out, so the first pick doesn't push the page down;
-              hidden (and inert) until there's a plan to act on. */}
-          <div className="plan-actions" data-visible={selectedIds.length > 0} inert={selectedIds.length === 0}>
-            <button className="done-button" type="button" onClick={sharePlan} disabled={saving}>
-              {saving ? 'Saving…' : 'Done'}
+              hidden (and inert) until there's a plan to act on. While editing
+              a plan they always show, so Cancel is there even once it's
+              emptied (docs/plans.md § "Editing a plan"). */}
+          <div className="plan-actions" data-visible={showActions} inert={!showActions}>
+            <button
+              className="done-button"
+              type="button"
+              onClick={sharePlan}
+              disabled={saving || selectedIds.length === 0}
+            >
+              {saving ? 'Saving…' : plan ? 'Update Plan' : 'Done'}
             </button>
+            {plan && (
+              // Unsaved changes are dropped, so the edit page starts from the
+              // saved plan next time.
+              <Link className="text-action" href={`/p/${plan.id}`} onClick={() => writePicks(picksPlace, null)}>
+                Cancel
+              </Link>
+            )}
             <button className="text-action" type="button" onClick={() => setSelectedIds([])}>
               Clear plan
             </button>
@@ -503,6 +515,12 @@ export default function DeckBuilder({
         </section>
       </LayoutGroup>
 
+      {plans && (
+        <section className="deck-plans" aria-label="Plans">
+          <PlanList plans={plans} />
+        </section>
+      )}
+
       {flight && flyingCard && (
         <FlyingCard
           key={flight.id}
@@ -543,7 +561,7 @@ export default function DeckBuilder({
             {linkCopied ? 'Copied!' : 'Copy link'}
           </button>
           {saved && (
-            <a className="text-action" href={saved.url}>
+            <a className="text-action" href={`/p/${saved.planId}`}>
               Open your plan
             </a>
           )}
@@ -565,99 +583,8 @@ export default function DeckBuilder({
             Request edit access
           </Link>
         )}
-        <Link className="text-action" href="/">
-          Make your own deck with Build-a-Date
-        </Link>
       </footer>
     </main>
-  )
-}
-
-type Side = 'primary' | 'notes'
-type SideActions = Record<Side, () => void>
-
-// Cards sit straight, and lift a little bigger and tip to one side while the
-// mouse is over them, a different way each time (docs/card-layout.md
-// § "Tilting on hover"). Plain pointer events rather than Motion's
-// onHoverStart, which runs a frame late, once the event no longer has a
-// currentTarget. Touch is left out, so a tap doesn't leave a card leaning.
-function tiltCard(event: ReactPointerEvent<HTMLElement>) {
-  if (event.pointerType === 'touch') return
-  animate(event.currentTarget, { rotate: randomTilt(), scale: hoverScale }, hoverSpring)
-}
-
-function leaveCard(event: ReactPointerEvent<HTMLElement>) {
-  clearHoveredSide(event)
-  animate(event.currentTarget, { rotate: 0, scale: 1 }, hoverSpring)
-}
-
-const hoverSpring = { type: 'spring', stiffness: 400, damping: 22 } as const
-
-// Add to plan or Discard is on the left half of a card, Notes on the right.
-function sideOf(event: { clientX: number; currentTarget: Element }): Side {
-  const rect = event.currentTarget.getBoundingClientRect()
-  return event.clientX < rect.left + rect.width / 2 ? 'primary' : 'notes'
-}
-
-// Marks which option a click would pick, so its label can go bold. Set on the
-// element directly, as it changes with every move of the mouse. Nothing is
-// marked over a link, the edit button or the grip, since a click there does
-// that instead.
-function showHoveredSide(event: ReactPointerEvent<HTMLElement>) {
-  if (event.pointerType === 'touch') return
-  const overLink =
-    event.target instanceof Element && event.target.closest(`a, .${cardStyles.edit}, .${cardStyles.grip}`)
-  if (overLink) delete event.currentTarget.dataset.side
-  else event.currentTarget.dataset.side = sideOf(event)
-}
-
-function clearHoveredSide(event: ReactPointerEvent<HTMLElement>) {
-  delete event.currentTarget.dataset.side
-}
-
-type CardActionsProps = {
-  title: string
-  primary: 'Add to plan' | 'Discard'
-  actions: SideActions
-}
-
-// The options in a card's top band (docs/card-notes.md § "Card actions").
-// Clicking a card does the same as the label on that side; the labels are
-// buttons too, for the keyboard. Labels start with the words on the button,
-// for voice control.
-function CardActions({ title, primary, actions }: CardActionsProps) {
-  return (
-    <>
-      <button
-        className={`${cardStyles.action} ${cardStyles.primaryAction}`}
-        type="button"
-        aria-label={`${primary}: ${title}`}
-        onClick={actions.primary}
-      >
-        {primary}
-      </button>
-      <button
-        className={`${cardStyles.action} ${cardStyles.notesAction}`}
-        type="button"
-        aria-label={`Notes on ${title}`}
-        onClick={actions.notes}
-      >
-        Notes
-      </button>
-    </>
-  )
-}
-
-// Opens the card form from the card's bottom left corner, for people who can
-// edit the deck (docs/card-notes.md § "Editing a card").
-function EditButton({ title, onClick }: { title: string; onClick: () => void }) {
-  return (
-    <button className={cardStyles.edit} type="button" aria-label={`Edit ${title}`} onClick={onClick}>
-      <svg viewBox="0 0 24 24" aria-hidden="true">
-        <path d="M4 20h4L19 9l-4-4L4 16v4Z" />
-        <path d="m13.5 6.5 4 4" />
-      </svg>
-    </button>
   )
 }
 

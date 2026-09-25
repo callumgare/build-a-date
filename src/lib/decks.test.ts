@@ -25,6 +25,7 @@ import {
   saveCard,
   saveCardNotes,
   savePlan,
+  updatePlan,
 } from './decks'
 
 let db: ReturnType<typeof createTestDb>
@@ -149,6 +150,31 @@ describe('plans', () => {
   it('refuses an unknown share id', async () => {
     await expect(savePlan(db, 'nope', ['x'])).rejects.toThrow(NotFoundError)
     await expect(getSharedDeck(db, 'nope')).rejects.toThrow(NotFoundError)
+  })
+
+  /** @see docs/plans.md § "Editing a plan" - saved over, under the same link */
+  it('changes the cards of a saved plan, keeping the same rules and the same id', async () => {
+    const deck = await createDeck(db, owner, { name: 'Deck', template: 'empty' })
+    const other = await createDeck(db, stranger, { name: 'Other', template: 'empty' })
+    const a = await saveCard(db, owner, deck.id, null, { title: 'A' })
+    const b = await saveCard(db, owner, deck.id, null, { title: 'B' })
+    const foreign = await saveCard(db, stranger, other.id, null, { title: 'Foreign' })
+    const saved = await savePlan(db, deck.shareId, [a.id])
+
+    const updated = await updatePlan(db, saved.id, [b.id, foreign.id, a.id, b.id])
+    expect(updated).toMatchObject({ id: saved.id, cardIds: [b.id, a.id] })
+    expect((await getPlan(db, saved.id)).cards.map((card) => card.title)).toEqual(['B', 'A'])
+    expect(await listPlans(db, deck.id)).toHaveLength(1)
+  })
+
+  it('refuses to change an unknown plan, or empty one', async () => {
+    const deck = await createDeck(db, owner, { name: 'Deck', template: 'empty' })
+    const a = await saveCard(db, owner, deck.id, null, { title: 'A' })
+    const saved = await savePlan(db, deck.shareId, [a.id])
+
+    await expect(updatePlan(db, 'nope', [a.id])).rejects.toThrow('Plan not found')
+    await expect(updatePlan(db, saved.id, ['made-up'])).rejects.toThrow(NotFoundError)
+    expect((await getPlan(db, saved.id)).plan.cardIds).toEqual([a.id])
   })
 
   it('drops cards deleted after the plan was made', async () => {

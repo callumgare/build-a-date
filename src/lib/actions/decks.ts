@@ -93,12 +93,14 @@ export async function deleteCard(deckId: string, cardId: string): Promise<Action
   return ok(undefined)
 }
 
-// Cards are changed from the deck's edit page and from the shared deck, and
-// both show them (docs/card-notes.md § "Editing a card").
+// Cards are changed from the deck's edit page, the shared deck and its plans,
+// and all of them show them (docs/card-notes.md § "Editing a card").
 async function revalidateCards(db: Database, userId: string, deckId: string) {
   const { deck } = await decks.getEditableDeck(db, userId, deckId)
   revalidatePath(`/decks/${deckId}`)
   revalidatePath(`/d/${deck.shareId}`)
+  revalidatePath('/p/[planId]', 'page')
+  revalidatePath('/p/[planId]/edit', 'page')
 }
 
 // A form action (bound to the share id), so asking works before the page's

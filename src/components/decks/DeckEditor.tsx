@@ -9,6 +9,7 @@ import cardStyles from '../Card.module.css'
 import { frameFor } from '../frames'
 import AddCardControls from './AddCardControls'
 import { AccessRequests, type DeckPerson, Editors } from './DeckAccess'
+import PlanList, { type PlanSummary } from './PlanList'
 import { useCardEditor } from './useCardEditor'
 
 type DeckEditorProps = {
@@ -19,7 +20,7 @@ type DeckEditorProps = {
   access: DeckPerson[]
   shareUrl: string
   cards: DateCard[]
-  plans: { id: string; createdAt: Date; cards: number }[]
+  plans: PlanSummary[]
 }
 
 // Cards are divs rather than buttons so their descriptions can hold links,
@@ -165,31 +166,7 @@ export default function DeckEditor({ deck, role, access, shareUrl, cards, plans 
         ))}
       </div>
 
-      <h3 className="subheading">
-        Plans <small>({plans.length})</small>
-      </h3>
-      {plans.length === 0 ? (
-        <p className="muted">When someone builds a plan from your link and presses Done, it shows up here.</p>
-      ) : (
-        <ul className="plan-list">
-          {plans.map((plan) => (
-            <li key={plan.id}>
-              <a className="text-action" href={`/p/${plan.id}`}>
-                {/* Formatted in the viewer's time zone once in the browser. */}
-                <time dateTime={plan.createdAt.toISOString()} suppressHydrationWarning>
-                  {plan.createdAt.toLocaleString(undefined, {
-                    dateStyle: 'medium',
-                    timeStyle: 'short',
-                  })}
-                </time>
-              </a>
-              <span className="muted">
-                {plan.cards} {plan.cards === 1 ? 'idea' : 'ideas'}
-              </span>
-            </li>
-          ))}
-        </ul>
-      )}
+      <PlanList plans={plans} />
 
       {role === 'owner' && <Editors deckId={deck.id} people={access} />}
 

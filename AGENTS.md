@@ -6,6 +6,8 @@
 | -------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | [docs/deck-sharing.md](docs/deck-sharing.md) | Touching edit access, the `deck_access` table, Shared decks, who may change a deck, or the `next` redirect after sign-in |
 | [docs/historical-plans/2026-09-24-deck-sharing.md](docs/historical-plans/2026-09-24-deck-sharing.md) | Wondering why deck sharing was built the way it was (frozen plan) |
+| [docs/plans.md](docs/plans.md) | Touching saving, sharing or editing plans (`/p/…`, `/p/…/edit`, `savePlan`/`updatePlan`), the plan page's cards (`PlanView`), or how picks in progress are kept in local storage and restored on reload |
+| [docs/historical-plans/2026-09-26-plan-editing.md](docs/historical-plans/2026-09-26-plan-editing.md) | Wondering why plan editing, the plan page's notes, or keeping picks in local storage were built the way they were (frozen plan) |
 | [docs/card-notes.md](docs/card-notes.md) | Touching the options on cards on `/d/…` (Add to plan/Discard and Notes, clicking a side of a card, the edit button and adding ideas for editors), the flip-over notes view, card ratings and notes (`interest`/`notes` on `card`), or `saveCardNotes` |
 | [docs/historical-plans/2026-09-24-card-notes.md](docs/historical-plans/2026-09-24-card-notes.md) | Wondering why card notes were built the way they were (frozen plan) |
 | [docs/deck-sorting.md](docs/deck-sorting.md) | Touching the **Sort by** options on `/d/…` (random, date added, interest), `sortDeck` in `src/lib/deck-order.ts`, the saved sort (`user_preference`, `saveDeckSort`), or the order of ideas on `/decks/…` |

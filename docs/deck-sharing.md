@@ -10,6 +10,8 @@ A deck's share link (`/d/…`) lets anyone build a plan from it. The same page a
 | Editor (an accepted request) | ✓ | ✓ | ✓ | | |
 | Owner | ✓ | ✓ | ✓ | ✓ | ✓ |
 
+Owners and editors see the deck's plans listed, newest first, on the deck's page and at the bottom of the shared deck (`/d/…`, and when editing a plan). Saving a plan refreshes the list. Nobody else gets the list: the page only hands it (`plans` on `DeckBuilder`) to people who can edit the deck.
+
 Ratings and notes are covered in [card-notes.md](card-notes.md). Owners and editors can add, edit and delete ideas from the shared deck (`/d/…`) as well as from the deck's edit page (see [card-notes.md](card-notes.md) § "Editing a card").
 
 A pending request gives nothing beyond what anyone with the link already has.

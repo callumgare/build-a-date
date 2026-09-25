@@ -1,9 +1,11 @@
 import { useTestDb } from '@/test/cloudflare'
 import { createTestDb, createUser } from '@/test/db'
+import { revalidatePath } from '@/test/next'
 import * as decks from '../decks'
-import { saveCardNotes, savePlan } from './plans'
+import { saveCardNotes, savePlan, updatePlan } from './plans'
 
 vi.mock('@/db', () => import('@/test/cloudflare'))
+vi.mock('next/cache', () => import('@/test/next'))
 
 let db: ReturnType<typeof createTestDb>
 let deck: Awaited<ReturnType<typeof decks.createDeck>>
@@ -24,6 +26,13 @@ describe('savePlan', () => {
     expect((await decks.getPlan(db, result.data.planId)).cards.map((card) => card.title)).toEqual(['Picnic'])
   })
 
+  it("refreshes the pages that list the deck's plans", async () => {
+    vi.mocked(revalidatePath).mockClear()
+    await savePlan(deck.shareId, [cardId])
+    expect(revalidatePath).toHaveBeenCalledWith('/decks/[deckId]', 'page')
+    expect(revalidatePath).toHaveBeenCalledWith('/d/[shareId]', 'page')
+  })
+
   it('turns an empty plan, an unknown deck or cards from elsewhere into a message', async () => {
     expect(await savePlan(deck.shareId, [])).toMatchObject({ ok: false })
     expect(await savePlan('nope', [cardId])).toEqual({ ok: false, error: 'Deck not found' })
@@ -31,6 +40,28 @@ describe('savePlan', () => {
       ok: false,
       error: 'None of those cards are in this deck',
     })
+  })
+})
+
+/** @see docs/plans.md § "Who can edit a plan" */
+describe('updatePlan', () => {
+  it('saves over the plan, for anyone, and gives back the same id', async () => {
+    const saved = await savePlan(deck.shareId, [cardId])
+    if (!saved.ok) throw new Error(saved.error)
+    const hike = await decks.saveCard(db, 'owner', deck.id, null, { title: 'Hike' })
+
+    expect(await updatePlan(saved.data.planId, [hike.id, cardId])).toEqual({
+      ok: true,
+      data: { planId: saved.data.planId },
+    })
+    expect((await decks.getPlan(db, saved.data.planId)).cards.map((card) => card.title)).toEqual(['Hike', 'Picnic'])
+  })
+
+  it('turns an empty plan or an unknown plan into a message', async () => {
+    const saved = await savePlan(deck.shareId, [cardId])
+    if (!saved.ok) throw new Error(saved.error)
+    expect(await updatePlan(saved.data.planId, [])).toMatchObject({ ok: false })
+    expect(await updatePlan('nope', [cardId])).toEqual({ ok: false, error: 'Plan not found' })
   })
 })
 

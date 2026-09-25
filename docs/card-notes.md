@@ -10,12 +10,13 @@ Each card shows two options in white text over a dark shade at its top. A white 
 | --- | --- | --- |
 | In the deck | **Add to plan** adds it to the plan. | **Notes** opens its notes. |
 | In the plan | **Discard** takes it out of the plan and back into the deck. | **Notes** opens its notes. |
+| On a saved plan (`/p/…`) | | **Notes** opens its notes. |
 
-**Notes** is covered in [Opening a card's notes](#opening-a-cards-notes).
+**Notes** is covered in [Opening a card's notes](#opening-a-cards-notes). On a saved plan, **Notes** is the only option. It sits in the middle of the band, with no line, and a click anywhere on the card opens the notes. Cards come out of a saved plan by editing it ([plans.md](plans.md) § "Editing a plan").
 
 ### Clicking a side of the card
 
-A click anywhere on a card's left half does the left option, and anywhere on its right half does the right one. A click on a link in the description follows the link instead.
+A click anywhere on a card's left half does the left option, and anywhere on its right half does the right one. On a saved plan, a click anywhere opens the notes. A click on a link in the description follows the link instead.
 
 With a mouse, the option on the side the mouse is over is in bold. Over a link, neither is.
 
@@ -31,14 +32,14 @@ The options sit the same distance from the top of every card. A card's text alwa
 
 ## Editing a card
 
-Owners and editors (see [deck-sharing.md](deck-sharing.md) § "Who can do what") can change the deck's ideas without leaving `/d/…`:
+Owners and editors (see [deck-sharing.md](deck-sharing.md) § "Who can do what") can change the deck's ideas without leaving `/d/…`, or a saved plan (`/p/…`):
 
-- A small round pencil button sits in the bottom left corner of every card, in the deck and in the plan. It shows whenever the card's options do (see [When the options show](#when-the-options-show)). A click on it doesn't add, discard or open the notes. It opens the same **Edit idea** form as the deck's edit page, with **Save**, **Delete** and **Cancel**.
-- **Add an idea** and **Quick Add** take the last spot in the deck, after the cards. They're the same as the first spot in the grid on the edit page (see [quick-add.md](quick-add.md) § "Adding an idea").
+- A small round pencil button sits in the bottom left corner of every card, in the deck, in the plan and on a saved plan. It shows whenever the card's options do (see [When the options show](#when-the-options-show)). A click on it doesn't add, discard or open the notes. It opens the same **Edit idea** form as the deck's edit page, with **Save**, **Delete** and **Cancel**.
+- **Add an idea** and **Quick Add** take the last spot in the deck, after the cards. A saved plan doesn't have them. They're the same as the first spot in the grid on the edit page (see [quick-add.md](quick-add.md) § "Adding an idea").
 
 Nobody else sees either. The page only gets the deck's own id (`deckId` on `DeckBuilder`) for people who can edit it.
 
-Saving or deleting a card refreshes the page with the deck's new cards. The deck doesn't shuffle again: the cards stay where they were, with their new text, and a new card goes first. `keepArrangement` in `src/lib/deck-order.ts` does this. A card in the plan that's deleted drops out of the plan. Ratings and notes changed on this visit stay as they were.
+Saving or deleting a card refreshes the page with the deck's new cards. On a saved plan, a deleted card drops out of the plan. The deck doesn't shuffle again: the cards stay where they were, with their new text, and a new card goes first. `keepArrangement` in `src/lib/deck-order.ts` does this. A card in the plan that's deleted drops out of the plan. Ratings and notes changed on this visit stay as they were.
 
 ## Opening a card's notes
 
@@ -54,11 +55,11 @@ Pressing **Notes** lifts the card out of the deck or the plan. It flips over and
 
 Each card has one rating (1–5 stars, or none) and one set of notes, up to 2000 characters. They're the `interest` and `notes` columns on the `card` table. They belong to the idea, so editing its title, description, tags or date keeps them. Deleting the card deletes them.
 
-The notes aren't shown on plans (`/p/…`), or on the deck's edit page.
+The notes aren't shown on the deck's edit page. On a saved plan (`/p/…`) they open from **Notes**, as on the shared deck.
 
 ### Rating and notes on the card
 
-On `/d/…`, a card that's been rated or has notes has them jotted in its bottom right corner, drawn to look like pencil on the card (`Scrawl` in `src/components/Card.tsx`):
+On `/d/…` and on saved plans (`/p/…`), a card that's been rated or has notes has them jotted in its bottom right corner, drawn to look like pencil on the card (`Scrawl` in `src/components/Card.tsx`):
 
 - A rating is a hand-drawn star outline with the number of stars written close beside it, so the star reads as a label for the number.
 - Notes are three wavy lines of squiggle, one above the other, with the middle one shorter, after the rating if there is one, with a wider gap than between the star and the number. Only the fact that there are notes shows, not the notes themselves. Notes that are only spaces don't count.

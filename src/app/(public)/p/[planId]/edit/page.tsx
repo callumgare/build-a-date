@@ -4,37 +4,38 @@ import { connection } from 'next/server'
 import DeckBuilder from '@/components/DeckBuilder'
 import { getDb } from '@/db'
 import { getSession } from '@/lib/auth'
-import { getAccessState, getSharedDeck, listPlanSummaries, NotFoundError } from '@/lib/decks'
+import { getAccessState, getPlan, getSharedDeck, listPlanSummaries, NotFoundError } from '@/lib/decks'
 import { getDeckSort } from '@/lib/preferences'
 
-async function findDeck(shareId: string) {
+async function findPlan(planId: string) {
   try {
-    return await getSharedDeck(getDb(), shareId)
+    const { plan, deck } = await getPlan(getDb(), planId)
+    const { cards } = await getSharedDeck(getDb(), deck.shareId)
+    return { plan, deck, cards }
   } catch (error) {
     if (error instanceof NotFoundError) notFound()
     throw error
   }
 }
 
-export async function generateMetadata({ params }: PageProps<'/d/[shareId]'>): Promise<Metadata> {
-  const { deck } = await findDeck((await params).shareId)
-  return {
-    title: deck.name,
-    description: `Pick your favourite date ideas from ${deck.name}.`,
-  }
+export async function generateMetadata({ params }: PageProps<'/p/[planId]/edit'>): Promise<Metadata> {
+  const { deck } = await findPlan((await params).planId)
+  return { title: `Edit a plan from ${deck.name}` }
 }
 
-export default async function SharedDeck({ params }: PageProps<'/d/[shareId]'>) {
-  // A new shuffle for every visit.
+// The builder, starting from a saved plan, which Done saves over
+// (docs/plans.md § "Editing a plan"). Anyone with the plan's link can.
+export default async function EditPlan({ params }: PageProps<'/p/[planId]/edit'>) {
+  // A new shuffle for every visit, as on the shared deck.
   await connection()
-  const { deck, cards } = await findDeck((await params).shareId)
+  const { plan, deck, cards } = await findPlan((await params).planId)
   const seed = Math.floor(Math.random() * 2 ** 32)
   const session = await getSession()
   const access = session ? await getAccessState(getDb(), session.user.id, deck) : 'none'
   const canEdit = access === 'owner' || access === 'editor'
-  // Signed-in visitors start on the sort they last picked (docs/deck-sorting.md
-  // § "Remembering the choice").
   const sort = session ? await getDeckSort(getDb(), session.user.id) : 'random'
+  // Cards deleted since the plan was saved have already dropped out.
+  const inDeck = new Set(cards.map((card) => card.id))
 
   return (
     <DeckBuilder
@@ -45,10 +46,10 @@ export default async function SharedDeck({ params }: PageProps<'/d/[shareId]'>) 
       access={access}
       initialSort={sort}
       remembersSort={Boolean(session)}
-      // The deck's own id only goes to people who can open its edit page.
       editHref={canEdit ? `/decks/${deck.id}` : undefined}
       deckId={canEdit ? deck.id : undefined}
       plans={canEdit ? await listPlanSummaries(getDb(), deck.id) : undefined}
+      plan={{ id: plan.id, cardIds: plan.cardIds.filter((id) => inDeck.has(id)) }}
     />
   )
 }

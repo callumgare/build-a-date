@@ -50,8 +50,8 @@ test('someone with the link rates an idea and leaves notes the owner can see', a
   expect(consoleErrors).toEqual([])
 })
 
-/** @see docs/card-notes.md § "Rating and notes" - notes aren't shown on plans or the deck's edit page */
-test("notes stay off the plan and the deck's edit page", async ({ page, browser, request }) => {
+/** @see docs/card-notes.md § "Rating and notes on the card" - only the fact that there are notes shows */
+test("the words of a note stay off the plan and the deck's edit page", async ({ page, browser, request }) => {
   await signUp(page, request, 'Alex')
   const shareUrl = await createDeck(page, 'Ideas for Sam')
   const note = 'Bring the good blanket'
@@ -71,7 +71,9 @@ test("notes stay off the plan and the deck's edit page", async ({ page, browser,
   await guest.getByRole('button', { name: 'Done' }).click()
   await guest.getByRole('link', { name: 'Open your plan' }).click()
   await expect(guest).toHaveURL(/\/p\/[a-z0-9]+$/)
-  await expect(guest.getByRole('region', { name: 'The plan' }).getByText('Stargazing')).toBeVisible()
+  const plan = guest.getByRole('region', { name: 'The plan' })
+  await expect(plan.getByText('Stargazing')).toBeVisible()
+  await expect(plan.getByText('Has notes.')).toBeAttached()
   await expect(guest.getByText(note)).toHaveCount(0)
 
   // The note was saved; it just isn't shown in those places.

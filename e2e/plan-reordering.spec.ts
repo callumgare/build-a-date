@@ -22,7 +22,6 @@ test('someone drags a card from anywhere on it to a new place in the plan', asyn
   const [first, second] = await planOrder(guest)
   expect(first).toContain('Stargazing')
   expect(second).toContain('Picnic in the Park')
-  const hashBefore = new URL(guest.url()).hash
 
   // Picked up by its text, well away from the grip, and let go over the card,
   // which doesn't discard it.
@@ -44,9 +43,7 @@ test('someone drags a card from anywhere on it to a new place in the plan', asyn
   await expect(guest.getByRole('dialog')).toHaveCount(0)
   expect(await guest.evaluate(() => window.getSelection()?.toString())).toBe('')
 
-  // The link follows, so a reload keeps the new order.
-  const [firstId, secondId] = hashBefore.slice(1).split(',')
-  await expect(guest).toHaveURL(new RegExp(`#${secondId},${firstId}$`))
+  // Kept in the browser, so a reload keeps the new order.
   await guest.reload()
   await expect.poll(async () => (await planOrder(guest))[0]).toContain('Picnic in the Park')
 

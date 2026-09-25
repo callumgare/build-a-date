@@ -38,6 +38,11 @@ export const planInput = z.object({
   cardIds: z.array(id).min(1).max(50),
 })
 
+export const planUpdateInput = z.object({
+  planId: id,
+  cardIds: planInput.shape.cardIds,
+})
+
 export const cardNotesInput = z.object({
   shareId: id,
   cardId: id,

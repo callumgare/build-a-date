@@ -4,8 +4,12 @@ import userEvent from '@testing-library/user-event'
 import type { DateCard } from '@/types'
 import DeckBuilder from './DeckBuilder'
 
-const { savePlan, saveCardNotes } = vi.hoisted(() => ({ savePlan: vi.fn(), saveCardNotes: vi.fn() }))
-vi.mock('@/lib/actions/plans', () => ({ savePlan, saveCardNotes }))
+const { savePlan, updatePlan, saveCardNotes } = vi.hoisted(() => ({
+  savePlan: vi.fn(),
+  updatePlan: vi.fn(),
+  saveCardNotes: vi.fn(),
+}))
+vi.mock('@/lib/actions/plans', () => ({ savePlan, updatePlan, saveCardNotes }))
 const deckActions = vi.hoisted(() => ({ saveCard: vi.fn(), deleteCard: vi.fn(), quickAddCard: vi.fn() }))
 vi.mock('@/lib/actions/decks', () => deckActions)
 const { saveDeckSort } = vi.hoisted(() => ({ saveDeckSort: vi.fn() }))
@@ -22,13 +26,31 @@ function renderBuilder() {
   return render(<DeckBuilder deckName="Test deck" shareId="share123" cards={cards} seed={1} />)
 }
 
+const deckPicks = 'build-a-date:picks:deck:share123'
+
+// The picks this browser has kept for the deck, or null for none. Changes to
+// a saved plan are kept in session storage instead.
+function storageFor(key: string) {
+  return key.includes(':plan:') ? sessionStorage : localStorage
+}
+
+function keptPicks(key = deckPicks) {
+  return JSON.parse(storageFor(key).getItem(key) ?? 'null')
+}
+
+function keepPicks(ids: string[], key = deckPicks) {
+  storageFor(key).setItem(key, JSON.stringify(ids))
+}
+
 beforeEach(() => {
   savePlan.mockReset()
+  updatePlan.mockReset()
   saveCardNotes.mockReset()
   saveCardNotes.mockResolvedValue({ ok: true, data: undefined })
   saveDeckSort.mockReset()
   saveDeckSort.mockResolvedValue({ ok: true, data: undefined })
-  window.location.hash = ''
+  localStorage.clear()
+  sessionStorage.clear()
   Object.defineProperty(navigator, 'share', { value: undefined, configurable: true })
 })
 
@@ -47,16 +69,80 @@ describe('DeckBuilder', () => {
 
     await user.click(screen.getByRole('button', { name: 'Add to plan: Picnic' }))
     expect(screen.getByRole('button', { name: 'Discard: Picnic' })).toBeInTheDocument()
-    expect(window.location.hash).toBe('#picnic')
+    expect(keptPicks()).toEqual(['picnic'])
 
     await user.click(screen.getByRole('button', { name: 'Discard: Picnic' }))
     expect(await screen.findByRole('button', { name: 'Add to plan: Picnic' })).toBeInTheDocument()
   })
 
-  it('restores picks from the URL hash', async () => {
-    window.location.hash = '#museum,not-a-card'
-    renderBuilder()
-    expect(await screen.findByRole('button', { name: 'Discard: Museum' })).toBeInTheDocument()
+  /** @see docs/plans.md § "Picks are kept in the browser" */
+  describe('keeping the picks', () => {
+    afterEach(() => vi.restoreAllMocks())
+
+    it('puts the picks kept for the deck straight into the plan', () => {
+      keepPicks(['museum', 'not-a-card', 'museum'])
+      renderBuilder()
+      // Already there by the time the render returns, not added afterwards.
+      expect(screen.getByRole('button', { name: 'Discard: Museum' })).toBeInTheDocument()
+      expect(screen.queryByRole('button', { name: 'Add to plan: Museum' })).not.toBeInTheDocument()
+      expect(screen.getAllByRole('button', { name: /^Discard/ })).toHaveLength(1)
+    })
+
+    it("doesn't put the picks in the URL", async () => {
+      const user = userEvent.setup()
+      renderBuilder()
+      await user.click(screen.getByRole('button', { name: 'Add to plan: Picnic' }))
+      expect(window.location.href).not.toContain('#')
+    })
+
+    it('forgets them once Done has saved them, and keeps them again after another change', async () => {
+      savePlan.mockResolvedValue({ ok: true, data: { planId: 'plan42' } })
+      const user = userEvent.setup()
+      renderBuilder()
+
+      await user.click(screen.getByRole('button', { name: 'Add to plan: Hike' }))
+      expect(keptPicks()).toEqual(['hike'])
+      await user.click(screen.getByRole('button', { name: 'Done' }))
+      await screen.findByRole('link', { name: 'Open your plan' })
+      expect(keptPicks()).toBeNull()
+
+      await user.click(screen.getByRole('button', { name: 'Close' }))
+      await user.click(screen.getByRole('button', { name: 'Add to plan: Museum' }))
+      expect(keptPicks()).toEqual(['hike', 'museum'])
+    })
+
+    it("keeps them when Done couldn't save", async () => {
+      savePlan.mockResolvedValue({ ok: false, error: 'Deck not found' })
+      const user = userEvent.setup()
+      renderBuilder()
+
+      await user.click(screen.getByRole('button', { name: 'Add to plan: Hike' }))
+      await user.click(screen.getByRole('button', { name: 'Done' }))
+      await screen.findByRole('alert')
+      expect(keptPicks()).toEqual(['hike'])
+    })
+
+    it('keeps a separate set for each deck', () => {
+      keepPicks(['museum'], 'build-a-date:picks:deck:other-deck')
+      renderBuilder()
+      expect(screen.queryByRole('button', { name: /^Discard/ })).not.toBeInTheDocument()
+    })
+
+    it('starts empty when what was kept is unreadable', () => {
+      localStorage.setItem(deckPicks, '{not json')
+      renderBuilder()
+      expect(screen.queryByRole('button', { name: /^Discard/ })).not.toBeInTheDocument()
+    })
+
+    it('still builds a plan when storage refuses', async () => {
+      vi.spyOn(Storage.prototype, 'setItem').mockImplementation(() => {
+        throw new DOMException('Full', 'QuotaExceededError')
+      })
+      const user = userEvent.setup()
+      renderBuilder()
+      await user.click(screen.getByRole('button', { name: 'Add to plan: Picnic' }))
+      expect(screen.getByRole('button', { name: 'Discard: Picnic' })).toBeInTheDocument()
+    })
   })
 
   it('filters the deck by tag', async () => {
@@ -79,10 +165,8 @@ describe('DeckBuilder', () => {
     await user.click(screen.getByRole('button', { name: 'Done' }))
 
     expect(savePlan).toHaveBeenCalledWith('share123', ['hike', 'museum'])
-    expect(await screen.findByRole('link', { name: 'Open your plan' })).toHaveAttribute(
-      'href',
-      `${window.location.origin}/p/plan42`,
-    )
+    expect(screen.queryByRole('link', { name: 'Cancel' })).not.toBeInTheDocument()
+    expect(await screen.findByRole('link', { name: 'Open your plan' })).toHaveAttribute('href', '/p/plan42')
 
     // The same plan shares the same link rather than saving again.
     await user.click(screen.getByRole('button', { name: 'Done', hidden: true }))
@@ -131,7 +215,7 @@ describe('DeckBuilder', () => {
 
         fireEvent.click(planCard(container, 'hike'), { clientX: 40 })
         expect(await screen.findByRole('button', { name: 'Add to plan: Hike' })).toBeInTheDocument()
-        expect(window.location.hash).toBe('')
+        expect(keptPicks()).toBeNull()
       })
 
       /** @see docs/card-notes.md § "Clicking a side of the card" */
@@ -140,7 +224,7 @@ describe('DeckBuilder', () => {
 
         fireEvent.click(deckCard(container, 'museum'), { clientX: 160 })
         expect(await screen.findByRole('dialog', { name: 'Museum' })).toBeInTheDocument()
-        expect(window.location.hash).toBe('')
+        expect(keptPicks()).toBeNull()
       })
 
       /** @see docs/card-notes.md § "Clicking a side of the card" - a link in the description is followed instead */
@@ -178,7 +262,7 @@ describe('DeckBuilder', () => {
         fireEvent.click(deckCard(container, 'museum'), { clientX: 40 })
         expect(container.querySelector('[data-deck-card-id="museum"]')).toHaveAttribute('data-revealed', 'true')
         expect(screen.queryByRole('button', { name: 'Discard: Museum' })).not.toBeInTheDocument()
-        expect(window.location.hash).toBe('')
+        expect(keptPicks()).toBeNull()
       })
 
       it('does the option on the side tapped once the options are showing', async () => {
@@ -472,7 +556,7 @@ describe('DeckBuilder', () => {
       const form = await screen.findByRole('dialog', { name: 'Edit idea' })
       expect(within(form).getByRole('textbox', { name: /^Title/ })).toHaveValue('Picnic')
       expect(screen.getByRole('button', { name: 'Add to plan: Picnic' })).toBeInTheDocument()
-      expect(window.location.hash).toBe('')
+      expect(keptPicks()).toBeNull()
 
       await user.clear(within(form).getByRole('textbox', { name: /^Title/ }))
       await user.type(within(form).getByRole('textbox', { name: /^Title/ }), 'Picnic by the river')
@@ -486,7 +570,7 @@ describe('DeckBuilder', () => {
     })
 
     it('has an edit button on cards in the plan too', async () => {
-      window.location.hash = '#museum'
+      keepPicks(['museum'])
       const { container } = render(renderForEditor())
       expect(await screen.findByRole('button', { name: 'Discard: Museum' })).toBeInTheDocument()
       const planCard = container.querySelector('[data-card-id="museum"]') as HTMLElement
@@ -537,12 +621,12 @@ describe('DeckBuilder', () => {
     })
 
     it('drops a deleted card from the plan', async () => {
-      window.location.hash = '#museum'
+      keepPicks(['museum'])
       const { rerender } = render(renderForEditor())
       expect(await screen.findByRole('button', { name: 'Discard: Museum' })).toBeInTheDocument()
 
       rerender(renderForEditor([cards[0], cards[2]]))
-      await waitFor(() => expect(window.location.hash).toBe(''))
+      await waitFor(() => expect(keptPicks()).toBeNull())
       expect(screen.queryByRole('button', { name: 'Discard: Museum' })).not.toBeInTheDocument()
     })
   })
@@ -566,6 +650,33 @@ describe('DeckBuilder', () => {
     it('offers to request edit access', () => {
       renderBuilder()
       expect(screen.getByRole('link', { name: 'Request edit access' })).toHaveAttribute('href', '/d/share123/request')
+    })
+
+    /** @see docs/deck-sharing.md § "Who can do what" - owners and editors see the deck's plans */
+    it("lists the deck's plans when it's given them", () => {
+      render(
+        <DeckBuilder
+          deckName="Test deck"
+          shareId="share123"
+          cards={cards}
+          seed={1}
+          plans={[{ id: 'plan42', createdAt: new Date('2026-09-20T10:00:00Z'), cards: 2 }]}
+        />,
+      )
+      const plans = screen.getByRole('region', { name: 'Plans' })
+      expect(within(plans).getByRole('heading', { name: 'Plans (1)' })).toBeInTheDocument()
+      expect(within(plans).getByRole('link')).toHaveAttribute('href', '/p/plan42')
+      expect(within(plans).getByText('2 ideas')).toBeInTheDocument()
+    })
+
+    it("doesn't list plans to anyone else", () => {
+      renderBuilder()
+      expect(screen.queryByRole('region', { name: 'Plans' })).not.toBeInTheDocument()
+    })
+
+    it("doesn't link to making a deck", () => {
+      renderBuilder()
+      expect(screen.queryByRole('link', { name: /Make your own deck/ })).not.toBeInTheDocument()
     })
   })
 
@@ -607,15 +718,15 @@ describe('DeckBuilder', () => {
 
     /** @see docs/card-layout.md § "Reordering the plan" - by its grip */
     it('gives cards in the plan a grip, and cards in the deck none', async () => {
-      window.location.hash = '#museum'
+      keepPicks(['museum'])
       renderBuilder()
       expect(await screen.findByRole('button', { name: 'Move Museum' })).toBeInTheDocument()
       expect(screen.queryByRole('button', { name: 'Move Picnic' })).not.toBeInTheDocument()
     })
 
-    /** @see docs/card-layout.md § "Reordering the plan" - from the keyboard, and in the link */
+    /** @see docs/card-layout.md § "Reordering the plan" - from the keyboard, and kept in the browser */
     it('moves a card along the plan with the arrow keys on its grip', async () => {
-      window.location.hash = '#picnic,museum,hike'
+      keepPicks(['picnic', 'museum', 'hike'])
       const user = userEvent.setup()
       const { container } = renderBuilder()
       const grip = await screen.findByRole('button', { name: 'Move Picnic' })
@@ -623,7 +734,7 @@ describe('DeckBuilder', () => {
       grip.focus()
       await user.keyboard('{ArrowRight}')
       expect(planOrder(container)).toEqual(['museum', 'picnic', 'hike'])
-      expect(window.location.hash).toBe('#museum,picnic,hike')
+      expect(keptPicks()).toEqual(['museum', 'picnic', 'hike'])
       expect(screen.getByRole('button', { name: 'Move Picnic' })).toHaveFocus()
 
       await user.keyboard('{ArrowRight}{ArrowRight}')
@@ -636,7 +747,7 @@ describe('DeckBuilder', () => {
     /** @see docs/card-layout.md § "Reordering the plan" - the new order is the one that's shared */
     it('saves the plan in its new order', async () => {
       savePlan.mockResolvedValue({ ok: true, data: { planId: 'plan42' } })
-      window.location.hash = '#picnic,hike'
+      keepPicks(['picnic', 'hike'])
       const user = userEvent.setup()
       renderBuilder()
 
@@ -658,7 +769,7 @@ describe('DeckBuilder', () => {
 
       /** @see docs/card-layout.md § "Reordering the plan" - not a click */
       it("doesn't discard the card or open its notes when the grip is pressed", async () => {
-        window.location.hash = '#museum'
+        keepPicks(['museum'])
         const user = userEvent.setup()
         renderBuilder()
 
@@ -668,7 +779,7 @@ describe('DeckBuilder', () => {
       })
 
       it("doesn't mark a side of the card while the mouse is over the grip", async () => {
-        window.location.hash = '#museum'
+        keepPicks(['museum'])
         const { container } = renderBuilder()
         fireEvent.pointerMove(await screen.findByRole('button', { name: 'Move Museum' }), { pointerType: 'mouse' })
         const card = container.querySelector('[data-card-id="museum"]') as HTMLElement
@@ -687,7 +798,7 @@ describe('DeckBuilder', () => {
 
     expect(await screen.findByRole('button', { name: 'Add to plan: Picnic' })).toBeInTheDocument()
     expect(await screen.findByRole('button', { name: 'Add to plan: Hike' })).toBeInTheDocument()
-    expect(window.location.hash).toBe('')
+    expect(keptPicks()).toBeNull()
   })
 
   describe('filtering by several tags', () => {
@@ -798,6 +909,138 @@ describe('DeckBuilder', () => {
       await user.click(screen.getByRole('button', { name: 'Done' }))
       await waitFor(() => expect(savePlan).toHaveBeenCalledTimes(2))
       expect(savePlan).toHaveBeenLastCalledWith('share123', ['hike', 'museum'])
+    })
+  })
+
+  /** @see docs/plans.md § "Editing a plan" */
+  describe('editing a saved plan', () => {
+    const planPicks = 'build-a-date:picks:plan:plan42'
+
+    function renderEditor() {
+      return render(
+        <DeckBuilder
+          deckName="Test deck"
+          shareId="share123"
+          cards={cards}
+          seed={1}
+          plan={{ id: 'plan42', cardIds: ['hike', 'picnic'] }}
+        />,
+      )
+    }
+
+    function planOrder(container: HTMLElement) {
+      return [...container.querySelectorAll('[data-card-id]')].map((card) => card.getAttribute('data-card-id'))
+    }
+
+    beforeEach(() => {
+      updatePlan.mockResolvedValue({ ok: true, data: { planId: 'plan42' } })
+    })
+
+    it("starts with the plan's cards in the plan, in its order", () => {
+      const { container } = renderEditor()
+      expect(planOrder(container)).toEqual(['hike', 'picnic'])
+      expect(screen.getByText('Editing a plan')).toBeInTheDocument()
+    })
+
+    it('saves over the same plan when Update Plan is pressed', async () => {
+      const user = userEvent.setup()
+      renderEditor()
+
+      await user.click(screen.getByRole('button', { name: 'Add to plan: Museum' }))
+      await user.click(screen.getByRole('button', { name: 'Update Plan' }))
+      expect(updatePlan).toHaveBeenCalledWith('plan42', ['hike', 'picnic', 'museum'])
+      expect(savePlan).not.toHaveBeenCalled()
+      expect(await screen.findByRole('link', { name: 'Open your plan' })).toHaveAttribute('href', '/p/plan42')
+    })
+
+    it("shares the plan's link without saving when nothing has changed", async () => {
+      const user = userEvent.setup()
+      renderEditor()
+
+      await user.click(screen.getByRole('button', { name: 'Update Plan' }))
+      expect(await screen.findByRole('link', { name: 'Open your plan' })).toHaveAttribute('href', '/p/plan42')
+      expect(updatePlan).not.toHaveBeenCalled()
+    })
+
+    it('shows why the plan could not be saved', async () => {
+      updatePlan.mockResolvedValue({ ok: false, error: 'Plan not found' })
+      const user = userEvent.setup()
+      renderEditor()
+
+      await user.click(screen.getByRole('button', { name: 'Discard: Hike' }))
+      await user.click(screen.getByRole('button', { name: 'Update Plan' }))
+      expect(await screen.findByRole('alert')).toHaveTextContent('Plan not found')
+    })
+
+    /** @see docs/plans.md § "Picks are kept in the browser" - one set per plan being edited */
+    it("keeps unsaved changes for that plan, apart from the deck's own picks", async () => {
+      keepPicks(['museum'])
+      const user = userEvent.setup()
+      const { container } = renderEditor()
+      expect(planOrder(container)).toEqual(['hike', 'picnic'])
+      expect(keptPicks(planPicks)).toBeNull()
+
+      await user.click(screen.getByRole('button', { name: 'Discard: Hike' }))
+      expect(keptPicks(planPicks)).toEqual(['picnic'])
+      expect(keptPicks()).toEqual(['museum'])
+    })
+
+    /** @see docs/plans.md § "Picks are kept in the browser" - changes to a saved plan survive a reload, not the tab */
+    it('keeps unsaved changes to the plan for this tab only', async () => {
+      const user = userEvent.setup()
+      renderEditor()
+
+      await user.click(screen.getByRole('button', { name: 'Discard: Hike' }))
+      expect(JSON.parse(sessionStorage.getItem(planPicks) ?? 'null')).toEqual(['picnic'])
+      expect(localStorage.getItem(planPicks)).toBeNull()
+    })
+
+    /** @see docs/plans.md § "Picks are kept in the browser" - one set per plan being edited */
+    it('picks up unsaved changes to the plan straight away', () => {
+      keepPicks(['museum', 'hike'], planPicks)
+      const { container } = renderEditor()
+      expect(planOrder(container)).toEqual(['museum', 'hike'])
+    })
+
+    /** @see docs/plans.md § "Picks are kept in the browser" - forgotten once saved */
+    it('forgets the changes once they are saved', async () => {
+      const user = userEvent.setup()
+      renderEditor()
+
+      await user.click(screen.getByRole('button', { name: 'Discard: Hike' }))
+      expect(keptPicks(planPicks)).toEqual(['picnic'])
+      await user.click(screen.getByRole('button', { name: 'Update Plan' }))
+      await waitFor(() => expect(keptPicks(planPicks)).toBeNull())
+    })
+
+    it('keeps an emptied plan as empty, rather than going back to the saved one', async () => {
+      const user = userEvent.setup()
+      renderEditor()
+
+      await user.click(screen.getByRole('button', { name: 'Clear plan' }))
+      expect(keptPicks(planPicks)).toEqual([])
+      // Nothing to save, but still a way out.
+      expect(screen.getByRole('button', { name: 'Update Plan' })).toBeDisabled()
+      expect(screen.getByRole('link', { name: 'Cancel' })).toBeInTheDocument()
+    })
+
+    it('says Update Plan rather than Done', () => {
+      renderEditor()
+      expect(screen.getByRole('button', { name: 'Update Plan' })).toBeInTheDocument()
+      expect(screen.queryByRole('button', { name: 'Done' })).not.toBeInTheDocument()
+    })
+
+    it('goes back to the plan on Cancel, dropping the unsaved changes', async () => {
+      const user = userEvent.setup()
+      renderEditor()
+
+      await user.click(screen.getByRole('button', { name: 'Discard: Hike' }))
+      expect(keptPicks(planPicks)).toEqual(['picnic'])
+      const cancel = screen.getByRole('link', { name: 'Cancel' })
+      expect(cancel).toHaveAttribute('href', '/p/plan42')
+      await user.click(cancel)
+      expect(keptPicks(planPicks)).toBeNull()
+      expect(updatePlan).not.toHaveBeenCalled()
     })
   })
 })
