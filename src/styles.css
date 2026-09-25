@@ -34,9 +34,7 @@
 /* Text that sits straight on the background gets the halo. text-shadow is
    inherited, so it goes on the text itself rather than on whole sections,
    which also hold cards, panels and dialogs. */
-h1,
 .lede,
-.hero-actions,
 .plan-actions,
 .filter-label,
 .empty-results,
@@ -131,6 +129,11 @@ button:focus-visible {
 
 .page-shell:has(.site-header) .star--1 {
   top: 100px;
+  right: 35%;
+}
+
+.page-shell:has(.hero) .star--1 {
+  top: 30px;
   right: 35%;
 }
 
@@ -501,8 +504,19 @@ a {
 .site-brand {
   color: var(--accent);
   font-family: 'Tan Pearl', Georgia, serif;
-  font-size: 1.9rem;
+  font-size: 1.3rem;
   text-decoration: none;
+}
+
+/* The hero on the home page has the site title in it so no need to duplicate */
+.page-shell:has(.hero) {
+  .site-header {
+    justify-content: right;
+
+    .site-brand {
+      display: none;
+    }
+  }
 }
 
 .site-links {
