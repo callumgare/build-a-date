@@ -24,7 +24,7 @@ export async function generateMetadata({ params }: PageProps<'/p/[planId]'>): Pr
 }
 
 export default async function PlanPage({ params, searchParams }: PageProps<'/p/[planId]'>) {
-  const { plan, deck, cards } = await findPlan((await params).planId)
+  const { plan, deck, cards, groups } = await findPlan((await params).planId)
   // Done and Update Plan land here with ?share (docs/plans.md § "Sharing a plan").
   const justSaved = (await searchParams)?.share !== undefined
   const session = await getSession()
@@ -57,10 +57,16 @@ export default async function PlanPage({ params, searchParams }: PageProps<'/p/[
           </Link>
         </div>
 
-        {cards.length === 0 ? (
+        {cards.length === 0 && groups.every((group) => group.cards.length === 0) ? (
           <p className="empty-results">The ideas in this plan have since been removed from the deck.</p>
         ) : (
-          <PlanView shareId={deck.shareId} cards={cards} deckId={canEdit ? deck.id : undefined} deckTags={deckTags} />
+          <PlanView
+            shareId={deck.shareId}
+            cards={cards}
+            groups={groups}
+            deckId={canEdit ? deck.id : undefined}
+            deckTags={deckTags}
+          />
         )}
       </section>
     </main>

@@ -8,6 +8,13 @@ async function pick(page: Page, title: string) {
   await expect(page.getByRole('button', { name: `Discard: ${title}` })).toBeAttached()
 }
 
+// Waits for the edit page, so a hover straight after lands on its cards
+// rather than the plan page's, which are still showing while it loads.
+async function editPlan(page: Page) {
+  await page.getByRole('link', { name: 'Edit plan' }).click()
+  await expect(page.getByText('Editing a plan')).toBeVisible()
+}
+
 function planOrder(page: Page) {
   return page.locator('[data-card-id]').evaluateAll((cards) => cards.map((card) => card.textContent ?? ''))
 }
@@ -68,7 +75,7 @@ test('Cancel goes back to the plan as it was, and forgets what was changed', asy
   await expect(guest).toHaveURL(/\/p\/[a-z0-9]+$/)
   const planUrl = guest.url()
 
-  await guest.getByRole('link', { name: 'Edit plan' }).click()
+  await editPlan(guest)
   await guest.locator('[data-card-id]').filter({ hasText: 'Picnic in the Park' }).hover()
   await guest.getByRole('button', { name: 'Discard: Picnic in the Park' }).click()
   await guest.getByRole('link', { name: 'Cancel' }).click()
@@ -161,7 +168,7 @@ test('unsaved changes to a plan survive a reload, but not going back to the plan
   }
 
   // A reload keeps the change.
-  await guest.getByRole('link', { name: 'Edit plan' }).click()
+  await editPlan(guest)
   await discardStargazing()
   await guest.reload()
   await expect(guest.locator('[data-card-id]')).toHaveCount(1)
@@ -170,13 +177,13 @@ test('unsaved changes to a plan survive a reload, but not going back to the plan
   // Going back to the plan with the browser's back button drops it.
   await guest.goBack()
   await expect(guest).toHaveURL(planUrl)
-  await guest.getByRole('link', { name: 'Edit plan' }).click()
+  await editPlan(guest)
   await expect(guest.locator('[data-card-id]')).toHaveCount(2)
 
   // So does opening the plan's link again.
   await discardStargazing()
   await guest.goto(planUrl)
-  await guest.getByRole('link', { name: 'Edit plan' }).click()
+  await editPlan(guest)
   await expect(guest.locator('[data-card-id]')).toHaveCount(2)
 
   await guestContext.close()

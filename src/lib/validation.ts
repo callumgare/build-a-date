@@ -33,17 +33,34 @@ export const quickAddInput = z
   .min(1, 'Type a little about the idea, or paste a link')
   .max(2000, 'Keep it under 2000 characters')
 
-export const planInput = z.object({
-  shareId: id,
-  cardIds: z.array(id).min(1).max(50),
+// A plan's first row may be empty when its cards are all in groups, but the
+// plan as a whole needs a card (checked with the deck's cards, in
+// keepDeckCards).
+const planCards = z.array(id).max(50)
+
+export const planGroupInput = z.object({
+  id,
+  title: z.string().trim().max(80, 'Group titles can be up to 80 characters'),
+  notes: z.string().trim().max(2000, 'Group notes can be up to 2000 characters'),
+  cardIds: planCards,
 })
+
+const planPicks = {
+  cardIds: planCards,
+  groups: z.array(planGroupInput).max(20, 'A plan can have up to 20 groups').default([]),
+}
+
+const hasACard = [
+  (plan: { cardIds: string[]; groups: { cardIds: string[] }[] }) =>
+    plan.cardIds.length + plan.groups.reduce((total, group) => total + group.cardIds.length, 0) > 0,
+  { message: 'Pick at least one idea for the plan' },
+] as const
+
+export const planInput = z.object({ shareId: id, ...planPicks }).refine(...hasACard)
 
 export const planIdInput = id
 
-export const planUpdateInput = z.object({
-  planId: id,
-  cardIds: planInput.shape.cardIds,
-})
+export const planUpdateInput = z.object({ planId: id, ...planPicks }).refine(...hasACard)
 
 export const cardNotesInput = z.object({
   shareId: id,

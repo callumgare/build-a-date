@@ -64,6 +64,23 @@ describe('the edit plan page', () => {
     expect((await open(plan.id)).plan?.cardIds).toEqual([picnic.id])
   })
 
+  /** @see docs/plans.md § "Groups" */
+  it("starts from the plan's groups too, without cards deleted since", async () => {
+    const plan = await decks.savePlan(
+      db,
+      deck.shareId,
+      [],
+      [{ id: 'g', title: 'Out', notes: 'Sunscreen', cardIds: [hike.id, picnic.id] }],
+    )
+    await decks.deleteCard(db, 'owner', deck.id, hike.id)
+
+    expect((await open(plan.id)).plan).toEqual({
+      id: plan.id,
+      cardIds: [],
+      groups: [{ id: 'g', title: 'Out', notes: 'Sunscreen', cardIds: [picnic.id] }],
+    })
+  })
+
   /** @see docs/card-notes.md § "Editing a card" */
   it('lets the owner change the cards from there too', async () => {
     const plan = await decks.savePlan(db, deck.shareId, [hike.id])

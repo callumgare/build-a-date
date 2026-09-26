@@ -1,24 +1,29 @@
 'use client'
 
-import { AnimatePresence, animate, LayoutGroup, motion, Reorder, useDragControls, useReducedMotion } from 'motion/react'
+import { AnimatePresence, LayoutGroup, motion, useReducedMotion } from 'motion/react'
+import { nanoid } from 'nanoid'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
-import {
-  type ComponentProps,
-  type KeyboardEvent as ReactKeyboardEvent,
-  type PointerEvent as ReactPointerEvent,
-  useCallback,
-  useEffect,
-  useLayoutEffect,
-  useMemo,
-  useRef,
-  useState,
-} from 'react'
+import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
 import { deletePlan, savePlan, updatePlan } from '@/lib/actions/plans'
 import { saveDeckSort } from '@/lib/actions/preferences'
 import { arrangeDeck, type DeckSort, deckSorts, keepArrangement, sortDeck } from '@/lib/deck-order'
 import type { AccessState } from '@/lib/decks'
-import type { DateCard } from '@/types'
+import {
+  addCard,
+  addGroup,
+  changeGroup,
+  firstRow,
+  keepCards,
+  moveCardBy,
+  noPicks,
+  pickedIds,
+  picksKey,
+  placeCard,
+  removeCard as removeFromPicks,
+  removeGroup,
+} from '@/lib/plan-picks'
+import type { DateCard, PlanPicks } from '@/types'
 import Card from './Card'
 import cardStyles from './Card.module.css'
 import CardNotes, { type Notes } from './CardNotes'
@@ -35,13 +40,13 @@ import {
 import AddCardControls from './decks/AddCardControls'
 import PlanList, { type PlanSummary } from './decks/PlanList'
 import { useCardEditor } from './decks/useCardEditor'
-import { edgeScrollSpeed } from './edgeScroll'
 import FlyingCard from './FlyingCard'
 import { frameFor } from './frames'
 import InstallHint from './InstallHint'
 import { readPicks, writePicks } from './keptPicks'
+import { DragStandIn, PlanCard, usePlanDrag } from './PlanCard'
 import Stars from './Stars'
-import { type Box, dragLean } from './tilt'
+import type { Box } from './tilt'
 
 type DeckBuilderProps = {
   deckName: string
@@ -61,7 +66,7 @@ type DeckBuilderProps = {
   remembersSort?: boolean
   // A saved plan to start from, which Update Plan then saves over rather than
   // making a new one (docs/plans.md § "Editing a plan").
-  plan?: { id: string; cardIds: string[] }
+  plan?: { id: string } & PlanPicks
   // The deck's plans, only for owners and editors, as on the deck's page.
   plans?: PlanSummary[]
 }
@@ -81,17 +86,18 @@ export default function DeckBuilder({
 }: DeckBuilderProps) {
   const [arranged, setArranged] = useState(() => arrangeDeck(deckCards, seed))
   const [arrangedFrom, setArrangedFrom] = useState(deckCards)
-  // The picks, in the plan's order. The server can't see what this browser
-  // kept, so they start as the saved plan, or empty, and what was kept is
-  // read in before the first paint.
-  const [selectedIds, setSelectedIds] = useState<string[]>(() => plan?.cardIds ?? [])
+  // The picks, row by row in the plan's order. The server can't see what
+  // this browser kept, so they start as the saved plan, or empty, and what was
+  // kept is read in before the first paint.
+  const [picks, setPicks] = useState<PlanPicks>(() => (plan ? { cardIds: plan.cardIds, groups: plan.groups } : noPicks))
+  const selectedIds = useMemo(() => pickedIds(picks), [picks])
   // Cards edited from here come back from the server, which shouldn't
   // reshuffle the deck. A card that's been deleted drops out of the plan.
   if (arrangedFrom !== deckCards) {
     setArrangedFrom(deckCards)
     setArranged(keepArrangement(arranged, deckCards))
     const inDeck = new Set(deckCards.map((card) => card.id))
-    setSelectedIds((currentIds) => currentIds.filter((id) => inDeck.has(id)))
+    setPicks((current) => keepCards(current, (id) => inDeck.has(id)))
   }
   const cardsById = useMemo(() => new Map(deckCards.map((card) => [card.id, card])), [deckCards])
   const picksPlace = useMemo(() => ({ shareId, planId: plan?.id }), [shareId, plan?.id])
@@ -102,7 +108,7 @@ export default function DeckBuilder({
   // The plan as last saved. While editing a plan, Update Plan shares its link until
   // something changes.
   const [saved, setSaved] = useState<{ key: string; planId: string } | null>(() =>
-    plan ? { key: plan.cardIds.join(','), planId: plan.id } : null,
+    plan ? { key: picksKey(plan), planId: plan.id } : null,
   )
   const [saving, setSaving] = useState(false)
   const [deleting, setDeleting] = useState(false)
@@ -130,9 +136,17 @@ export default function DeckBuilder({
     [sort, deckCards, arranged, notesById],
   )
   const trackReference = useRef<HTMLDivElement>(null)
+  const planReference = useRef<HTMLElement>(null)
   // The card moved from the keyboard, whose grip gets focus back afterwards.
   const [movedId, setMovedId] = useState<string | null>(null)
+  // A group just added, whose title gets focus.
+  const [addedGroupId, setAddedGroupId] = useState<string | null>(null)
   const reduceMotion = useReducedMotion()
+  const drag = usePlanDrag({
+    container: planReference,
+    onMove: (id, place) => setPicks((current) => placeCard(current, id, place.row, place.index)),
+    reduceMotion: Boolean(reduceMotion),
+  })
   const router = useRouter()
 
   const tags = useMemo(() => [...new Set(deckCards.flatMap((card) => card.tags))].sort(), [deckCards])
@@ -147,8 +161,8 @@ export default function DeckBuilder({
   // biome-ignore lint/correctness/useExhaustiveDependencies: only what was kept when the page opened
   useLayoutEffect(() => {
     const kept = readPicks(picksPlace, cardsById)
-    if (kept && kept.join(',') !== selectedIds.join(',')) {
-      setSelectedIds(kept)
+    if (kept && picksKey(kept) !== picksKey(picks)) {
+      setPicks(kept)
       setLayoutGeneration((generation) => generation + 1)
     }
     setPicksRead(true)
@@ -157,15 +171,16 @@ export default function DeckBuilder({
   // Nothing is kept when there's nothing unsaved: no picks, or the plan as it
   // was last saved. So once Save plan has saved a new plan, the deck starts empty
   // next time (docs/plans.md § "Picks are kept in the browser").
-  const baselineKey = saved?.key ?? ''
+  const baselineKey = saved?.key ?? picksKey(noPicks)
   useEffect(() => {
     if (!picksRead) return
-    writePicks(picksPlace, selectedIds.join(',') === baselineKey ? null : selectedIds)
-  }, [picksRead, picksPlace, selectedIds, baselineKey])
+    writePicks(picksPlace, picksKey(picks) === baselineKey ? null : picks)
+  }, [picksRead, picksPlace, picks, baselineKey])
 
+  // Onto the end of the plan's first row.
   function selectCard(id: string, from: Box) {
     if (!reduceMotion) setFlight({ id, from })
-    setSelectedIds((currentIds) => (currentIds.includes(id) ? currentIds : [...currentIds, id]))
+    setPicks((current) => addCard(current, id))
   }
 
   // Picks from the ideas the current filters show, flying it up from its
@@ -175,7 +190,7 @@ export default function DeckBuilder({
     const card = availableCards[Math.floor(Math.random() * availableCards.length)]
     const deckCard = deckCardElement(card.id)
     if (deckCard) selectCard(card.id, cardBox(deckCard))
-    else setSelectedIds((currentIds) => [...currentIds, card.id])
+    else setPicks((current) => addCard(current, card.id))
   }
 
   function deckCardElement(id: string) {
@@ -204,23 +219,30 @@ export default function DeckBuilder({
   }
 
   function removeCard(id: string) {
-    setSelectedIds((currentIds) => currentIds.filter((selectedId) => selectedId !== id))
+    setPicks((current) => removeFromPicks(current, id))
   }
 
-  // Moves a card one place along the plan, from its grip with the arrow keys
-  // (docs/card-layout.md § "Reordering the plan").
-  function moveCard(id: string, by: -1 | 1) {
-    setSelectedIds((currentIds) => {
-      const from = currentIds.indexOf(id)
-      const to = from + by
-      if (from === -1 || to < 0 || to >= currentIds.length) return currentIds
-      const nextIds = [...currentIds]
-      nextIds.splice(from, 1)
-      nextIds.splice(to, 0, id)
-      return nextIds
-    })
+  // Moves a card one place along its row, or onto the row above or below,
+  // from its grip with the arrow keys (docs/card-layout.md § "Reordering the
+  // plan").
+  function moveCard(id: string, move: Parameters<typeof moveCardBy>[2]) {
+    setPicks((current) => moveCardBy(current, id, move))
     setMovedId(id)
   }
+
+  // A new, empty group at the bottom of the plan, ready for its title
+  // (docs/plans.md § "Groups").
+  function newGroup() {
+    const id = nanoid(10)
+    setPicks((current) => addGroup(current, id))
+    setAddedGroupId(id)
+  }
+
+  useEffect(() => {
+    if (!addedGroupId) return
+    document.querySelector<HTMLElement>(`[data-group-id="${CSS.escape(addedGroupId)}"] input`)?.focus()
+    setAddedGroupId(null)
+  }, [addedGroupId])
 
   // React moves the card's element to its new place, which can take focus
   // off its grip.
@@ -253,14 +275,16 @@ export default function DeckBuilder({
   // edited is saved over, under the link it already had, and isn't saved
   // again if nothing has changed.
   async function sharePlan() {
-    const key = selectedIds.join(',')
+    const key = picksKey(picks)
     let planId = saved?.key === key ? saved.planId : null
     setSaveError(null)
 
     if (!planId) {
       setSaving(true)
       try {
-        const result = plan ? await updatePlan(plan.id, selectedIds) : await savePlan(shareId, selectedIds)
+        const result = plan
+          ? await updatePlan(plan.id, picks.cardIds, picks.groups)
+          : await savePlan(shareId, picks.cardIds, picks.groups)
         if (!result.ok) {
           setSaveError(result.error)
           setSaving(false)
@@ -309,9 +333,43 @@ export default function DeckBuilder({
     [reduceMotion],
   )
   const endFlight = useCallback(() => setFlight(null), [])
-  const showActions = Boolean(plan) || selectedIds.length > 0
+  const showActions = Boolean(plan) || selectedIds.length > 0 || picks.groups.length > 0
   const flyingCard = flight && cardsById.get(flight.id)
   const notesCard = notesOpen && cardsById.get(notesOpen.id)
+  const liftedCard = drag.lifted && cardsById.get(drag.lifted.id)
+
+  function renderPlanCard(id: string) {
+    const card = cardsById.get(id)
+    if (!card) return null
+    const actions: SideActions = { primary: () => removeCard(card.id), notes: () => openNotes(card.id) }
+
+    return (
+      <PlanCard
+        className={`${cardStyles.card} ${flight?.id === card.id || notesOpen?.id === card.id ? cardStyles.inFlight : ''}`}
+        key={card.id}
+        title={card.title}
+        lifted={drag.liftedId === card.id}
+        data-card-id={card.id}
+        data-revealed={revealedId === card.id}
+        layoutId={`card-${card.id}`}
+        onPointerEnter={tiltCard}
+        transition={transition}
+        onClick={(event) => clickCard(card.id, event, actions)}
+        onPointerMove={showHoveredSide}
+        onPointerLeave={leaveCard}
+        onPress={(event) => drag.pressCard(event, card.id)}
+        onMove={(move) => moveCard(card.id, move)}
+      >
+        <Card
+          card={card}
+          frame={frameFor(card.id)}
+          actions={<CardActions title={card.title} primary="Discard" actions={actions} />}
+          scrawl={notesById.get(card.id)}
+        />
+        {deckId && <EditButton title={card.title} onClick={() => editCard(card)} />}
+      </PlanCard>
+    )
+  }
 
   return (
     <main className="page-shell">
@@ -327,7 +385,7 @@ export default function DeckBuilder({
       {/* A new group for kept picks, so the cards that were in the deck have
           nothing to fly up from. */}
       <LayoutGroup id={`date-builder-${layoutGeneration}`} key={layoutGeneration}>
-        <section className="plan-section" aria-label="Your plan">
+        <section className="plan-section" aria-label="Your plan" ref={planReference}>
           {/* Always laid out, so the first pick doesn't push the page down;
               hidden (and inert) until there's a plan to act on. While editing
               a plan they always show, so Cancel is there even once it's
@@ -353,7 +411,7 @@ export default function DeckBuilder({
                 {deleting ? 'Deleting…' : 'Delete plan'}
               </button>
             ) : (
-              <button className="text-action" type="button" onClick={() => setSelectedIds([])}>
+              <button className="text-action" type="button" onClick={() => setPicks(noPicks)}>
                 Clear plan
               </button>
             )}
@@ -364,50 +422,20 @@ export default function DeckBuilder({
             </p>
           )}
 
-          {/* Cards in the plan are dragged by their grip to reorder it
-              (docs/card-layout.md § "Reordering the plan"). */}
-          <Reorder.Group
-            as="div"
-            axis="x"
+          {/* Cards in the plan are dragged to reorder it, or onto another
+              row (docs/card-layout.md § "Reordering the plan"). */}
+          <motion.div
             className="plan-track"
             ref={trackReference}
-            values={selectedIds}
-            onReorder={setSelectedIds}
+            data-plan-row={firstRow}
+            aria-label={picks.groups.length > 0 ? 'Not in a group' : undefined}
+            role={picks.groups.length > 0 ? 'group' : undefined}
             layoutScroll
           >
-            <AnimatePresence initial={false} mode="popLayout">
-              {selectedIds.map((id) => {
-                const card = cardsById.get(id)
-                if (!card) return null
-                const actions: SideActions = { primary: () => removeCard(card.id), notes: () => openNotes(card.id) }
-
-                return (
-                  <PlanCard
-                    className={`${cardStyles.card} ${flight?.id === card.id || notesOpen?.id === card.id ? cardStyles.inFlight : ''}`}
-                    key={card.id}
-                    value={card.id}
-                    title={card.title}
-                    data-card-id={card.id}
-                    data-revealed={revealedId === card.id}
-                    layoutId={`card-${card.id}`}
-                    onPointerEnter={tiltCard}
-                    transition={transition}
-                    onClick={(event) => clickCard(card.id, event, actions)}
-                    onPointerMove={showHoveredSide}
-                    onPointerLeave={leaveCard}
-                    onMove={(by) => moveCard(card.id, by)}
-                  >
-                    <Card
-                      card={card}
-                      frame={frameFor(card.id)}
-                      actions={<CardActions title={card.title} primary="Discard" actions={actions} />}
-                      scrawl={notesById.get(card.id)}
-                    />
-                    {deckId && <EditButton title={card.title} onClick={() => editCard(card)} />}
-                  </PlanCard>
-                )
-              })}
-            </AnimatePresence>
+            {/* No AnimatePresence: a card moved to another row would linger
+                here as it left, and nothing in the plan has an exit animation.
+                A discarded card still flies back to the deck by its layoutId. */}
+            {picks.cardIds.map(renderPlanCard)}
             <motion.div className="empty-slot" layout transition={transition}>
               <span>Pick a card below</span>
               {availableCards.length > 0 && (
@@ -419,7 +447,65 @@ export default function DeckBuilder({
                 </>
               )}
             </motion.div>
-          </Reorder.Group>
+          </motion.div>
+
+          {/* Each group is a row of its own, with a title and notes
+              (docs/plans.md § "Groups"). */}
+          {picks.groups.map((group, index) => {
+            const name = group.title.trim() || `Group ${index + 1}`
+            return (
+              <section className="plan-group" key={group.id} data-group-id={group.id} aria-label={name}>
+                {/* Beside the cards on a wide screen, above them otherwise
+                    (docs/plans.md § "Groups"). */}
+                <div className="plan-group-info">
+                  <input
+                    className="plan-group-title"
+                    type="text"
+                    aria-label={`Title of ${name}`}
+                    placeholder={`Group ${index + 1}`}
+                    maxLength={80}
+                    value={group.title}
+                    onChange={(event) =>
+                      setPicks((current) => changeGroup(current, group.id, { title: event.target.value }))
+                    }
+                  />
+                  <textarea
+                    className="plan-group-notes"
+                    aria-label={`Notes on ${name}`}
+                    placeholder="Notes"
+                    rows={1}
+                    maxLength={2000}
+                    value={group.notes}
+                    onChange={(event) =>
+                      setPicks((current) => changeGroup(current, group.id, { notes: event.target.value }))
+                    }
+                  />
+                  <button
+                    className="text-action plan-group-remove"
+                    type="button"
+                    aria-label={`Remove ${name}`}
+                    onClick={() => setPicks((current) => removeGroup(current, group.id))}
+                  >
+                    Remove group
+                  </button>
+                </div>
+                <motion.div className="plan-track plan-group-track" data-plan-row={group.id} layoutScroll>
+                  {group.cardIds.map(renderPlanCard)}
+                  {group.cardIds.length === 0 && (
+                    <motion.div className="empty-slot group-slot" layout transition={transition}>
+                      <span>Drag ideas here</span>
+                    </motion.div>
+                  )}
+                </motion.div>
+              </section>
+            )
+          })}
+
+          <div className="plan-group-add">
+            <button className="text-action" type="button" onClick={newGroup}>
+              Add group
+            </button>
+          </div>
         </section>
 
         <section className="deck-section" aria-label="Date ideas">
@@ -542,6 +628,12 @@ export default function DeckBuilder({
         />
       )}
 
+      {drag.lifted && liftedCard && (
+        <DragStandIn lifted={drag.lifted} motionValues={drag.standIn}>
+          <Card card={liftedCard} frame={frameFor(liftedCard.id)} scrawl={notesById.get(liftedCard.id)} />
+        </DragStandIn>
+      )}
+
       {notesOpen && notesCard && (
         <CardNotes
           key={notesOpen.id}
@@ -578,163 +670,3 @@ export default function DeckBuilder({
     </main>
   )
 }
-
-type PlanCardProps = Omit<ComponentProps<typeof Reorder.Item<string, 'div'>>, 'as' | 'value'> & {
-  value: string
-  title: string
-  onMove: (by: -1 | 1) => void
-}
-
-// A card in the plan, which a mouse can drag from anywhere on it. A touch
-// only drags from the grip, so a swipe across the card still scrolls the plan
-// (docs/card-layout.md § "Reordering the plan"). A press that doesn't move
-// is still a click, but letting go of a drag isn't, anywhere on the card.
-function PlanCard({ value, title, onMove, className, children, ...props }: PlanCardProps) {
-  const dragControls = useDragControls()
-  // Set as soon as the card starts moving. Motion's onDragEnd comes a frame
-  // after the click that letting go makes, too late to stop it.
-  const dragged = useRef(false)
-  const { followDrag, stopFollowing } = useDragFollower()
-
-  function startDrag(event: ReactPointerEvent<HTMLElement>) {
-    dragged.current = false
-    const target = event.target instanceof Element ? event.target : null
-    const onGrip = Boolean(target?.closest(`.${cardStyles.grip}`))
-    if (onGrip) event.preventDefault()
-    else if (event.pointerType === 'touch' || target?.closest('a')) return
-    dragControls.start(event)
-  }
-
-  function moveFromKeyboard(event: ReactKeyboardEvent) {
-    const by = event.key === 'ArrowLeft' ? -1 : event.key === 'ArrowRight' ? 1 : null
-    if (!by) return
-    event.preventDefault()
-    onMove(by)
-  }
-
-  return (
-    <Reorder.Item
-      as="div"
-      value={value}
-      dragListener={false}
-      dragControls={dragControls}
-      onPointerDown={startDrag}
-      onDragStart={(event, info) => {
-        dragged.current = true
-        followDrag(event.target, info.point.x)
-      }}
-      onDrag={(_, info) => followDrag(null, info.point.x)}
-      onDragEnd={stopFollowing}
-      // Caught on the way down, before the card or any button on it sees it.
-      onClickCapture={(event) => {
-        if (!dragged.current) return
-        dragged.current = false
-        event.stopPropagation()
-        event.preventDefault()
-      }}
-      className={`${className} ${cardStyles.reorderable}`}
-      {...props}
-    >
-      {children}
-      <button
-        className={cardStyles.grip}
-        type="button"
-        aria-label={`Move ${title}`}
-        aria-description="Drag, or use the left and right arrow keys, to move it along the plan"
-        onKeyDown={moveFromKeyboard}
-      >
-        <svg viewBox="0 0 24 12" aria-hidden="true">
-          {[4, 10, 16].flatMap((x) => [2, 8].map((y) => <circle key={`${x}-${y}`} cx={x + 2} cy={y + 1} r="1.6" />))}
-        </svg>
-      </button>
-    </Reorder.Item>
-  )
-}
-
-// Each frame of a drag, leans the card back from the way it's going, and
-// scrolls the plan when the card is taken up to either end of it
-// (docs/card-layout.md § "Reordering the plan"). Motion's Reorder only
-// scrolls a group's parents, not the plan track, which is the group itself.
-// Motion keeps the card under the pointer as the track scrolls.
-function useDragFollower() {
-  const drag = useRef<{
-    card: HTMLElement
-    startX: number
-    pointerX: number
-    lastX: number
-    lastTime: number
-    velocity: number
-    lean: number
-    frame: number
-  } | null>(null)
-
-  function step(time: number) {
-    const state = drag.current
-    if (!state) return
-    const seconds = Math.max(0.001, (time - state.lastTime) / 1000)
-    // Smoothed, so the lean doesn't twitch with every uneven mouse move.
-    const speed = (state.pointerX - state.lastX) / seconds
-    state.velocity += (speed - state.velocity) * Math.min(1, seconds * 12)
-    state.lastX = state.pointerX
-    state.lastTime = time
-
-    const lean = dragLean(state.velocity)
-    if (Math.abs(lean - state.lean) >= 0.1 || (lean === 0 && state.lean !== 0)) {
-      state.lean = lean
-      animate(state.card, { rotate: lean }, dragSpring)
-    }
-
-    const track = state.card.parentElement
-    if (track) {
-      const scroll = edgeScrollSpeed(
-        state.card.getBoundingClientRect(),
-        track.getBoundingClientRect(),
-        state.pointerX - state.startX,
-      )
-      if (scroll) track.scrollLeft += scroll * seconds
-    }
-    state.frame = requestAnimationFrame(step)
-  }
-
-  // Motion gives the pointer in page coordinates, which is fine for its
-  // speed and for how far it's gone since the drag started.
-  function followDrag(target: EventTarget | null, pointerX: number) {
-    if (drag.current) {
-      drag.current.pointerX = pointerX
-      return
-    }
-    const card = target instanceof Element ? target.closest<HTMLElement>('[data-card-id]') : null
-    if (!card) return
-    drag.current = {
-      card,
-      startX: pointerX,
-      pointerX,
-      lastX: pointerX,
-      lastTime: performance.now(),
-      velocity: 0,
-      lean: 0,
-      frame: requestAnimationFrame(step),
-    }
-  }
-
-  // Straightens the card up again once it's let go, still lifted, as the
-  // mouse is still over it.
-  function stopFollowing() {
-    const state = drag.current
-    if (!state) return
-    cancelAnimationFrame(state.frame)
-    drag.current = null
-    animate(state.card, { rotate: 0 }, dragSpring)
-  }
-
-  useEffect(
-    () => () => {
-      if (drag.current) cancelAnimationFrame(drag.current.frame)
-    },
-    [],
-  )
-
-  return { followDrag, stopFollowing }
-}
-
-const dragSpring = { type: 'spring', stiffness: 300, damping: 24 } as const

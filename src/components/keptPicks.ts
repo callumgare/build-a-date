@@ -7,6 +7,9 @@
 // Storage can be missing or refuse (a private window, blocked site data), in
 // which case the picks just aren't kept.
 
+import { keepCards, parsePicks } from '@/lib/plan-picks'
+import type { PlanPicks } from '@/types'
+
 export type PicksPlace = { shareId: string; planId?: string }
 
 function storageFor({ planId }: PicksPlace) {
@@ -17,24 +20,21 @@ function keyFor({ shareId, planId }: PicksPlace) {
   return planId ? `build-a-date:picks:plan:${planId}` : `build-a-date:picks:deck:${shareId}`
 }
 
-// Only ids of cards still in the deck, each once.
-export function readPicks(place: PicksPlace, inDeck: { has: (id: string) => boolean }): string[] | null {
+// Only cards still in the deck, each once, in their rows and groups. Picks
+// kept before groups were a plain list of ids, which become the first row.
+export function readPicks(place: PicksPlace, inDeck: { has: (id: string) => boolean }): PlanPicks | null {
   try {
-    const stored: unknown = JSON.parse(storageFor(place).getItem(keyFor(place)) ?? 'null')
-    if (!Array.isArray(stored)) return null
-    const seen = new Set<string>()
-    return stored.filter(
-      (id): id is string => typeof id === 'string' && inDeck.has(id) && !seen.has(id) && Boolean(seen.add(id)),
-    )
+    const stored = parsePicks(JSON.parse(storageFor(place).getItem(keyFor(place)) ?? 'null'))
+    return stored && keepCards(stored, (id) => inDeck.has(id))
   } catch {
     return null
   }
 }
 
 // null forgets them.
-export function writePicks(place: PicksPlace, ids: string[] | null) {
+export function writePicks(place: PicksPlace, picks: PlanPicks | null) {
   try {
-    if (ids) storageFor(place).setItem(keyFor(place), JSON.stringify(ids))
+    if (picks) storageFor(place).setItem(keyFor(place), JSON.stringify(picks))
     else storageFor(place).removeItem(keyFor(place))
   } catch {}
 }

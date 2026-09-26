@@ -393,6 +393,145 @@ h1 {
     var(--defocused-background-color);
 }
 
+/* A group in the plan: a row of its own under the plan's first row, with its
+   title and notes beside its cards when there's room, and above them when
+   there isn't (docs/plans.md § "Groups"). In the builder the title and notes
+   are fields that look like the text they'll be, so they're kept apart from
+   the site's other fields. */
+.plan-group {
+  margin-top: 20px;
+}
+
+/* Above the cards: the title with Remove group beside it, and the notes
+   under both. */
+.plan-group-info {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  column-gap: 16px;
+  align-items: baseline;
+}
+
+.plan-group-info > * {
+  grid-column: 1 / -1;
+}
+
+.plan-group-info > :is(.plan-group-title, .plan-group-heading) {
+  grid-column: 1;
+}
+
+.plan-group-info > .plan-group-remove {
+  grid-row: 1;
+  grid-column: 2;
+}
+
+.plan-group .plan-group-title,
+.plan-group-heading {
+  min-width: 0;
+  margin: 0;
+  color: var(--accent);
+  font-family: 'Tan Pearl', Georgia, serif;
+  font-size: clamp(1.5rem, 4vw, 2rem);
+  font-weight: 400;
+  line-height: 1.2;
+  text-shadow: var(--background-text-shadow);
+}
+
+.plan-group .plan-group-title,
+.plan-group .plan-group-notes {
+  padding: 2px 0;
+  border: 0;
+  border-bottom: 1px dashed var(--line);
+  border-radius: 0;
+  background: transparent;
+  outline: none;
+}
+
+.plan-group .plan-group-title:focus-visible,
+.plan-group .plan-group-notes:focus-visible {
+  border-bottom-color: var(--accent);
+  border-bottom-style: solid;
+}
+
+.plan-group .plan-group-title::placeholder,
+.plan-group .plan-group-notes::placeholder {
+  color: var(--accent);
+  opacity: 0.55;
+}
+
+.plan-group .plan-group-notes,
+.plan-group-text {
+  display: block;
+  width: 100%;
+  max-width: 44em;
+  margin: 6px 0 0;
+  color: inherit;
+  font: inherit;
+  line-height: 1.5;
+  text-shadow: var(--background-text-shadow);
+}
+
+.plan-group .plan-group-notes {
+  resize: none;
+  field-sizing: content;
+  min-height: calc(1.5em + 4px);
+}
+
+.plan-group-text {
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+
+.plan-group-track {
+  padding-top: 12px;
+}
+
+/* Beside the cards: a column on the left, lined up with the tops of the
+   cards, with Remove group under the notes. The cards start next to it
+   rather than centred, and still run on to the right edge of the screen
+   (docs/card-layout.md § "The plan track"). */
+@media (min-width: 900px) {
+  .plan-group {
+    display: grid;
+    grid-template-columns: minmax(11rem, 16rem) minmax(0, 1fr);
+    column-gap: 24px;
+    align-items: start;
+  }
+
+  .plan-group-info {
+    grid-column: 1;
+    grid-template-columns: minmax(0, 1fr);
+    padding-top: 12px;
+  }
+
+  .plan-group-info > :is(.plan-group-title, .plan-group-heading) {
+    grid-column: 1;
+  }
+
+  .plan-group-info > .plan-group-remove {
+    grid-row: auto;
+    grid-column: 1;
+    justify-self: start;
+    margin-top: 8px;
+  }
+
+  .plan-group-track {
+    grid-column: 2;
+    justify-content: start;
+    margin-left: 0;
+    padding-left: 14px;
+  }
+
+  .plan-group-track::-webkit-scrollbar-track {
+    margin-inline: 14px max(14px, var(--bleed));
+  }
+}
+
+.plan-group-add {
+  display: flex;
+  justify-content: center;
+  margin-top: 12px;
+}
+
 /* A small spaced-out "or" between two rules. */
 .empty-slot-divider {
   display: flex;

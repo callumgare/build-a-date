@@ -184,6 +184,18 @@
   -webkit-user-select: none;
 }
 
+/* A card being dragged stays in the plan, faded, wherever it would be
+   dropped, while a stand-in follows the pointer (docs/card-layout.md
+   § "Reordering the plan"). */
+.lifted {
+  opacity: 0.35;
+}
+
+.dragging {
+  cursor: grabbing;
+  box-shadow: 0 22px 44px rgba(4, 23, 31, 0.32);
+}
+
 /* The grip at the bottom of a card in the plan (docs/card-layout.md
    § "Reordering the plan"). A mouse can drag the card from anywhere, but a
    touch only from here, so a swipe across the card still scrolls the plan.

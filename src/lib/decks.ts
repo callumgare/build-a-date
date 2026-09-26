@@ -3,7 +3,8 @@ import { customAlphabet, nanoid } from 'nanoid'
 import { starterCards } from '@/data/starter-cards'
 import type { Database } from '@/db'
 import { type CardRow, card, type Deck, deck, deckAccess, plan, user } from '@/db/schema'
-import type { DateCard } from '@/types'
+import { isBlankGroup, keepCards, pickedIds } from '@/lib/plan-picks'
+import type { DateCard, PlanGroup, PlanPicks } from '@/types'
 import { type CardInput, cardInput } from './validation'
 
 // Short, unambiguous ids for the links people share.
@@ -218,37 +219,52 @@ export async function saveCardNotes(
   return saved
 }
 
-// Only cards from the deck are kept, in the order given, without repeats.
-async function keepDeckCards(db: Database, deckId: string, cardIds: string[]) {
+// Only cards from the deck are kept, in the order given, each once, in the
+// first place it's given. Groups with nothing in them are dropped
+// (docs/plans.md § "Groups").
+async function keepDeckCards(db: Database, deckId: string, picks: PlanPicks) {
+  const given = pickedIds(picks)
   const inDeck = new Set(
-    (
-      await db
-        .select({ id: card.id })
-        .from(card)
-        .where(and(eq(card.deckId, deckId), inArray(card.id, cardIds)))
-    ).map((row) => row.id),
+    given.length
+      ? (
+          await db
+            .select({ id: card.id })
+            .from(card)
+            .where(and(eq(card.deckId, deckId), inArray(card.id, given)))
+        ).map((row) => row.id)
+      : [],
   )
-  const kept = [...new Set(cardIds)].filter((id) => inDeck.has(id))
-  if (kept.length === 0) throw new NotFoundError('None of those cards are in this deck')
-  return kept
+  const seenGroups = new Set<string>()
+  const kept = keepCards(
+    {
+      ...picks,
+      groups: picks.groups.filter((group) => !seenGroups.has(group.id) && Boolean(seenGroups.add(group.id))),
+    },
+    (id) => inDeck.has(id),
+  )
+  if (pickedIds(kept).length === 0) throw new NotFoundError('None of those cards are in this deck')
+  return { cardIds: kept.cardIds, groups: kept.groups.filter((group) => !isBlankGroup(group)) }
 }
 
 // Anyone with the share link can save a plan.
-export async function savePlan(db: Database, shareId: string, cardIds: string[]) {
+export async function savePlan(db: Database, shareId: string, cardIds: string[], groups: PlanGroup[] = []) {
   const [found] = await db.select({ id: deck.id }).from(deck).where(eq(deck.shareId, shareId))
   if (!found) throw new NotFoundError('Deck not found')
-  const kept = await keepDeckCards(db, found.id, cardIds)
-  const [saved] = await db.insert(plan).values({ id: shareCode(), deckId: found.id, cardIds: kept }).returning()
+  const kept = await keepDeckCards(db, found.id, { cardIds, groups })
+  const [saved] = await db
+    .insert(plan)
+    .values({ id: shareCode(), deckId: found.id, ...kept })
+    .returning()
   return saved
 }
 
-// Anyone with a plan's link can change its cards, and the link stays the same
-// (docs/plans.md § "Who can edit a plan").
-export async function updatePlan(db: Database, planId: string, cardIds: string[]) {
+// Anyone with a plan's link can change its cards and groups, and the link
+// stays the same (docs/plans.md § "Who can edit a plan").
+export async function updatePlan(db: Database, planId: string, cardIds: string[], groups: PlanGroup[] = []) {
   const [found] = await db.select({ deckId: plan.deckId }).from(plan).where(eq(plan.id, planId))
   if (!found) throw new NotFoundError('Plan not found')
-  const kept = await keepDeckCards(db, found.deckId, cardIds)
-  const [saved] = await db.update(plan).set({ cardIds: kept }).where(eq(plan.id, planId)).returning()
+  const kept = await keepDeckCards(db, found.deckId, { cardIds, groups })
+  const [saved] = await db.update(plan).set(kept).where(eq(plan.id, planId)).returning()
   return saved
 }
 
@@ -259,7 +275,8 @@ export async function deletePlan(db: Database, planId: string) {
   if (!deleted) throw new NotFoundError('Plan not found')
 }
 
-// A plan's cards in the order they were picked, leaving out any since deleted.
+// A plan's cards in the order they were picked, row by row, leaving out any
+// since deleted.
 export async function getPlan(db: Database, planId: string) {
   const [found] = await db
     .select({ plan, deck })
@@ -268,16 +285,22 @@ export async function getPlan(db: Database, planId: string) {
     .where(eq(plan.id, planId))
   if (!found) throw new NotFoundError('Plan not found')
 
-  const rows = found.plan.cardIds.length
+  const ids = pickedIds(found.plan)
+  const rows = ids.length
     ? await db
         .select()
         .from(card)
-        .where(and(eq(card.deckId, found.deck.id), inArray(card.id, found.plan.cardIds)))
+        .where(and(eq(card.deckId, found.deck.id), inArray(card.id, ids)))
     : []
   const byId = new Map(rows.map((row) => [row.id, toDateCard(row)]))
-  const cards = found.plan.cardIds.flatMap((id) => byId.get(id) ?? [])
+  const cardsOf = (cardIds: string[]) => cardIds.flatMap((id) => byId.get(id) ?? [])
 
-  return { plan: found.plan, deck: found.deck, cards }
+  return {
+    plan: found.plan,
+    deck: found.deck,
+    cards: cardsOf(found.plan.cardIds),
+    groups: found.plan.groups.map(({ cardIds, ...group }) => ({ ...group, cards: cardsOf(cardIds) })),
+  }
 }
 
 export async function listPlans(db: Database, deckId: string) {
@@ -290,7 +313,7 @@ export async function listPlanSummaries(db: Database, deckId: string) {
   return (await listPlans(db, deckId)).map((row) => ({
     id: row.id,
     createdAt: row.createdAt,
-    cards: row.cardIds.length,
+    cards: pickedIds(row).length,
   }))
 }
 

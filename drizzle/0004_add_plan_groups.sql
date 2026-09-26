@@ -1,0 +1,1 @@
+ALTER TABLE `plan` ADD `groups` text DEFAULT '[]' NOT NULL;

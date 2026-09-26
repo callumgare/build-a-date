@@ -34,6 +34,32 @@ beforeEach(() => {
 afterEach(() => vi.restoreAllMocks())
 
 describe('PlanView', () => {
+  /** @see docs/plans.md § "Groups" */
+  describe('groups', () => {
+    const groups = [{ id: 'g', title: 'Later', notes: 'Wear boots', cards: [cards[1]] }]
+
+    it('shows each group after the first row, with its title and notes', () => {
+      render(<PlanView shareId="share123" cards={[cards[0]]} groups={groups} />)
+      const group = screen.getByRole('region', { name: 'Later' })
+      expect(within(group).getByRole('heading', { name: 'Later' })).toBeInTheDocument()
+      expect(within(group).getByText('Wear boots')).toBeInTheDocument()
+      expect(within(group).getByRole('button', { name: 'Notes on Museum' })).toBeInTheDocument()
+    })
+
+    it('opens the notes of a card in a group', async () => {
+      const user = userEvent.setup()
+      render(<PlanView shareId="share123" cards={[cards[0]]} groups={groups} />)
+      await user.click(screen.getByRole('button', { name: 'Notes on Museum' }))
+      expect(await screen.findByRole('dialog')).toBeInTheDocument()
+    })
+
+    it('leaves out the heading of a group without a title', () => {
+      render(<PlanView shareId="share123" cards={[]} groups={[{ ...groups[0], title: '' }]} />)
+      expect(screen.queryByRole('heading')).not.toBeInTheDocument()
+      expect(screen.getByText('Wear boots')).toBeInTheDocument()
+    })
+  })
+
   /** @see docs/card-notes.md § "Card actions" - on a plan, only Notes */
   it('offers only Notes on each card', () => {
     render(<PlanView shareId="share123" cards={cards} />)

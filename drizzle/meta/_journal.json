@@ -29,6 +29,13 @@
       "when": 1790344410156,
       "tag": "0003_add_user_preference",
       "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "6",
+      "when": 1790358697962,
+      "tag": "0004_add_plan_groups",
+      "breakpoints": true
     }
   ]
 }

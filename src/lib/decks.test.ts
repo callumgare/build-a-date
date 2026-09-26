@@ -16,6 +16,7 @@ import {
   leaveDeck,
   listDeckAccess,
   listDecks,
+  listPlanSummaries,
   listPlans,
   listSharedDecks,
   NotFoundError,
@@ -198,6 +199,94 @@ describe('plans', () => {
     const plan = await savePlan(db, deck.shareId, [a.id, b.id])
     await deleteCard(db, owner, deck.id, a.id)
     expect((await getPlan(db, plan.id)).cards.map((card) => card.title)).toEqual(['B'])
+  })
+
+  /** @see docs/plans.md § "Groups" */
+  describe('groups', () => {
+    it('saves groups with their titles, notes and cards, and gives them back in order', async () => {
+      const deck = await createDeck(db, owner, { name: 'Deck', template: 'empty' })
+      const a = await saveCard(db, owner, deck.id, null, { title: 'A' })
+      const b = await saveCard(db, owner, deck.id, null, { title: 'B' })
+      const c = await saveCard(db, owner, deck.id, null, { title: 'C' })
+      const saved = await savePlan(
+        db,
+        deck.shareId,
+        [a.id],
+        [{ id: 'g1', title: 'Dinner', notes: 'Book ahead', cardIds: [c.id, b.id] }],
+      )
+
+      const found = await getPlan(db, saved.id)
+      expect(found.cards.map((card) => card.title)).toEqual(['A'])
+      expect(found.groups).toMatchObject([{ id: 'g1', title: 'Dinner', notes: 'Book ahead' }])
+      expect(found.groups[0].cards.map((card) => card.title)).toEqual(['C', 'B'])
+      expect((await listPlanSummaries(db, deck.id))[0].cards).toBe(3)
+    })
+
+    it('keeps each card once, in the first place it is given, and only cards from the deck', async () => {
+      const deck = await createDeck(db, owner, { name: 'Deck', template: 'empty' })
+      const other = await createDeck(db, stranger, { name: 'Other', template: 'empty' })
+      const a = await saveCard(db, owner, deck.id, null, { title: 'A' })
+      const b = await saveCard(db, owner, deck.id, null, { title: 'B' })
+      const foreign = await saveCard(db, stranger, other.id, null, { title: 'Foreign' })
+      const saved = await savePlan(
+        db,
+        deck.shareId,
+        [a.id],
+        [
+          { id: 'g1', title: 'One', notes: '', cardIds: [a.id, foreign.id, b.id] },
+          { id: 'g2', title: 'Two', notes: '', cardIds: [b.id] },
+        ],
+      )
+      expect(saved.cardIds).toEqual([a.id])
+      expect(saved.groups.map((group) => group.cardIds)).toEqual([[b.id], []])
+    })
+
+    it('drops groups with no title, notes or cards, and repeated groups', async () => {
+      const deck = await createDeck(db, owner, { name: 'Deck', template: 'empty' })
+      const a = await saveCard(db, owner, deck.id, null, { title: 'A' })
+      const saved = await savePlan(
+        db,
+        deck.shareId,
+        [a.id],
+        [
+          { id: 'blank', title: '', notes: '', cardIds: [] },
+          { id: 'noted', title: '', notes: 'Pack snacks', cardIds: [] },
+          { id: 'noted', title: 'Again', notes: '', cardIds: [] },
+        ],
+      )
+      expect(saved.groups).toEqual([{ id: 'noted', title: '', notes: 'Pack snacks', cardIds: [] }])
+    })
+
+    it('saves a plan whose cards are all in groups, but not one with no cards at all', async () => {
+      const deck = await createDeck(db, owner, { name: 'Deck', template: 'empty' })
+      const a = await saveCard(db, owner, deck.id, null, { title: 'A' })
+      const saved = await savePlan(db, deck.shareId, [], [{ id: 'g', title: 'All', notes: '', cardIds: [a.id] }])
+      expect(saved.cardIds).toEqual([])
+      await expect(
+        savePlan(db, deck.shareId, [], [{ id: 'g', title: 'Empty', notes: 'Nothing', cardIds: [] }]),
+      ).rejects.toThrow(NotFoundError)
+    })
+
+    it('saves over the groups when the plan is edited', async () => {
+      const deck = await createDeck(db, owner, { name: 'Deck', template: 'empty' })
+      const a = await saveCard(db, owner, deck.id, null, { title: 'A' })
+      const b = await saveCard(db, owner, deck.id, null, { title: 'B' })
+      const saved = await savePlan(db, deck.shareId, [a.id], [{ id: 'g', title: 'Old', notes: '', cardIds: [b.id] }])
+
+      await updatePlan(db, saved.id, [a.id, b.id], [{ id: 'h', title: 'New', notes: '', cardIds: [] }])
+      const found = await getPlan(db, saved.id)
+      expect(found.cards.map((card) => card.title)).toEqual(['A', 'B'])
+      expect(found.groups).toEqual([{ id: 'h', title: 'New', notes: '', cards: [] }])
+    })
+
+    it('drops cards deleted after the plan was made from its groups too', async () => {
+      const deck = await createDeck(db, owner, { name: 'Deck', template: 'empty' })
+      const a = await saveCard(db, owner, deck.id, null, { title: 'A' })
+      const b = await saveCard(db, owner, deck.id, null, { title: 'B' })
+      const saved = await savePlan(db, deck.shareId, [], [{ id: 'g', title: 'G', notes: '', cardIds: [a.id, b.id] }])
+      await deleteCard(db, owner, deck.id, a.id)
+      expect((await getPlan(db, saved.id)).groups[0].cards.map((card) => card.title)).toEqual(['B'])
+    })
   })
 
   it('goes away with its deck', async () => {

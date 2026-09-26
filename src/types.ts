@@ -11,3 +11,18 @@ export type DateCard = {
   // which aren't in a deck yet.
   addedAt?: string
 }
+
+// A group of cards in a plan, on a row of its own under the plan's other
+// cards, with a title and notes (docs/plans.md § "Groups").
+export type PlanGroup = {
+  id: string
+  title: string
+  notes: string
+  cardIds: string[]
+}
+
+// What's picked for a plan: the cards on its first row, then its groups.
+export type PlanPicks = {
+  cardIds: string[]
+  groups: PlanGroup[]
+}

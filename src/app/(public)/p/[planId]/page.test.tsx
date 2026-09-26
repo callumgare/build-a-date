@@ -125,6 +125,39 @@ describe('the plan page', () => {
     expect(screen.getByRole('dialog')).toHaveTextContent('Share this date plan')
   })
 
+  /** @see docs/plans.md § "Groups" */
+  it('shows each group on a row of its own, with its title and notes', async () => {
+    const picnic = await decks.saveCard(db, 'owner', deck.id, null, { title: 'Picnic' })
+    const hike = await decks.saveCard(db, 'owner', deck.id, null, { title: 'Hike' })
+    const plan = await decks.savePlan(
+      db,
+      deck.shareId,
+      [picnic.id],
+      [{ id: 'g', title: 'Morning', notes: 'Start early\nBring water', cardIds: [hike.id] }],
+    )
+
+    render(await PlanPage(props(plan.id)))
+    const group = screen.getByRole('region', { name: 'Morning' })
+    expect(within(group).getByRole('heading', { name: 'Morning' })).toBeInTheDocument()
+    expect(within(group).getByText(/Start early/)).toHaveTextContent('Start early Bring water')
+    expect(within(group).getByRole('button', { name: 'Notes on Hike' })).toBeInTheDocument()
+    expect(within(group).queryByRole('button', { name: 'Notes on Picnic' })).not.toBeInTheDocument()
+  })
+
+  it('shows a plan whose ideas are all in groups', async () => {
+    const hike = await decks.saveCard(db, 'owner', deck.id, null, { title: 'Hike' })
+    const plan = await decks.savePlan(
+      db,
+      deck.shareId,
+      [],
+      [{ id: 'g', title: 'Morning', notes: '', cardIds: [hike.id] }],
+    )
+
+    render(await PlanPage(props(plan.id)))
+    expect(screen.getByRole('button', { name: 'Notes on Hike' })).toBeInTheDocument()
+    expect(screen.queryByText(/have since been removed/)).not.toBeInTheDocument()
+  })
+
   it('says so when every idea in it has since been deleted', async () => {
     const card = await decks.saveCard(db, 'owner', deck.id, null, { title: 'Picnic' })
     const plan = await decks.savePlan(db, deck.shareId, [card.id])

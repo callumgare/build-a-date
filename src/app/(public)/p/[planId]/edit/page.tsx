@@ -5,6 +5,7 @@ import DeckBuilder from '@/components/DeckBuilder'
 import { getDb } from '@/db'
 import { getSession } from '@/lib/auth'
 import { getAccessState, getPlan, getSharedDeck, listPlanSummaries, NotFoundError } from '@/lib/decks'
+import { keepCards } from '@/lib/plan-picks'
 import { getDeckSort } from '@/lib/preferences'
 
 async function findPlan(planId: string) {
@@ -36,6 +37,7 @@ export default async function EditPlan({ params }: PageProps<'/p/[planId]/edit'>
   const sort = session ? await getDeckSort(getDb(), session.user.id) : 'random'
   // Cards deleted since the plan was saved have already dropped out.
   const inDeck = new Set(cards.map((card) => card.id))
+  const picks = keepCards({ cardIds: plan.cardIds, groups: plan.groups }, (id) => inDeck.has(id))
 
   return (
     <DeckBuilder
@@ -49,7 +51,7 @@ export default async function EditPlan({ params }: PageProps<'/p/[planId]/edit'>
       editHref={canEdit ? `/decks/${deck.id}` : undefined}
       deckId={canEdit ? deck.id : undefined}
       plans={canEdit ? await listPlanSummaries(getDb(), deck.id) : undefined}
-      plan={{ id: plan.id, cardIds: plan.cardIds.filter((id) => inDeck.has(id)) }}
+      plan={{ id: plan.id, ...picks }}
     />
   )
 }

@@ -1,7 +1,7 @@
 /** @vitest-environment jsdom */
 import { fireEvent, render, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import type { DateCard } from '@/types'
+import type { DateCard, PlanGroup, PlanPicks } from '@/types'
 import DeckBuilder from './DeckBuilder'
 
 const { savePlan, updatePlan, deletePlan, saveCardNotes } = vi.hoisted(() => ({
@@ -41,8 +41,13 @@ function keptPicks(key = deckPicks) {
   return JSON.parse(storageFor(key).getItem(key) ?? 'null')
 }
 
-function keepPicks(ids: string[], key = deckPicks) {
-  storageFor(key).setItem(key, JSON.stringify(ids))
+// Picks as they're kept: the plan's first row, and its groups.
+function picks(cardIds: string[], groups: PlanGroup[] = []): PlanPicks {
+  return { cardIds, groups }
+}
+
+function keepPicks(ids: string[] | PlanPicks, key = deckPicks) {
+  storageFor(key).setItem(key, JSON.stringify(Array.isArray(ids) ? picks(ids) : ids))
 }
 
 beforeEach(() => {
@@ -74,7 +79,7 @@ describe('DeckBuilder', () => {
 
     await user.click(screen.getByRole('button', { name: 'Add to plan: Picnic' }))
     expect(screen.getByRole('button', { name: 'Discard: Picnic' })).toBeInTheDocument()
-    expect(keptPicks()).toEqual(['picnic'])
+    expect(keptPicks()).toEqual(picks(['picnic']))
 
     await user.click(screen.getByRole('button', { name: 'Discard: Picnic' }))
     expect(await screen.findByRole('button', { name: 'Add to plan: Picnic' })).toBeInTheDocument()
@@ -106,7 +111,7 @@ describe('DeckBuilder', () => {
       renderBuilder()
 
       await user.click(screen.getByRole('button', { name: 'Add to plan: Hike' }))
-      expect(keptPicks()).toEqual(['hike'])
+      expect(keptPicks()).toEqual(picks(['hike']))
       await user.click(screen.getByRole('button', { name: 'Save plan' }))
       await waitFor(() => expect(router.push).toHaveBeenCalled())
       expect(keptPicks()).toBeNull()
@@ -120,7 +125,7 @@ describe('DeckBuilder', () => {
       await user.click(screen.getByRole('button', { name: 'Add to plan: Hike' }))
       await user.click(screen.getByRole('button', { name: 'Save plan' }))
       await screen.findByRole('alert')
-      expect(keptPicks()).toEqual(['hike'])
+      expect(keptPicks()).toEqual(picks(['hike']))
     })
 
     it('keeps a separate set for each deck', () => {
@@ -167,7 +172,7 @@ describe('DeckBuilder', () => {
     expect(screen.queryByRole('link', { name: 'Cancel' })).not.toBeInTheDocument()
     await user.click(screen.getByRole('button', { name: 'Save plan' }))
 
-    expect(savePlan).toHaveBeenCalledWith('share123', ['hike', 'museum'])
+    expect(savePlan).toHaveBeenCalledWith('share123', ['hike', 'museum'], [])
     await waitFor(() => expect(router.push).toHaveBeenCalledExactlyOnceWith('/p/plan42?share'))
     // Saving till the page changes, so it can't be pressed twice.
     expect(screen.getByRole('button', { name: 'Saving…' })).toBeDisabled()
@@ -734,7 +739,7 @@ describe('DeckBuilder', () => {
       grip.focus()
       await user.keyboard('{ArrowRight}')
       expect(planOrder(container)).toEqual(['museum', 'picnic', 'hike'])
-      expect(keptPicks()).toEqual(['museum', 'picnic', 'hike'])
+      expect(keptPicks()).toEqual(picks(['museum', 'picnic', 'hike']))
       expect(screen.getByRole('button', { name: 'Move Picnic' })).toHaveFocus()
 
       await user.keyboard('{ArrowRight}{ArrowRight}')
@@ -755,7 +760,7 @@ describe('DeckBuilder', () => {
       grip.focus()
       await user.keyboard('{ArrowLeft}')
       await user.click(screen.getByRole('button', { name: 'Save plan' }))
-      expect(savePlan).toHaveBeenCalledWith('share123', ['hike', 'picnic'])
+      expect(savePlan).toHaveBeenCalledWith('share123', ['hike', 'picnic'], [])
     })
 
     describe('with a mouse', () => {
@@ -785,6 +790,127 @@ describe('DeckBuilder', () => {
         const card = container.querySelector('[data-card-id="museum"]') as HTMLElement
         expect(card.dataset.side).toBeUndefined()
       })
+    })
+  })
+
+  /** @see docs/plans.md § "Groups" */
+  describe('groups', () => {
+    function rowOf(container: HTMLElement, id: string) {
+      return container
+        .querySelector(`[data-card-id="${id}"]`)
+        ?.closest('[data-plan-row]')
+        ?.getAttribute('data-plan-row')
+    }
+
+    function groupId() {
+      return keptPicks().groups[0].id as string
+    }
+
+    it('adds an empty group, ready for its title, and keeps its title and notes', async () => {
+      const user = userEvent.setup()
+      renderBuilder()
+
+      await user.click(screen.getByRole('button', { name: 'Add group' }))
+      const title = screen.getByRole('textbox', { name: 'Title of Group 1' })
+      expect(title).toHaveFocus()
+      expect(screen.getByText('Drag ideas here')).toBeInTheDocument()
+      await user.type(title, 'Dinner')
+      await user.type(screen.getByRole('textbox', { name: 'Notes on Dinner' }), 'Book a table')
+
+      expect(keptPicks()).toEqual(picks([], [{ id: groupId(), title: 'Dinner', notes: 'Book a table', cardIds: [] }]))
+      // There's a plan to act on now, even with no cards yet.
+      expect(screen.getByRole('button', { name: 'Save plan' })).toBeDisabled()
+      expect(screen.getByRole('button', { name: 'Clear plan' })).toBeVisible()
+    })
+
+    /** @see docs/card-layout.md § "Reordering the plan" - from the keyboard */
+    it('moves a card into a group and back with the up and down arrow keys on its grip', async () => {
+      keepPicks(picks(['picnic', 'museum'], [{ id: 'g', title: 'Later', notes: '', cardIds: [] }]))
+      const user = userEvent.setup()
+      const { container } = renderBuilder()
+
+      screen.getByRole('button', { name: 'Move Museum' }).focus()
+      await user.keyboard('{ArrowDown}')
+      expect(rowOf(container, 'museum')).toBe('g')
+      expect(keptPicks()).toEqual(picks(['picnic'], [{ id: 'g', title: 'Later', notes: '', cardIds: ['museum'] }]))
+      await waitFor(() => expect(screen.getByRole('button', { name: 'Move Museum' })).toHaveFocus())
+      expect(screen.queryByText('Drag ideas here')).not.toBeInTheDocument()
+
+      await user.keyboard('{ArrowDown}')
+      expect(rowOf(container, 'museum')).toBe('g')
+      await user.keyboard('{ArrowUp}')
+      // At the same place along the row as it was in the group.
+      expect(rowOf(container, 'museum')).toBe('')
+      expect(keptPicks().cardIds).toEqual(['museum', 'picnic'])
+    })
+
+    it('puts the cards of a removed group back in the plan', async () => {
+      keepPicks(picks(['picnic'], [{ id: 'g', title: 'Later', notes: '', cardIds: ['hike'] }]))
+      const user = userEvent.setup()
+      const { container } = renderBuilder()
+
+      await user.click(screen.getByRole('button', { name: 'Remove Later' }))
+      expect(screen.queryByRole('region', { name: 'Later' })).not.toBeInTheDocument()
+      expect(rowOf(container, 'hike')).toBe('')
+      expect(keptPicks()).toEqual(picks(['picnic', 'hike']))
+    })
+
+    it('discards a card from a group back into the deck', async () => {
+      keepPicks(picks([], [{ id: 'g', title: 'Later', notes: '', cardIds: ['hike'] }]))
+      const user = userEvent.setup()
+      renderBuilder()
+
+      await user.click(screen.getByRole('button', { name: 'Discard: Hike' }))
+      expect(await screen.findByRole('button', { name: 'Add to plan: Hike' })).toBeInTheDocument()
+      expect(keptPicks()).toEqual(picks([], [{ id: 'g', title: 'Later', notes: '', cardIds: [] }]))
+    })
+
+    it('saves the groups with the plan', async () => {
+      savePlan.mockResolvedValue({ ok: true, data: { planId: 'plan42' } })
+      const group = { id: 'g', title: 'Later', notes: 'Bring cash', cardIds: ['hike'] }
+      keepPicks(picks(['picnic'], [group]))
+      const user = userEvent.setup()
+      renderBuilder()
+
+      expect(screen.getByRole('textbox', { name: 'Title of Later' })).toHaveValue('Later')
+      await user.click(screen.getByRole('button', { name: 'Save plan' }))
+      expect(savePlan).toHaveBeenCalledWith('share123', ['picnic'], [group])
+    })
+
+    it('empties the groups too with Clear plan', async () => {
+      keepPicks(picks(['picnic'], [{ id: 'g', title: 'Later', notes: '', cardIds: ['hike'] }]))
+      const user = userEvent.setup()
+      renderBuilder()
+
+      await user.click(screen.getByRole('button', { name: 'Clear plan' }))
+      expect(screen.queryByRole('region', { name: 'Later' })).not.toBeInTheDocument()
+      expect(keptPicks()).toBeNull()
+    })
+
+    it('reads picks kept before there were groups', () => {
+      localStorage.setItem(deckPicks, JSON.stringify(['museum']))
+      renderBuilder()
+      expect(screen.getByRole('button', { name: 'Discard: Museum' })).toBeInTheDocument()
+    })
+
+    it("starts from a saved plan's groups, and saves changes to them over it", async () => {
+      updatePlan.mockResolvedValue({ ok: true, data: { planId: 'plan42' } })
+      const user = userEvent.setup()
+      render(
+        <DeckBuilder
+          deckName="Test deck"
+          shareId="share123"
+          cards={cards}
+          seed={1}
+          plan={{ id: 'plan42', cardIds: [], groups: [{ id: 'g', title: 'Later', notes: '', cardIds: ['hike'] }] }}
+        />,
+      )
+
+      const title = screen.getByRole('textbox', { name: 'Title of Later' })
+      await user.clear(title)
+      await user.type(title, 'Soon')
+      await user.click(screen.getByRole('button', { name: 'Update Plan' }))
+      expect(updatePlan).toHaveBeenCalledWith('plan42', [], [{ id: 'g', title: 'Soon', notes: '', cardIds: ['hike'] }])
     })
   })
 
@@ -886,7 +1012,7 @@ describe('DeckBuilder', () => {
           shareId="share123"
           cards={cards}
           seed={1}
-          plan={{ id: 'plan42', cardIds: ['hike', 'picnic'] }}
+          plan={{ id: 'plan42', cardIds: ['hike', 'picnic'], groups: [] }}
         />,
       )
     }
@@ -911,7 +1037,7 @@ describe('DeckBuilder', () => {
 
       await user.click(screen.getByRole('button', { name: 'Add to plan: Museum' }))
       await user.click(screen.getByRole('button', { name: 'Update Plan' }))
-      expect(updatePlan).toHaveBeenCalledWith('plan42', ['hike', 'picnic', 'museum'])
+      expect(updatePlan).toHaveBeenCalledWith('plan42', ['hike', 'picnic', 'museum'], [])
       expect(savePlan).not.toHaveBeenCalled()
       await waitFor(() => expect(router.push).toHaveBeenCalledWith('/p/plan42?share'))
     })
@@ -944,8 +1070,8 @@ describe('DeckBuilder', () => {
       expect(keptPicks(planPicks)).toBeNull()
 
       await user.click(screen.getByRole('button', { name: 'Discard: Hike' }))
-      expect(keptPicks(planPicks)).toEqual(['picnic'])
-      expect(keptPicks()).toEqual(['museum'])
+      expect(keptPicks(planPicks)).toEqual(picks(['picnic']))
+      expect(keptPicks()).toEqual(picks(['museum']))
     })
 
     /** @see docs/plans.md § "Picks are kept in the browser" - changes to a saved plan survive a reload, not the tab */
@@ -954,7 +1080,7 @@ describe('DeckBuilder', () => {
       renderEditor()
 
       await user.click(screen.getByRole('button', { name: 'Discard: Hike' }))
-      expect(JSON.parse(sessionStorage.getItem(planPicks) ?? 'null')).toEqual(['picnic'])
+      expect(JSON.parse(sessionStorage.getItem(planPicks) ?? 'null')).toEqual(picks(['picnic']))
       expect(localStorage.getItem(planPicks)).toBeNull()
     })
 
@@ -971,7 +1097,7 @@ describe('DeckBuilder', () => {
       renderEditor()
 
       await user.click(screen.getByRole('button', { name: 'Discard: Hike' }))
-      expect(keptPicks(planPicks)).toEqual(['picnic'])
+      expect(keptPicks(planPicks)).toEqual(picks(['picnic']))
       await user.click(screen.getByRole('button', { name: 'Update Plan' }))
       await waitFor(() => expect(keptPicks(planPicks)).toBeNull())
     })
@@ -982,7 +1108,7 @@ describe('DeckBuilder', () => {
 
       await user.click(screen.getByRole('button', { name: 'Discard: Hike' }))
       await user.click(screen.getByRole('button', { name: 'Discard: Picnic' }))
-      expect(keptPicks(planPicks)).toEqual([])
+      expect(keptPicks(planPicks)).toEqual(picks([]))
       // Nothing to save, but still a way out.
       expect(screen.getByRole('button', { name: 'Update Plan' })).toBeDisabled()
       expect(screen.getByRole('link', { name: 'Cancel' })).toBeInTheDocument()
@@ -1046,7 +1172,7 @@ describe('DeckBuilder', () => {
       renderEditor()
 
       await user.click(screen.getByRole('button', { name: 'Discard: Hike' }))
-      expect(keptPicks(planPicks)).toEqual(['picnic'])
+      expect(keptPicks(planPicks)).toEqual(picks(['picnic']))
       const cancel = screen.getByRole('link', { name: 'Cancel' })
       expect(cancel).toHaveAttribute('href', '/p/plan42')
       await user.click(cancel)

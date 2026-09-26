@@ -1,5 +1,6 @@
 import { relations, sql } from 'drizzle-orm'
 import { index, integer, primaryKey, sqliteTable, text } from 'drizzle-orm/sqlite-core'
+import type { PlanGroup } from '../types'
 import { user } from './auth-schema'
 
 export * from './auth-schema'
@@ -55,7 +56,8 @@ export const card = sqliteTable(
 
 // A plan someone built from a shared deck. It lists card ids rather than
 // copies, so edits to a card show up in plans that include it, and deleted
-// cards drop out.
+// cards drop out. card_ids are the cards on its first row, and groups the
+// rows under it, each with its own cards (docs/plans.md § "Groups").
 export const plan = sqliteTable(
   'plan',
   {
@@ -64,6 +66,7 @@ export const plan = sqliteTable(
       .notNull()
       .references(() => deck.id, { onDelete: 'cascade' }),
     cardIds: text('card_ids', { mode: 'json' }).$type<string[]>().notNull(),
+    groups: text('groups', { mode: 'json' }).$type<PlanGroup[]>().notNull().default(sql`'[]'`),
     createdAt: timestamps.createdAt,
   },
   (table) => [index('plan_deck_id_idx').on(table.deckId)],

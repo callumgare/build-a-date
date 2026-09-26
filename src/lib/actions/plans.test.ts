@@ -65,6 +65,44 @@ describe('updatePlan', () => {
   })
 })
 
+/** @see docs/plans.md § "Groups" */
+describe('saving groups', () => {
+  it('saves them with trimmed titles and notes, on a new plan and an edited one', async () => {
+    const saved = await savePlan(deck.shareId, [], [{ id: 'g', title: ' Lunch ', notes: ' Early ', cardIds: [cardId] }])
+    if (!saved.ok) throw new Error(saved.error)
+    expect((await decks.getPlan(db, saved.data.planId)).groups).toMatchObject([
+      { id: 'g', title: 'Lunch', notes: 'Early' },
+    ])
+
+    await updatePlan(saved.data.planId, [cardId], [{ id: 'h', title: 'Later', notes: '', cardIds: [] }])
+    expect((await decks.getPlan(db, saved.data.planId)).groups).toEqual([
+      { id: 'h', title: 'Later', notes: '', cards: [] },
+    ])
+  })
+
+  it('needs a card somewhere in the plan', async () => {
+    const empty = [{ id: 'g', title: 'Lunch', notes: '', cardIds: [] }]
+    expect(await savePlan(deck.shareId, [], empty)).toEqual({ ok: false, error: 'Pick at least one idea for the plan' })
+  })
+
+  it('turns over-long titles or notes, or too many groups, into a message', async () => {
+    const group = { id: 'g', title: '', notes: '', cardIds: [] }
+    expect(await savePlan(deck.shareId, [cardId], [{ ...group, title: 'x'.repeat(81) }])).toEqual({
+      ok: false,
+      error: 'Group titles can be up to 80 characters',
+    })
+    expect(await savePlan(deck.shareId, [cardId], [{ ...group, notes: 'x'.repeat(2001) }])).toEqual({
+      ok: false,
+      error: 'Group notes can be up to 2000 characters',
+    })
+    const many = Array.from({ length: 21 }, (_, index) => ({ ...group, id: `g${index}` }))
+    expect(await savePlan(deck.shareId, [cardId], many)).toEqual({
+      ok: false,
+      error: 'A plan can have up to 20 groups',
+    })
+  })
+})
+
 /** @see docs/plans.md § "Deleting a plan" */
 describe('deletePlan', () => {
   it('deletes the plan, for anyone, and refreshes the plan lists', async () => {
