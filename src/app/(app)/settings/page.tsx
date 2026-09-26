@@ -1,5 +1,6 @@
 import type { Metadata } from 'next'
 import AccountSettings from '@/components/auth/AccountSettings'
+import NameForm from '@/components/auth/NameForm'
 import { requireUser } from '@/lib/auth'
 import { listPasskeys } from '@/lib/passkeys'
 
@@ -15,6 +16,7 @@ export default async function Settings() {
       <p>
         Signed in as <strong>{user.email}</strong>
       </p>
+      <NameForm name={user.name} />
       <AccountSettings passkeys={passkeys} />
     </section>
   )

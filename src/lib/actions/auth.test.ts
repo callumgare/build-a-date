@@ -1,10 +1,16 @@
 import { APIError } from 'better-auth/api'
-import { sendSignInLink, signOut } from './auth'
+import { revalidatePath } from '@/test/next'
+import { sendSignInLink, signOut, updateName } from './auth'
 
-const { signInMagicLink, signOutApi } = vi.hoisted(() => ({ signInMagicLink: vi.fn(), signOutApi: vi.fn() }))
-vi.mock('../auth', () => ({ getAuth: () => ({ api: { signInMagicLink, signOut: signOutApi } }) }))
+const { signInMagicLink, signOutApi, updateUser } = vi.hoisted(() => ({
+  signInMagicLink: vi.fn(),
+  signOutApi: vi.fn(),
+  updateUser: vi.fn(),
+}))
+vi.mock('../auth', () => ({ getAuth: () => ({ api: { signInMagicLink, signOut: signOutApi, updateUser } }) }))
 vi.mock('next/headers', () => import('@/test/next'))
 vi.mock('next/navigation', () => import('@/test/next'))
+vi.mock('next/cache', () => import('@/test/next'))
 
 function form(fields: Record<string, string>) {
   const data = new FormData()
@@ -15,6 +21,8 @@ function form(fields: Record<string, string>) {
 beforeEach(() => {
   signInMagicLink.mockReset()
   signOutApi.mockReset()
+  updateUser.mockReset()
+  revalidatePath.mockReset()
   vi.spyOn(console, 'error').mockImplementation(() => {})
 })
 
@@ -86,5 +94,40 @@ describe('signOut', () => {
   it('lets anything unexpected surface as a real error', async () => {
     signOutApi.mockRejectedValue(new Error('D1 is down'))
     await expect(signOut()).rejects.toThrow('D1 is down')
+  })
+})
+
+/** @see docs/account-settings.md § "Your name" */
+describe('updateName', () => {
+  it('saves the trimmed name and refreshes every page', async () => {
+    const state = await updateName({}, form({ name: '  Robin  ' }))
+    expect(state).toEqual({ saved: 'Robin' })
+    expect(updateUser).toHaveBeenCalledWith(expect.objectContaining({ body: { name: 'Robin' } }))
+    expect(revalidatePath).toHaveBeenCalledWith('/', 'layout')
+  })
+
+  it('turns away a blank name and keeps what was typed', async () => {
+    const state = await updateName({}, form({ name: '   ' }))
+    expect(state).toEqual({ name: '   ', error: 'Enter your name' })
+    expect(updateUser).not.toHaveBeenCalled()
+  })
+
+  it('turns away a name over 80 characters', async () => {
+    const long = 'a'.repeat(81)
+    const state = await updateName({}, form({ name: long }))
+    expect(state).toEqual({ name: long, error: 'Keep it to 80 characters' })
+    expect(updateUser).not.toHaveBeenCalled()
+  })
+
+  it('asks to sign in again once the session has run out', async () => {
+    updateUser.mockRejectedValue(new APIError('UNAUTHORIZED'))
+    const state = await updateName({}, form({ name: 'Robin' }))
+    expect(state).toEqual({ name: 'Robin', error: 'Sign in again to change your name.' })
+    expect(revalidatePath).not.toHaveBeenCalled()
+  })
+
+  it('lets anything unexpected surface as a real error', async () => {
+    updateUser.mockRejectedValue(new Error('D1 is down'))
+    await expect(updateName({}, form({ name: 'Robin' }))).rejects.toThrow('D1 is down')
   })
 })

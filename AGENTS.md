@@ -19,6 +19,7 @@
 | [docs/historical-plans/2026-09-26-procedural-background.md](docs/historical-plans/2026-09-26-procedural-background.md) | Wondering why the background is drawn by a shader the way it is (frozen plan) |
 | [docs/historical-plans/2026-09-26-scrolling-background.md](docs/historical-plans/2026-09-26-scrolling-background.md) | Wondering why the background scrolls with the page in tiles, or why the drift animation was removed (frozen plan) |
 | [docs/historical-plans/2026-09-26-background-sparkle.md](docs/historical-plans/2026-09-26-background-sparkle.md) | Wondering why the background sparkles with elements over the tiles rather than by redrawing, or why bursts replaced moving the swirls (frozen plan) |
+| [docs/account-settings.md](docs/account-settings.md) | Touching `/settings`: changing your name (`NameForm`, `updateName`), the passkey list (`AccountSettings`) or signing out |
 | [docs/testing.md](docs/testing.md) | Writing or fixing a test: where it goes, what's real, and the `src/test/` stand-ins for Next, Cloudflare and Better Auth |
 | [docs/historical-plans/2026-09-25-test-coverage.md](docs/historical-plans/2026-09-25-test-coverage.md) | Wondering why the test suite is laid out the way it is (frozen plan) |
 

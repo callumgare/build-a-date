@@ -61,3 +61,17 @@ test('ask to edit a deck, and later leave it, without JavaScript', async ({ page
   await expect(page.getByRole('heading', { name: 'Shared decks' })).toHaveCount(0)
   await expect(page.getByRole('link', { name: /Weekend plans/ })).toHaveCount(0)
 })
+
+/** @see docs/account-settings.md § "Your name" */
+test('change your name in Settings without JavaScript', async ({ page, request }) => {
+  await signUp(page, request, 'Robin')
+  await page.goto('/settings')
+  await expect(page.getByLabel('Your name')).toHaveValue('Robin')
+
+  await page.getByLabel('Your name').fill('Robin Hood')
+  await page.getByRole('button', { name: 'Save name' }).click()
+  await expect(page.getByRole('status')).toContainText("You're now Robin Hood")
+
+  await page.goto('/settings')
+  await expect(page.getByLabel('Your name')).toHaveValue('Robin Hood')
+})

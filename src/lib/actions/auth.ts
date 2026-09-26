@@ -1,6 +1,7 @@
 'use server'
 
 import { isAPIError } from 'better-auth/api'
+import { revalidatePath } from 'next/cache'
 import { headers } from 'next/headers'
 import { redirect } from 'next/navigation'
 import { z } from 'zod'
@@ -62,4 +63,31 @@ export async function signOut() {
     if (!isAPIError(error)) throw error
   }
   redirect('/')
+}
+
+export type NameState = { saved?: string; error?: string; name?: string }
+
+const nameInput = z.string().trim().min(1, 'Enter your name').max(80, 'Keep it to 80 characters')
+
+// Changes the signed-in account's name, which owners see on edit requests
+// (docs/account-settings.md § "Your name"). A form action, like the ones
+// above, so it works before the page's JavaScript has loaded.
+export async function updateName(_state: NameState, form: FormData): Promise<NameState> {
+  const typed = String(form.get('name') ?? '')
+  const parsed = nameInput.safeParse(typed)
+  if (!parsed.success)
+    return { name: typed, error: parsed.error.issues[0]?.message ?? 'Check your name and try again.' }
+
+  try {
+    await getAuth().api.updateUser({ body: { name: parsed.data }, headers: await headers() })
+  } catch (error) {
+    // Better Auth turns the request away if the session has run out.
+    if (isAPIError(error) && error.status === 'UNAUTHORIZED')
+      return { name: typed, error: 'Sign in again to change your name.' }
+    if (isAPIError(error) && error.message) return { name: typed, error: error.message }
+    throw error
+  }
+  // Every page reads the name from the session, so none of them keep the old one.
+  revalidatePath('/', 'layout')
+  return { saved: parsed.data }
 }
