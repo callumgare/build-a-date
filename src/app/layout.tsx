@@ -1,5 +1,6 @@
 import type { Metadata, Viewport } from 'next'
 import type { ReactNode } from 'react'
+import GalaxyBackground from '@/components/GalaxyBackground'
 import '../styles.css'
 
 export const metadata: Metadata = {
@@ -25,6 +26,7 @@ export default function RootLayout({ children }: { children: ReactNode }) {
   return (
     <html lang="en">
       <body>
+        <GalaxyBackground />
         <div className="app-root">{children}</div>
       </body>
     </html>

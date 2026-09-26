@@ -34,6 +34,7 @@
 /* Text that sits straight on the background gets the halo. text-shadow is
    inherited, so it goes on the text itself rather than on whole sections,
    which also hold cards, panels and dialogs. */
+h1,
 .lede,
 .plan-actions,
 .filter-label,
@@ -68,25 +69,41 @@ body {
   margin: 0;
 }
 
-/* A fixed layer rather than background-attachment: fixed, which iOS Safari
-   ignores. Sized to the large viewport so it doesn't jump as the toolbar
-   shows and hides. */
-body::before {
-  content: '';
-  position: fixed;
+/* The galaxy behind the page. It scrolls with the page: its tiles are
+   placed down this layer, which is as tall as <body> and clips them so they
+   never make the page longer or wider. Its own colour shows wherever a tile
+   isn't painted yet, or can't be (docs/background.md § "Tiles"). */
+.galaxy-background {
+  position: absolute;
   z-index: -1;
   top: 0;
   left: 0;
   width: 100%;
-  height: 100vh;
+  min-height: 100vh;
   /* biome-ignore lint/suspicious/noDuplicateProperties: 100vh is the fallback */
-  height: 100lvh;
-  background-color: #12374a;
-  background-image: url('/background.png');
-  background-position: center;
-  background-size: cover;
-  background-repeat: no-repeat;
+  min-height: 100lvh;
+  overflow: hidden;
+  background: #0e1a57;
   pointer-events: none;
+}
+
+.galaxy-background canvas {
+  position: absolute;
+  left: 0;
+  display: block;
+  animation: galaxy-fade-in 0.6s ease;
+}
+
+@keyframes galaxy-fade-in {
+  from {
+    opacity: 0;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .galaxy-background canvas {
+    animation: none;
+  }
 }
 
 .app-root {
