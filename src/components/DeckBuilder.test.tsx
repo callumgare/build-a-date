@@ -1031,7 +1031,8 @@ describe('DeckBuilder', () => {
       expect(screen.getByText('Editing a plan')).toBeInTheDocument()
     })
 
-    it('saves over the same plan when Update Plan is pressed', async () => {
+    /** @see docs/plans.md § "Editing a plan" */
+    it('saves over the same plan when Update Plan is pressed, and opens it without the share dialog', async () => {
       const user = userEvent.setup()
       renderEditor()
 
@@ -1039,15 +1040,16 @@ describe('DeckBuilder', () => {
       await user.click(screen.getByRole('button', { name: 'Update Plan' }))
       expect(updatePlan).toHaveBeenCalledWith('plan42', ['hike', 'picnic', 'museum'], [])
       expect(savePlan).not.toHaveBeenCalled()
-      await waitFor(() => expect(router.push).toHaveBeenCalledWith('/p/plan42?share'))
+      await waitFor(() => expect(router.push).toHaveBeenCalledExactlyOnceWith('/p/plan42'))
     })
 
-    it('goes to the plan, ready to share, without saving when nothing has changed', async () => {
+    /** @see docs/plans.md § "Editing a plan" */
+    it('goes to the plan without saving when nothing has changed', async () => {
       const user = userEvent.setup()
       renderEditor()
 
       await user.click(screen.getByRole('button', { name: 'Update Plan' }))
-      expect(router.push).toHaveBeenCalledWith('/p/plan42?share')
+      expect(router.push).toHaveBeenCalledExactlyOnceWith('/p/plan42')
       expect(updatePlan).not.toHaveBeenCalled()
     })
 

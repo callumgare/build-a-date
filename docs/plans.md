@@ -48,7 +48,7 @@ The cards are `PlanView` in `src/components/PlanView.tsx`. The options, tilt and
 
 **Edit plan** goes to `/p/[planId]/edit`. It's the shared deck's builder with the plan's cards already in the plan, and **Editing a plan** under the deck's name. Cards can be added, discarded and reordered as usual.
 
-- **Update Plan** (in place of **Save plan**) saves over the plan, so its link stays the same, then goes to the plan ready to share, like **Save plan** (see [Sharing a plan](#sharing-a-plan)). If nothing has changed, it goes there without saving.
+- **Update Plan** (in place of **Save plan**) saves over the plan, so its link stays the same, then goes to the plan. Unlike **Save plan**, the share dialog doesn't open, since the link hasn't changed and was likely shared already (see [Sharing a plan](#sharing-a-plan)). If nothing has changed, it goes there without saving.
 - **Cancel** goes back to the plan page without saving, and drops the unsaved changes, so the next edit starts from the saved plan.
 - Leaving without either, and coming back to the plan page, drops the changes too. A reload of the edit page keeps them (see [Picks are kept in the browser](#picks-are-kept-in-the-browser)). The plan page forgets them with `ForgetPlanEdits`, when it mounts and when the browser brings it back from its back-forward cache.
 - **Delete plan** takes the place of **Clear plan** (see [Deleting a plan](#deleting-a-plan)).
@@ -58,7 +58,7 @@ The cards are `PlanView` in `src/components/PlanView.tsx`. The options, tilt and
 
 ## Sharing a plan
 
-Once **Save plan** or **Update Plan** has saved the plan, the browser goes to the plan's page with its share dialog already open. The builder has no share dialog of its own. The dialog is the same one the plan page's **Share** button opens:
+Once **Save plan** has saved a new plan, the browser goes to the plan's page with its share dialog already open. The builder has no share dialog of its own. The dialog is the same one the plan page's **Share** button opens:
 
 - **Copy link** copies the plan's link.
 - **Share…** opens the device's share sheet, on devices that have one. Browsers only open the sheet straight after a press, so it can't open by itself when the page loads.

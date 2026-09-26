@@ -25,7 +25,7 @@ export async function generateMetadata({ params }: PageProps<'/p/[planId]'>): Pr
 
 export default async function PlanPage({ params, searchParams }: PageProps<'/p/[planId]'>) {
   const { plan, deck, cards, groups } = await findPlan((await params).planId)
-  // Done and Update Plan land here with ?share (docs/plans.md § "Sharing a plan").
+  // Save plan lands here with ?share (docs/plans.md § "Sharing a plan").
   const justSaved = (await searchParams)?.share !== undefined
   const session = await getSession()
   const access = session ? await getAccessState(getDb(), session.user.id, deck) : 'none'

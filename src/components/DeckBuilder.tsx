@@ -273,7 +273,8 @@ export default function DeckBuilder({
   // Saves the plan under its own short link, then opens its page with the
   // share dialog showing (docs/plans.md § "Sharing a plan"). A plan being
   // edited is saved over, under the link it already had, and isn't saved
-  // again if nothing has changed.
+  // again if nothing has changed. Its link was already shared, so its page
+  // opens without the dialog (docs/plans.md § "Editing a plan").
   async function sharePlan() {
     const key = picksKey(picks)
     let planId = saved?.key === key ? saved.planId : null
@@ -302,7 +303,7 @@ export default function DeckBuilder({
     // Saved now, so there's nothing left to keep: Create new plan starts
     // empty, and Edit plan starts from what was saved.
     writePicks(picksPlace, null)
-    router.push(`/p/${planId}?share`)
+    router.push(plan ? `/p/${planId}` : `/p/${planId}?share`)
   }
 
   // Deletes the plan being edited, once they've said yes, and goes back to the
