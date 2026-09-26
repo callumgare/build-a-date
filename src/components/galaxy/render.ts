@@ -1,4 +1,6 @@
-import { fragmentShader, vertexShader } from './shader'
+import { fragmentShader, sitesShader, vertexShader } from './shader'
+import { decodeSites, SITE_SIZE, type Site } from './sparkle'
+import { TILE_HEIGHT } from './tiles'
 
 export type Painter = {
   /**
@@ -7,6 +9,11 @@ export type Painter = {
    * couldn't, because the GPU context has been lost.
    */
   paint(tile: HTMLCanvasElement, top: number, ratio: number, scale: number): boolean
+  /**
+   * The gold clumps that can glint in a tile `width` CSS pixels wide at `top`,
+   * or null if the GPU context has been lost (docs/background.md § "Sparkle").
+   */
+  sites(top: number, width: number, scale: number): Site[] | null
   dispose(): void
 }
 
@@ -55,7 +62,8 @@ export function createPainter(seed = DEFAULT_SEED): Painter | null {
   const gl = canvas.getContext('webgl2', { alpha: false, antialias: false, depth: false, powerPreference: 'low-power' })
   if (!gl) return null
   let program = link(gl, fragmentShader)
-  if (!program) return null
+  let finder = link(gl, sitesShader)
+  if (!program || !finder) return null
 
   // The painted tiles are 2D canvases, so losing the context loses nothing on
   // screen; painting just waits until it's back.
@@ -66,7 +74,8 @@ export function createPainter(seed = DEFAULT_SEED): Painter | null {
   })
   canvas.addEventListener('webglcontextrestored', () => {
     program = link(gl, fragmentShader)
-    lost = !program
+    finder = link(gl, sitesShader)
+    lost = !program || !finder
   })
 
   return {
@@ -87,8 +96,29 @@ export function createPainter(seed = DEFAULT_SEED): Painter | null {
       context.drawImage(canvas, 0, 0)
       return true
     },
+    sites(top, width, scale) {
+      if (lost || !finder) return null
+      const columns = Math.ceil(width / SITE_SIZE)
+      const rows = Math.ceil(TILE_HEIGHT / SITE_SIZE)
+      // A corner of the painting canvas, which is always bigger than this.
+      if (canvas.width < columns || canvas.height < rows) {
+        canvas.width = Math.max(canvas.width, columns)
+        canvas.height = Math.max(canvas.height, rows)
+      }
+      gl.viewport(0, 0, columns, rows)
+      // biome-ignore lint/correctness/useHookAtTopLevel: WebGL's useProgram, not a React hook
+      gl.useProgram(finder)
+      gl.uniform1ui(gl.getUniformLocation(finder, 'uSeed'), seed)
+      gl.uniform2f(gl.getUniformLocation(finder, 'uOrigin'), 0, top / scale)
+      gl.uniform1f(gl.getUniformLocation(finder, 'uCell'), SITE_SIZE / scale)
+      gl.drawArrays(gl.TRIANGLES, 0, 3)
+      const bytes = new Uint8Array(columns * rows * 4)
+      gl.readPixels(0, 0, columns, rows, gl.RGBA, gl.UNSIGNED_BYTE, bytes)
+      return decodeSites(bytes, columns, rows, top, scale)
+    },
     dispose() {
       if (program) gl.deleteProgram(program)
+      if (finder) gl.deleteProgram(finder)
       gl.getExtension('WEBGL_lose_context')?.loseContext()
     },
   }

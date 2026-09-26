@@ -1,12 +1,13 @@
 # The background
 
-Behind every page is a field of swirling dark blue, dusted with pale blue specks and streaked with gold. It used to be a photo of paint and glitter (`public/background.png`), stretched with `background-size: cover`. Stretched over a wide or tall screen, the grain went soft and blurry, and the file was 6.8 MB. Now it's drawn by a WebGL shader that recreates the photo's look at whatever size the screen is, and it scrolls with the page like an ordinary background.
+Behind every page is a field of swirling dark blue, dusted with pale blue specks and streaked with gold, where gold flakes glint now and then and a shooting star falls once in a while. It used to be a photo of paint and glitter (`public/background.png`), stretched with `background-size: cover`. Stretched over a wide or tall screen, the grain went soft and blurry, and the file was 6.8 MB. Now it's drawn by a WebGL shader that recreates the photo's look at whatever size the screen is, and it scrolls with the page like an ordinary background.
 
 - `src/components/GalaxyBackground.tsx`: the layer behind the page and its tiles, mounted once in `src/app/layout.tsx`
 - `src/components/galaxy/tiles.ts`: which tiles to paint and which to let go
 - `src/components/galaxy/render.ts`: sets up WebGL and paints a tile
 - `src/components/galaxy/shader.ts`: the GLSL that works out every pixel
 - `src/components/galaxy/palette.ts`: the colours
+- `src/components/galaxy/sparkle.ts`: where glints and shooting stars go, and `celebrate()`
 
 ## How it's drawn
 
@@ -73,6 +74,21 @@ The tiles are as wide as the whole **screen**, not just the window, and have a f
 A taller window is covered the same way, because tiles within a screen's height of the window are already painted.
 
 Every tile is painted again only if the window gets wider than the tiles, or the sharpness changes (browser zoom, or moving to a display with a different pixel ratio or size), since then every pixel changes. The width is rounded up in steps of 128 CSS pixels (`WIDTH_STEP`), so dragging a window past the screen doesn't repaint on every step.
+
+## Sparkle
+
+The painting itself never moves. What moves is a little **sparkle** over it: gold flakes that glint now and then, and a shooting star once in a while. (The swirls themselves used to drift, but the look wasn't right.)
+
+**Nothing is painted again to sparkle.** Each glint and shooting star is a small element in the `.galaxy-background` layer, above the tiles. It's drawn once as CSS gradients (`.galaxy-glint`, `.galaxy-shooting-star` in `src/styles.css`), and only its `transform` and `opacity` are animated, with the Web Animations API. The browser's compositor moves pixels it has already drawn, so a frame costs no JavaScript and no painting, and the sparkle scrolls with the page as smoothly as the tiles do. When an animation ends, its element is removed.
+
+- **Glints** land on real gold clumps. When a tile is painted, a second, tiny shader pass (`sitesShader`, `Painter.sites()`) finds the thickest gold clump in each `SITE_SIZE` (64 CSS pixels) cell of the tile. It uses the same `swirl()` and the same grid of clumps as the painting, so it finds exactly the clumps that were painted. It reads back 4 bytes a cell, a few hundred bytes a tile, which `decodeSites()` turns into places on the page. It costs about 0.9 ms a tile, against about 12.6 ms to paint the tile (M1 Max). A tile's sites are let go along with the tile. Every 350–950 ms, `pickSite()` picks a site the window shows, favouring the thick of a vein, and it glints: a bright core with a four-point flare, which grows, turns a little and fades over 1.4–2.4 s. At most `MAX_GLINTS` (6) glint at once, never the same clump twice. Clumps behind a card can glint unseen; nothing checks what's on top.
+- **Shooting stars** fall every 18–45 s. Each starts in the top two thirds of the window, towards the right, and falls down and to the left along the streaks (`SHOOTING_STAR_ANGLE`, 142°), with a tail that fades back from a bright head.
+
+It all rests while the tab is hidden. Under `prefers-reduced-motion: reduce` there's none of it, bursts included, and turning reduced motion on mid-visit stops it.
+
+### Bursts
+
+For a moment that matters, `celebrate()` in `sparkle.ts` sets off a **burst**: `BURST_GLINTS` (16) glints over 1.2 s, past the usual limit, and a shooting star. It works by an event on the window (`galaxy:celebrate`), so a page can call it without knowing about the background. `SharePlanButton` calls it when a plan has just been saved (the share dialog opening by itself), when the plan is shared from the share sheet, and when its link is copied. A share sheet closed without sharing doesn't count.
 
 ## Fallback
 

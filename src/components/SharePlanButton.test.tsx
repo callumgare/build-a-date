@@ -1,6 +1,7 @@
 /** @vitest-environment jsdom */
 import { render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
+import { CELEBRATE_EVENT } from './galaxy/sparkle'
 import SharePlanButton from './SharePlanButton'
 
 function setShare(share: Navigator['share'] | undefined) {
@@ -97,5 +98,50 @@ describe('SharePlanButton', () => {
   it("doesn't open the dialog by itself otherwise", () => {
     render(<SharePlanButton title="Our date" />)
     expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
+  })
+
+  /** @see docs/background.md § "Bursts" */
+  describe('the background bursts into sparkle', () => {
+    const bursts = vi.fn()
+    beforeEach(() => window.addEventListener(CELEBRATE_EVENT, bursts))
+    afterEach(() => {
+      window.removeEventListener(CELEBRATE_EVENT, bursts)
+      bursts.mockReset()
+    })
+
+    it('when a plan has just been saved', () => {
+      render(<SharePlanButton title="Our date" openOnLoad />)
+      expect(bursts).toHaveBeenCalledOnce()
+    })
+
+    it('when the plan is shared from the share sheet', async () => {
+      setShare(vi.fn().mockResolvedValue(undefined))
+      const user = userEvent.setup()
+      render(<SharePlanButton title="Our date" />)
+      await user.click(screen.getByRole('button', { name: 'Share' }))
+      await waitFor(() => expect(bursts).toHaveBeenCalledOnce())
+    })
+
+    it('when its link is copied', async () => {
+      const user = userEvent.setup()
+      render(<SharePlanButton title="Our date" />)
+      await user.click(screen.getByRole('button', { name: 'Share' }))
+      expect(bursts).not.toHaveBeenCalled()
+      await user.click(screen.getByRole('button', { name: 'Copy link' }))
+      await waitFor(() => expect(bursts).toHaveBeenCalledOnce())
+    })
+
+    it('not when the share sheet is closed without sharing', async () => {
+      setShare(vi.fn().mockRejectedValue(new DOMException('Share cancelled', 'AbortError')))
+      const user = userEvent.setup()
+      render(<SharePlanButton title="Our date" />)
+      await user.click(screen.getByRole('button', { name: 'Share' }))
+      expect(bursts).not.toHaveBeenCalled()
+    })
+
+    it('not just for opening the page', () => {
+      render(<SharePlanButton title="Our date" />)
+      expect(bursts).not.toHaveBeenCalled()
+    })
   })
 })

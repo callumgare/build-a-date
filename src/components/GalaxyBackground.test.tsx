@@ -2,6 +2,7 @@
 import { act, render } from '@testing-library/react'
 import GalaxyBackground from './GalaxyBackground'
 import { createPainter, type Painter } from './galaxy/render'
+import { celebrate, type Site } from './galaxy/sparkle'
 import { TILE_HEIGHT } from './galaxy/tiles'
 
 // jsdom has no WebGL, so the painting itself is covered in e2e/background.spec.ts.
@@ -24,6 +25,31 @@ function runFrames(count = 1) {
 }
 
 let touchScreen = false
+let motionOk = false
+let motionChanged: (() => void) | undefined
+
+function setMotion(ok: boolean) {
+  motionOk = ok
+  act(() => motionChanged?.())
+}
+
+// jsdom can't animate, so each animation is kept for a test to finish.
+type FakeAnimation = { onfinish: (() => void) | null; oncancel: (() => void) | null; cancel(): void; finish(): void }
+let animations: FakeAnimation[] = []
+function fakeAnimate() {
+  const animation: FakeAnimation = {
+    onfinish: null,
+    oncancel: null,
+    cancel() {
+      this.oncancel?.()
+    },
+    finish() {
+      this.onfinish?.()
+    },
+  }
+  animations.push(animation)
+  return animation as unknown as Animation
+}
 
 function define(target: object, values: Record<string, number>) {
   for (const [key, value] of Object.entries(values)) {
@@ -45,8 +71,28 @@ function scrollTo(y: number) {
   runFrames()
 }
 
+// Every tile has one gold clump, 100 CSS pixels in from its top left.
 function fakePainter(): Painter {
-  return { paint: vi.fn(() => true), dispose: vi.fn() }
+  return {
+    paint: vi.fn(() => true),
+    sites: vi.fn((top: number): Site[] => [{ x: 100, y: top + 100, gold: 1, radius: 1 }]),
+    dispose: vi.fn(),
+  }
+}
+
+function glints() {
+  return [...layer().querySelectorAll<HTMLElement>('.galaxy-glint')]
+}
+
+function shootingStars() {
+  return layer().querySelectorAll('.galaxy-shooting-star')
+}
+
+function setHidden(hidden: boolean) {
+  Object.defineProperty(document, 'hidden', { value: hidden, configurable: true })
+  act(() => {
+    document.dispatchEvent(new Event('visibilitychange'))
+  })
 }
 
 function layer() {
@@ -74,11 +120,21 @@ beforeEach(() => {
   setWindow(1024, 768)
   setPageHeight(20 * TILE_HEIGHT)
   touchScreen = false
+  motionOk = false
+  animations = []
+  Element.prototype.animate = vi.fn(fakeAnimate)
   vi.stubGlobal('matchMedia', (media: string) => ({
-    matches: media.includes('pointer') ? touchScreen : false,
+    get matches() {
+      if (media.includes('reduced-motion')) return motionOk
+      return media.includes('pointer') ? touchScreen : false
+    },
     media,
-    addEventListener() {},
-    removeEventListener() {},
+    addEventListener(_: string, listener: () => void) {
+      if (media.includes('reduced-motion')) motionChanged = listener
+    },
+    removeEventListener() {
+      if (media.includes('reduced-motion')) motionChanged = undefined
+    },
   }))
 })
 
@@ -87,6 +143,8 @@ afterEach(() => {
   for (const key of ['width', 'height']) Reflect.deleteProperty(window.screen, key)
   for (const key of ['innerWidth', 'innerHeight', 'devicePixelRatio', 'scrollY']) Reflect.deleteProperty(window, key)
   Reflect.deleteProperty(document.body, 'offsetHeight')
+  Reflect.deleteProperty(document, 'hidden')
+  Reflect.deleteProperty(Element.prototype, 'animate')
   vi.useRealTimers()
   vi.unstubAllGlobals()
   vi.mocked(createPainter).mockReset()
@@ -216,6 +274,117 @@ describe('GalaxyBackground', () => {
       runFrames()
       expect(painter.paint).toHaveBeenLastCalledWith(expect.anything(), expect.any(Number), 1, expect.any(Number))
       expect(layer().querySelector('canvas')?.height).toBe(TILE_HEIGHT)
+    })
+  })
+
+  /** @see docs/background.md § "Sparkle" */
+  describe('sparkle', () => {
+    beforeEach(() => {
+      motionOk = true
+      vi.mocked(createPainter).mockReturnValue(fakePainter())
+    })
+
+    it('finds the gold that can glint in each tile it paints', () => {
+      const painter = fakePainter()
+      vi.mocked(createPainter).mockReturnValue(painter)
+      render(<GalaxyBackground />)
+      expect(painter.sites).toHaveBeenCalledWith(256, 1920, expect.any(Number))
+    })
+
+    it('glints gold flakes the window shows, now and then, on top of the tiles', () => {
+      render(<GalaxyBackground />)
+      act(() => vi.advanceTimersByTime(5000))
+      expect(glints().length).toBeGreaterThan(0)
+      for (const glint of glints()) {
+        const centre = Number.parseFloat(glint.style.top) + Number.parseFloat(glint.style.height) / 2
+        expect(centre % TILE_HEIGHT).toBe(100)
+        expect(centre).toBeLessThan(768)
+      }
+    })
+
+    it('never has more than a few glinting at once, and each goes when it has faded', () => {
+      render(<GalaxyBackground />)
+      act(() => vi.advanceTimersByTime(60_000))
+      // Only three tiles' clumps are in the 768 px window.
+      expect(glints()).toHaveLength(3)
+      act(() => {
+        for (const animation of animations) animation.finish()
+      })
+      expect(glints()).toHaveLength(0)
+    })
+
+    it('lets a shooting star fall once in a while', () => {
+      render(<GalaxyBackground />)
+      expect(shootingStars()).toHaveLength(0)
+      act(() => vi.advanceTimersByTime(46_000))
+      expect(shootingStars().length).toBeGreaterThan(0)
+    })
+
+    it('stays still for someone who asks for reduced motion', () => {
+      motionOk = false
+      render(<GalaxyBackground />)
+      act(() => {
+        vi.advanceTimersByTime(60_000)
+        celebrate()
+        vi.advanceTimersByTime(2000)
+      })
+      expect(glints()).toHaveLength(0)
+      expect(shootingStars()).toHaveLength(0)
+    })
+
+    it('stops when reduced motion is turned on, and starts again when it is off', () => {
+      render(<GalaxyBackground />)
+      setMotion(false)
+      act(() => vi.advanceTimersByTime(60_000))
+      expect(glints()).toHaveLength(0)
+      setMotion(true)
+      act(() => vi.advanceTimersByTime(5000))
+      expect(glints().length).toBeGreaterThan(0)
+    })
+
+    it('rests while the tab is hidden', () => {
+      render(<GalaxyBackground />)
+      setHidden(true)
+      act(() => vi.advanceTimersByTime(60_000))
+      expect(glints()).toHaveLength(0)
+      expect(shootingStars()).toHaveLength(0)
+      setHidden(false)
+      act(() => vi.advanceTimersByTime(5000))
+      expect(glints().length).toBeGreaterThan(0)
+    })
+
+    it('clears its sparkle away when it unmounts', () => {
+      const { unmount } = render(<GalaxyBackground />)
+      act(() => {
+        celebrate()
+        vi.advanceTimersByTime(600)
+      })
+      const layerElement = layer()
+      expect(layerElement.querySelectorAll('.galaxy-glint, .galaxy-shooting-star').length).toBeGreaterThan(0)
+      const started = animations.length
+      unmount()
+      expect(layerElement.querySelectorAll('.galaxy-glint, .galaxy-shooting-star')).toHaveLength(0)
+      // Nothing more of the burst starts after it's gone.
+      act(() => vi.advanceTimersByTime(60_000))
+      expect(animations).toHaveLength(started)
+    })
+
+    /** @see docs/background.md § "Bursts" */
+    it('bursts into glints and a shooting star to celebrate', () => {
+      const painter = fakePainter()
+      // Plenty of gold in the window, so the burst isn't held back by sites.
+      vi.mocked(painter.sites).mockImplementation((top: number) =>
+        Array.from({ length: 10 }, (_, i) => ({ x: 20 + i * 60, y: top + 100, gold: 1, radius: 1 })),
+      )
+      vi.mocked(createPainter).mockReturnValue(painter)
+      render(<GalaxyBackground />)
+      act(() => {
+        celebrate()
+        vi.advanceTimersByTime(1200)
+      })
+      expect(shootingStars()).toHaveLength(1)
+      // More than ever glint at once outside a burst.
+      expect(glints().length).toBeGreaterThan(6)
     })
   })
 

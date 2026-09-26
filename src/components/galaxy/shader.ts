@@ -79,20 +79,9 @@ vec3 toSrgb(vec3 linear) {
 }
 `
 
-/**
- * Paints one tile of the background. Each pixel comes from nothing but where
- * it is on the page, so the tiles meet without seams. How it's built is in
- * docs/background.md § "How it's drawn".
- */
-export const fragmentShader = `#version 300 es
-${common}
-uniform float uHeight; // The tile, in device pixels.
-uniform float uRatio;  // Device pixels per pixel of the photo.
-uniform vec2 uOrigin;  // The tile's top left on the page, in pixels of the photo.
-
-out vec4 fragColor;
-
-${glslPalette()}
+// What the painting and the gold sites share: the palette, the swirls and
+// the stars.
+const picture = `${glslPalette()}
 
 // The streaks run from bottom left to top right, 38 degrees above level.
 const vec2 ALONG = vec2(0.78801, -0.61566);
@@ -176,7 +165,22 @@ Star stars(vec2 m, float cellSize, uint layer, float keep, float minRadius, floa
   }
   return best;
 }
+`
 
+/**
+ * Paints one tile of the background. Each pixel comes from nothing but where
+ * it is on the page, so the tiles meet without seams. How it's built is in
+ * docs/background.md § "How it's drawn".
+ */
+export const fragmentShader = `#version 300 es
+${common}
+uniform float uHeight; // The tile, in device pixels.
+uniform float uRatio;  // Device pixels per pixel of the photo.
+uniform vec2 uOrigin;  // The tile's top left on the page, in pixels of the photo.
+
+out vec4 fragColor;
+
+${picture}
 void main() {
   // Where this is on the page, in pixels of the photo.
   vec2 m = uOrigin + vec2(gl_FragCoord.x, uHeight - gl_FragCoord.y) / uRatio;
@@ -221,5 +225,51 @@ void main() {
   // A little noise stops the dark gradients banding.
   float dither = (float(cellHash(ivec2(gl_FragCoord.xy), 6u)) / 4294967296.0 - 0.5) / 255.0;
   fragColor = vec4(toSrgb(colour) + dither, 1.0);
+}
+`
+
+/** How far outside its cell a site's clump may sit, in pixels of the photo. */
+export const SITE_SLACK = 8
+
+/** How many clumps each site's cell tries, to find its best one. */
+const SITE_TRIES = 12
+
+/**
+ * Finds a gold clump to glint in each cell of a grid over a tile: one output
+ * pixel per cell, with its x and y down the page counting up from 0. It uses
+ * the same functions as the painting, so a glint lands on a real clump
+ * (docs/background.md § "Sparkle").
+ *
+ * Each pixel is (x, y, gold, radius): where the clump is across its cell,
+ * from -SITE_SLACK to the cell's size + SITE_SLACK; how thick the gold is
+ * there (0 for no clump); and its radius over 4, in pixels of the photo.
+ */
+export const sitesShader = `#version 300 es
+${common}
+uniform vec2 uOrigin; // The tile's top left on the page, in pixels of the photo.
+uniform float uCell;  // A site's cell, in pixels of the photo.
+
+out vec4 fragColor;
+
+${picture}
+const float SLACK = ${SITE_SLACK}.0;
+
+void main() {
+  ivec2 site = ivec2(floor(gl_FragCoord.xy));
+  vec2 corner = uOrigin + vec2(site) * uCell;
+  vec4 best = vec4(0.0);
+  for (int i = 0; i < ${SITE_TRIES}; i++) {
+    // A clump from the same grid as the painting's: stars(m + 2.5, 7.0, 4u, ...).
+    vec2 at = corner + cellRandom(site, 8u + uint(i)).xy * uCell;
+    ivec2 cell = ivec2(floor((at + 2.5) / 7.0));
+    vec4 random = cellRandom(cell, 4u);
+    vec2 centre = (vec2(cell) + 0.5 + (random.yz - 0.5) * 0.9) * 7.0 - 2.5;
+    float gold = swirl(centre).gold;
+    if (random.x >= gold * 0.55 || gold <= best.z) continue;
+    float radius = mix(0.9, 2.6 * (0.5 + 0.8 * gold), random.w * random.w);
+    vec2 across = clamp((centre - corner + SLACK) / (uCell + 2.0 * SLACK), 0.0, 1.0);
+    best = vec4(across, gold, radius / 4.0);
+  }
+  fragColor = best;
 }
 `

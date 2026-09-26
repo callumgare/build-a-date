@@ -214,3 +214,62 @@ test('looks the same on every visit', async ({ page }) => {
   const second = await looks(page)
   expect(second.pictures).toEqual(first.pictures)
 })
+
+/** @see docs/background.md § "Sparkle" */
+test.describe('sparkle', () => {
+  test('glints land on gold in the painting', async ({ page }) => {
+    await page.goto('/')
+    await covered(page)
+    const glint = page.locator('.galaxy-glint').first()
+    await expect(glint).toBeAttached({ timeout: 10_000 })
+    const onGold = await glint.evaluate((element) => {
+      const x = Number.parseFloat(element.style.left) + Number.parseFloat(element.style.width) / 2
+      const y = Number.parseFloat(element.style.top) + Number.parseFloat(element.style.height) / 2
+      const tile = [...document.querySelectorAll<HTMLCanvasElement>('.galaxy-background canvas')].find((canvas) => {
+        const top = Number.parseFloat(canvas.style.top)
+        return top <= y && y < top + Number.parseFloat(canvas.style.height)
+      })
+      if (!tile) return false
+      const ratio = tile.width / Number.parseFloat(tile.style.width)
+      const px = Math.round(x * ratio)
+      const py = Math.round((y - Number.parseFloat(tile.style.top)) * ratio)
+      // Somewhere within a CSS pixel of its centre is gold.
+      const reach = Math.ceil(ratio)
+      const { data } = tile.getContext('2d')?.getImageData(px - reach, py - reach, 2 * reach + 1, 2 * reach + 1) ?? {
+        data: [],
+      }
+      for (let i = 0; i < data.length; i += 4) if (data[i] > 128 && data[i] > data[i + 2] * 0.9) return true
+      return false
+    })
+    expect(onGold).toBe(true)
+  })
+
+  test('never paints the background again to sparkle', async ({ page }) => {
+    await page.goto('/')
+    const before = await covered(page)
+    const picture = await looks(page)
+    await page.evaluate(() => window.dispatchEvent(new Event('galaxy:celebrate')))
+    await page.waitForTimeout(2500)
+    const after = await tiles(page)
+    expect(after.map((tile) => tile.id)).toEqual(expect.arrayContaining(before.map((tile) => tile.id)))
+    expect((await looks(page)).pictures).toEqual(picture.pictures)
+  })
+
+  /** @see docs/background.md § "Bursts" */
+  test('bursts into glints and a shooting star to celebrate', async ({ page }) => {
+    await page.goto('/')
+    await covered(page)
+    await page.evaluate(() => window.dispatchEvent(new Event('galaxy:celebrate')))
+    await expect(page.locator('.galaxy-shooting-star')).toHaveCount(1)
+    await expect.poll(() => page.locator('.galaxy-glint').count()).toBeGreaterThan(3)
+  })
+
+  test('holds still for someone who asks for reduced motion', async ({ page }) => {
+    await page.emulateMedia({ reducedMotion: 'reduce' })
+    await page.goto('/')
+    await covered(page)
+    await page.evaluate(() => window.dispatchEvent(new Event('galaxy:celebrate')))
+    await page.waitForTimeout(3000)
+    await expect(page.locator('.galaxy-glint, .galaxy-shooting-star')).toHaveCount(0)
+  })
+})

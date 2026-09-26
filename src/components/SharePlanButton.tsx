@@ -1,6 +1,7 @@
 'use client'
 
 import { useEffect, useId, useRef, useState } from 'react'
+import { celebrate } from './galaxy/sparkle'
 
 // The plan's own address, without ?share or anything else added to it.
 function planUrl() {
@@ -25,6 +26,8 @@ export default function SharePlanButton({ title, openOnLoad = false }: SharePlan
     setCanShare(typeof navigator.share === 'function')
     if (!openOnLoad) return
     dialogReference.current?.showModal()
+    // Just saved (docs/background.md § "Bursts").
+    celebrate()
     // So a reload, or the address bar copied by hand, doesn't open it again.
     window.history.replaceState(window.history.state, '', window.location.pathname)
   }, [openOnLoad])
@@ -36,6 +39,7 @@ export default function SharePlanButton({ title, openOnLoad = false }: SharePlan
     if (navigator.share) {
       try {
         await navigator.share({ title, url: planUrl() })
+        celebrate()
         if (fromDialog) dialogReference.current?.close()
         return
       } catch (error) {
@@ -50,6 +54,7 @@ export default function SharePlanButton({ title, openOnLoad = false }: SharePlan
     try {
       await navigator.clipboard.writeText(planUrl())
       setLinkCopied(true)
+      celebrate()
     } catch {
       setLinkCopied(false)
     }
