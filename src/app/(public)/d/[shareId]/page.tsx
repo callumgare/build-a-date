@@ -1,7 +1,7 @@
 import type { Metadata } from 'next'
 import { notFound } from 'next/navigation'
 import { connection } from 'next/server'
-import DeckBuilder from '@/components/DeckBuilder'
+import PlanBuilder from '@/components/PlanBuilder'
 import { getDb } from '@/db'
 import { getSession } from '@/lib/auth'
 import { getAccessState, getSharedDeck, listPlanSummaries, NotFoundError } from '@/lib/decks'
@@ -37,7 +37,7 @@ export default async function SharedDeck({ params }: PageProps<'/d/[shareId]'>) 
   const sort = session ? await getDeckSort(getDb(), session.user.id) : 'random'
 
   return (
-    <DeckBuilder
+    <PlanBuilder
       deckName={deck.name}
       shareId={deck.shareId}
       cards={cards}

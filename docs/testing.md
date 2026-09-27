@@ -11,7 +11,7 @@ There are two suites. `npm test` runs Vitest over `src/**/*.test.{ts,tsx}`. `npm
 | Client components (`src/components/`) | Beside the component, with a `/** @vitest-environment jsdom */` docblock | The component and its children. Server actions it calls are mocked with `vi.mock('@/lib/actions/…')`. |
 | Whole flows in a browser: passkeys, email links, forms without JavaScript, layout | `e2e/` | Everything. It uses an OpenNext build on workerd, or `next dev` with `E2E_TARGET=dev`. Emails are read from the dev outbox (`/api/dev/outbox`). `e2e/helpers.ts` has `signUp`, `createDeck`, `latestSignInLink` and `outboxCount` for the usual setup. |
 
-A page that only returns one component (like `/d/[shareId]` returning `DeckBuilder`) is tested by checking the props it hands that component. That covers who gets an edit link and who sees the access list, without rendering the whole component. A page with its own markup is rendered in jsdom, with any client components it contains stubbed where they'd get in the way.
+A page that only returns one component (like `/d/[shareId]` returning `PlanBuilder`) is tested by checking the props it hands that component. That covers who gets an edit link and who sees the access list, without rendering the whole component. A page with its own markup is rendered in jsdom, with any client components it contains stubbed where they'd get in the way.
 
 ## Stand-ins for server-only code
 

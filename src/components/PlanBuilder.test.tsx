@@ -1,8 +1,8 @@
 /** @vitest-environment jsdom */
-import { fireEvent, render, screen, waitFor, within } from '@testing-library/react'
+import { act, fireEvent, render, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import type { DateCard, PlanGroup, PlanPicks } from '@/types'
-import DeckBuilder from './DeckBuilder'
+import PlanBuilder from './PlanBuilder'
 
 const { savePlan, updatePlan, deletePlan, saveCardNotes } = vi.hoisted(() => ({
   savePlan: vi.fn(),
@@ -26,7 +26,7 @@ const cards: DateCard[] = [
 ]
 
 function renderBuilder() {
-  return render(<DeckBuilder deckName="Test deck" shareId="share123" cards={cards} seed={1} />)
+  return render(<PlanBuilder deckName="Test deck" shareId="share123" cards={cards} seed={1} />)
 }
 
 const deckPicks = 'build-a-date:picks:deck:share123'
@@ -64,7 +64,7 @@ beforeEach(() => {
   Object.defineProperty(navigator, 'share', { value: undefined, configurable: true })
 })
 
-describe('DeckBuilder', () => {
+describe('PlanBuilder', () => {
   it('shows the deck name and every card', () => {
     renderBuilder()
     expect(screen.getByRole('heading', { name: 'Test deck' })).toBeInTheDocument()
@@ -317,7 +317,7 @@ describe('DeckBuilder', () => {
     it('puts the highest rated ideas first for Interest', async () => {
       const user = userEvent.setup()
       const { container } = render(
-        <DeckBuilder
+        <PlanBuilder
           deckName="Test deck"
           shareId="share123"
           cards={[...cards.slice(0, 2), { ...cards[2], interest: 4 }]}
@@ -357,13 +357,13 @@ describe('DeckBuilder', () => {
   /** @see docs/deck-sorting.md § "Remembering the choice" */
   describe('remembering the sort', () => {
     it('starts on the sort it is given', () => {
-      render(<DeckBuilder deckName="Test deck" shareId="share123" cards={cards} seed={1} initialSort="added" />)
+      render(<PlanBuilder deckName="Test deck" shareId="share123" cards={cards} seed={1} initialSort="added" />)
       expect(screen.getByRole('button', { name: 'Date added' })).toHaveAttribute('aria-pressed', 'true')
     })
 
     it('saves a new pick for a signed-in visitor', async () => {
       const user = userEvent.setup()
-      render(<DeckBuilder deckName="Test deck" shareId="share123" cards={cards} seed={1} remembersSort />)
+      render(<PlanBuilder deckName="Test deck" shareId="share123" cards={cards} seed={1} remembersSort />)
 
       await user.click(screen.getByRole('button', { name: 'Interest' }))
       expect(saveDeckSort).toHaveBeenCalledExactlyOnceWith('interest')
@@ -382,7 +382,7 @@ describe('DeckBuilder', () => {
     it('still sorts when saving fails', async () => {
       const user = userEvent.setup()
       saveDeckSort.mockRejectedValue(new Error('offline'))
-      render(<DeckBuilder deckName="Test deck" shareId="share123" cards={cards} seed={1} remembersSort />)
+      render(<PlanBuilder deckName="Test deck" shareId="share123" cards={cards} seed={1} remembersSort />)
 
       await user.click(screen.getByRole('button', { name: 'Date added' }))
       expect(screen.getByRole('button', { name: 'Date added' })).toHaveAttribute('aria-pressed', 'true')
@@ -394,7 +394,7 @@ describe('DeckBuilder', () => {
     it('shows when the card was added', async () => {
       const user = userEvent.setup()
       const addedAt = '2026-03-14T10:00:00.000Z'
-      render(<DeckBuilder deckName="Test deck" shareId="share123" cards={[{ ...cards[1], addedAt }]} seed={1} />)
+      render(<PlanBuilder deckName="Test deck" shareId="share123" cards={[{ ...cards[1], addedAt }]} seed={1} />)
 
       await user.click(screen.getByRole('button', { name: 'Notes on Museum' }))
       const notes = await screen.findByRole('dialog', { name: 'Museum' })
@@ -525,7 +525,7 @@ describe('DeckBuilder', () => {
   /** @see docs/card-notes.md § "Editing a card" */
   describe('editing the deck', () => {
     function renderForEditor(deckCards = cards, seed = 1) {
-      return <DeckBuilder deckName="Test deck" shareId="share123" cards={deckCards} seed={seed} deckId="deck1" />
+      return <PlanBuilder deckName="Test deck" shareId="share123" cards={deckCards} seed={seed} deckId="deck1" />
     }
 
     function deckOrder(container: HTMLElement) {
@@ -639,14 +639,14 @@ describe('DeckBuilder', () => {
   describe('footer', () => {
     /** @see docs/deck-sharing.md § "Asking for edit access" - owners and editors see Edit this deck instead */
     it('links owners and editors to the deck editor', () => {
-      render(<DeckBuilder deckName="Test deck" shareId="share123" cards={cards} seed={1} editHref="/decks/deck1" />)
+      render(<PlanBuilder deckName="Test deck" shareId="share123" cards={cards} seed={1} editHref="/decks/deck1" />)
       expect(screen.getByRole('link', { name: 'Edit this deck' })).toHaveAttribute('href', '/decks/deck1')
       expect(screen.queryByRole('link', { name: 'Request edit access' })).not.toBeInTheDocument()
     })
 
     /** @see docs/deck-sharing.md § "Asking for edit access" - someone who has already asked sees that they have */
     it('says so once someone has asked to edit', () => {
-      render(<DeckBuilder deckName="Test deck" shareId="share123" cards={cards} seed={1} access="pending" />)
+      render(<PlanBuilder deckName="Test deck" shareId="share123" cards={cards} seed={1} access="pending" />)
       expect(screen.getByText("You've asked to edit this deck")).toBeInTheDocument()
       expect(screen.queryByRole('link', { name: 'Request edit access' })).not.toBeInTheDocument()
     })
@@ -660,7 +660,7 @@ describe('DeckBuilder', () => {
     /** @see docs/deck-sharing.md § "Who can do what" - owners and editors see the deck's plans */
     it("lists the deck's plans when it's given them", () => {
       render(
-        <DeckBuilder
+        <PlanBuilder
           deckName="Test deck"
           shareId="share123"
           cards={cards}
@@ -709,7 +709,7 @@ describe('DeckBuilder', () => {
       await user.click(
         within(screen.getByRole('group', { name: 'Filter ideas by tag' })).getByRole('button', { name: 'culture' }),
       )
-      await user.click(screen.getByRole('button', { name: 'select a random one' }))
+      await user.click(screen.getByRole('button', { name: 'Draw random card' }))
       expect(await screen.findByRole('button', { name: 'Discard: Museum' })).toBeInTheDocument()
       expect(screen.queryByRole('button', { name: 'Discard: Picnic' })).not.toBeInTheDocument()
       expect(screen.queryByRole('button', { name: 'Discard: Hike' })).not.toBeInTheDocument()
@@ -730,23 +730,36 @@ describe('DeckBuilder', () => {
     })
 
     /** @see docs/card-layout.md § "Reordering the plan" - from the keyboard, and kept in the browser */
-    it('moves a card along the plan with the arrow keys on its grip', async () => {
+    it('moves a card up and down the plan with the arrow keys on its grip', async () => {
       keepPicks(['picnic', 'museum', 'hike'])
       const user = userEvent.setup()
       const { container } = renderBuilder()
       const grip = await screen.findByRole('button', { name: 'Move Picnic' })
 
       grip.focus()
-      await user.keyboard('{ArrowRight}')
+      await user.keyboard('{ArrowDown}')
       expect(planOrder(container)).toEqual(['museum', 'picnic', 'hike'])
       expect(keptPicks()).toEqual(picks(['museum', 'picnic', 'hike']))
       expect(screen.getByRole('button', { name: 'Move Picnic' })).toHaveFocus()
 
-      await user.keyboard('{ArrowRight}{ArrowRight}')
+      await user.keyboard('{ArrowDown}{ArrowDown}')
       expect(planOrder(container)).toEqual(['museum', 'hike', 'picnic'])
 
-      await user.keyboard('{ArrowLeft}')
+      await user.keyboard('{ArrowUp}')
       expect(planOrder(container)).toEqual(['museum', 'picnic', 'hike'])
+    })
+
+    /** @see docs/card-layout.md § "Reordering the plan" - from the keyboard */
+    it('takes left and right as up and down', async () => {
+      keepPicks(['picnic', 'museum'])
+      const user = userEvent.setup()
+      const { container } = renderBuilder()
+
+      screen.getByRole('button', { name: 'Move Picnic' }).focus()
+      await user.keyboard('{ArrowRight}')
+      expect(planOrder(container)).toEqual(['museum', 'picnic'])
+      await user.keyboard('{ArrowLeft}')
+      expect(planOrder(container)).toEqual(['picnic', 'museum'])
     })
 
     /** @see docs/card-layout.md § "Reordering the plan" - the new order is the one that's shared */
@@ -758,7 +771,7 @@ describe('DeckBuilder', () => {
 
       const grip = await screen.findByRole('button', { name: 'Move Hike' })
       grip.focus()
-      await user.keyboard('{ArrowLeft}')
+      await user.keyboard('{ArrowUp}')
       await user.click(screen.getByRole('button', { name: 'Save plan' }))
       expect(savePlan).toHaveBeenCalledWith('share123', ['hike', 'picnic'], [])
     })
@@ -824,7 +837,7 @@ describe('DeckBuilder', () => {
     })
 
     /** @see docs/card-layout.md § "Reordering the plan" - from the keyboard */
-    it('moves a card into a group and back with the up and down arrow keys on its grip', async () => {
+    it('moves a card down into a group and back up with the arrow keys on its grip', async () => {
       keepPicks(picks(['picnic', 'museum'], [{ id: 'g', title: 'Later', notes: '', cardIds: [] }]))
       const user = userEvent.setup()
       const { container } = renderBuilder()
@@ -839,9 +852,9 @@ describe('DeckBuilder', () => {
       await user.keyboard('{ArrowDown}')
       expect(rowOf(container, 'museum')).toBe('g')
       await user.keyboard('{ArrowUp}')
-      // At the same place along the row as it was in the group.
+      // Back onto the end of the row above.
       expect(rowOf(container, 'museum')).toBe('')
-      expect(keptPicks().cardIds).toEqual(['museum', 'picnic'])
+      expect(keptPicks().cardIds).toEqual(['picnic', 'museum'])
     })
 
     it('puts the cards of a removed group back in the plan', async () => {
@@ -897,7 +910,7 @@ describe('DeckBuilder', () => {
       updatePlan.mockResolvedValue({ ok: true, data: { planId: 'plan42' } })
       const user = userEvent.setup()
       render(
-        <DeckBuilder
+        <PlanBuilder
           deckName="Test deck"
           shareId="share123"
           cards={cards}
@@ -970,9 +983,213 @@ describe('DeckBuilder', () => {
   })
 
   /** @see docs/sample-deck.md § "What's different" */
+  describe('the plan column', () => {
+    /** @see docs/card-layout.md § "The plan column" */
+    it('puts the plan before the deck, and both are in use on a wide screen', async () => {
+      keepPicks(['museum'])
+      renderBuilder()
+      const plan = screen.getByRole('region', { name: 'Your plan' })
+      const deck = screen.getByRole('region', { name: 'Date ideas' })
+      expect(plan.compareDocumentPosition(deck) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
+      expect(plan).not.toHaveAttribute('inert')
+      expect(deck).not.toHaveAttribute('inert')
+      expect(screen.queryByRole('button', { name: 'Show your plan' })).not.toBeInTheDocument()
+      expect(screen.queryByRole('button', { name: 'Show the date ideas' })).not.toBeInTheDocument()
+    })
+  })
+
+  /** @see docs/card-layout.md § "Save plan and Clear plan" */
+  describe('the bar above the columns', () => {
+    it('says how to start a plan until there is one, in place of the buttons', () => {
+      const { container } = renderBuilder()
+      const bar = container.querySelector('.builder-bar') as HTMLElement
+      expect(within(bar).getByText('Pick a card from the deck')).toBeInTheDocument()
+      expect(within(bar).queryByRole('button', { name: 'Save plan' })).not.toBeInTheDocument()
+      expect(within(bar).queryByRole('button', { name: 'Clear plan' })).not.toBeInTheDocument()
+    })
+
+    it('has Save plan and Clear plan once something is picked, outside both columns', async () => {
+      const user = userEvent.setup()
+      const { container } = renderBuilder()
+      await user.click(screen.getByRole('button', { name: 'Draw random card' }))
+
+      const bar = container.querySelector('.builder-bar') as HTMLElement
+      // The prompt fades out as the buttons fade in, and can't be used while
+      // it goes.
+      const prompt = within(bar).queryByText('Pick a card from the deck')
+      if (prompt) expect(prompt.closest('[inert]')).not.toBeNull()
+      await waitFor(() => expect(within(bar).queryByText('Pick a card from the deck')).not.toBeInTheDocument())
+      expect(within(bar).getByRole('button', { name: 'Save plan' })).toBeEnabled()
+      expect(within(bar).getByRole('button', { name: 'Save plan' }).closest('[inert]')).toBeNull()
+      expect(within(bar).getByRole('button', { name: 'Clear plan' })).toBeInTheDocument()
+      expect(bar.closest('.builder-column')).toBeNull()
+    })
+  })
+
+  /** @see docs/card-layout.md § "The plan column" - the slot */
+  describe('the slot in the plan', () => {
+    it('is a blank card-sized slot, with Draw random card, until something is picked', () => {
+      const { container } = renderBuilder()
+      const slot = container.querySelector('.plan-track .empty-slot')
+      expect(slot).toBeInTheDocument()
+      expect(slot).toHaveTextContent('')
+      expect(screen.getByRole('button', { name: 'Draw random card' })).toBeInTheDocument()
+    })
+
+    it('goes once something is picked, leaving Draw random card, which picks another', async () => {
+      keepPicks(['museum'])
+      const user = userEvent.setup()
+      const { container } = renderBuilder()
+      expect(container.querySelector('.plan-track .empty-slot')).not.toBeInTheDocument()
+
+      await user.click(screen.getByRole('button', { name: 'Draw random card' }))
+      expect(container.querySelectorAll('[data-card-id]')).toHaveLength(2)
+    })
+
+    it('goes when every card is in a group too', () => {
+      keepPicks(picks([], [{ id: 'g', title: 'Later', notes: '', cardIds: ['hike'] }]))
+      const { container } = renderBuilder()
+      expect(container.querySelector('.plan-track .empty-slot')).not.toBeInTheDocument()
+      expect(screen.getByRole('button', { name: 'Draw random card' })).toBeInTheDocument()
+    })
+
+    it('has no Draw random card once every idea is in the plan', () => {
+      keepPicks(['picnic', 'museum', 'hike'])
+      renderBuilder()
+      expect(screen.queryByRole('button', { name: 'Draw random card' })).not.toBeInTheDocument()
+    })
+  })
+
+  /** @see docs/card-layout.md § "Narrow screens" - the last column used */
+  describe('narrowing the screen', () => {
+    // A screen that starts wide, and can be made narrow.
+    function resizableScreen() {
+      let narrow = false
+      const listeners = new Set<() => void>()
+      vi.spyOn(window, 'matchMedia').mockImplementation(
+        (query) =>
+          ({
+            get matches() {
+              return query === '(max-width: 899px)' && narrow
+            },
+            media: query,
+            addEventListener: (_: string, listener: () => void) => listeners.add(listener),
+            removeEventListener: (_: string, listener: () => void) => listeners.delete(listener),
+          }) as unknown as MediaQueryList,
+      )
+      return {
+        narrow() {
+          narrow = true
+          act(() => {
+            for (const listener of listeners) listener()
+          })
+        },
+      }
+    }
+
+    afterEach(() => vi.restoreAllMocks())
+
+    it('keeps the deck in use when nothing has been used yet', () => {
+      const screenSize = resizableScreen()
+      renderBuilder()
+      screenSize.narrow()
+      expect(screen.getByRole('region', { name: 'Your plan' })).toHaveAttribute('inert')
+      expect(screen.getByRole('region', { name: 'Date ideas' })).not.toHaveAttribute('inert')
+    })
+
+    it('keeps the plan in use when something in it was used last', async () => {
+      const screenSize = resizableScreen()
+      const user = userEvent.setup()
+      renderBuilder()
+      await user.click(screen.getByRole('button', { name: 'Add group' }))
+      screenSize.narrow()
+      expect(screen.getByRole('region', { name: 'Your plan' })).not.toHaveAttribute('inert')
+      expect(screen.getByRole('region', { name: 'Date ideas' })).toHaveAttribute('inert')
+      expect(screen.getByRole('button', { name: 'Show the date ideas' })).toBeInTheDocument()
+    })
+
+    it('keeps the deck in use when a card in it was used after the plan', async () => {
+      const screenSize = resizableScreen()
+      const user = userEvent.setup()
+      const { container } = renderBuilder()
+      await user.click(screen.getByRole('button', { name: 'Add group' }))
+      await user.click(container.querySelector('[data-deck-card-id="museum"]') as HTMLElement)
+      screenSize.narrow()
+      expect(screen.getByRole('region', { name: 'Date ideas' })).not.toHaveAttribute('inert')
+      expect(screen.getByRole('region', { name: 'Your plan' })).toHaveAttribute('inert')
+    })
+
+    it('counts focus from the keyboard as using a column', async () => {
+      keepPicks(['museum'])
+      const screenSize = resizableScreen()
+      renderBuilder()
+      act(() => screen.getByRole('button', { name: 'Move Museum' }).focus())
+      screenSize.narrow()
+      expect(screen.getByRole('region', { name: 'Your plan' })).not.toHaveAttribute('inert')
+    })
+  })
+
+  /** @see docs/card-layout.md § "Narrow screens" */
+  describe('on a narrow screen', () => {
+    beforeEach(() => {
+      vi.spyOn(window, 'matchMedia').mockImplementation(
+        (query) =>
+          ({
+            matches: query === '(max-width: 899px)',
+            media: query,
+            addEventListener: () => {},
+            removeEventListener: () => {},
+          }) as unknown as MediaQueryList,
+      )
+    })
+
+    afterEach(() => vi.restoreAllMocks())
+
+    it('starts with the deck in use and the plan shrunk', () => {
+      const { container } = renderBuilder()
+      expect(container.querySelector('.builder')).toHaveAttribute('data-active', 'deck')
+      expect(screen.getByRole('region', { name: 'Your plan' })).toHaveAttribute('inert')
+      expect(screen.getByRole('region', { name: 'Date ideas' })).not.toHaveAttribute('inert')
+      expect(screen.getByRole('button', { name: 'Show your plan' })).toBeInTheDocument()
+      expect(screen.queryByRole('button', { name: 'Show the date ideas' })).not.toBeInTheDocument()
+    })
+
+    it('puts a shrunk column in use when it is clicked, and shrinks the other', async () => {
+      keepPicks(['museum'])
+      const user = userEvent.setup()
+      const { container } = renderBuilder()
+
+      await user.click(screen.getByRole('button', { name: 'Show your plan' }))
+      expect(container.querySelector('.builder')).toHaveAttribute('data-active', 'plan')
+      expect(screen.getByRole('region', { name: 'Your plan' })).not.toHaveAttribute('inert')
+      expect(screen.getByRole('region', { name: 'Date ideas' })).toHaveAttribute('inert')
+      // The card in the plan survived the switch.
+      expect(screen.getByRole('button', { name: 'Discard: Museum' })).toBeInTheDocument()
+
+      await user.click(screen.getByRole('button', { name: 'Show the date ideas' }))
+      expect(container.querySelector('.builder')).toHaveAttribute('data-active', 'deck')
+      expect(screen.getByRole('region', { name: 'Your plan' })).toHaveAttribute('inert')
+    })
+
+    it('goes back to the same place in the deck when it is in use again', async () => {
+      const scrollTo = vi.spyOn(window, 'scrollTo').mockImplementation(() => {})
+      const user = userEvent.setup()
+      const { container } = renderBuilder()
+      // The deck starts 300px down the page.
+      const deck = container.querySelector('.deck-column') as HTMLElement
+      vi.spyOn(deck, 'getBoundingClientRect').mockImplementation(() => ({ top: 300 - window.scrollY }) as DOMRect)
+      Object.defineProperty(window, 'scrollY', { value: 1200, configurable: true })
+
+      await user.click(screen.getByRole('button', { name: 'Show your plan' }))
+      Object.defineProperty(window, 'scrollY', { value: 0, configurable: true })
+      await user.click(screen.getByRole('button', { name: 'Show the date ideas' }))
+      expect(scrollTo).toHaveBeenCalledWith(0, 1200)
+    })
+  })
+
   describe('the sample deck', () => {
     function renderSample() {
-      return render(<DeckBuilder deckName="Sample Deck" shareId="sample" cards={cards} seed={1} sample />)
+      return render(<PlanBuilder deckName="Sample Deck" shareId="sample" cards={cards} seed={1} sample />)
     }
 
     it('offers to make a deck in place of Save plan', async () => {
@@ -1056,7 +1273,7 @@ describe('DeckBuilder', () => {
 
     function renderEditor() {
       return render(
-        <DeckBuilder
+        <PlanBuilder
           deckName="Test deck"
           shareId="share123"
           cards={cards}

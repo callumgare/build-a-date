@@ -37,6 +37,7 @@
 h1,
 .lede,
 .plan-actions,
+.builder-bar,
 .filter-label,
 .empty-results,
 .add-card-controls,
@@ -249,13 +250,113 @@ h1 {
   overflow-wrap: anywhere;
 }
 
-.plan-section {
-  padding: 48px 0 44px;
+/* The builder on /d/…: the plan in a thin column on the left, running down,
+   and the deck on the right (docs/card-layout.md § "The plan column"). */
+.builder {
+  display: grid;
+  grid-template-columns: clamp(200px, 22vw, 270px) minmax(0, 1fr);
+  gap: 0 clamp(20px, 3vw, 40px);
+  align-items: start;
+  padding-top: 24px;
 }
 
-.deck-section {
+.builder-column {
+  position: relative;
+  min-width: 0;
+}
+
+/* Stays in the window as the deck scrolls past it: the title, and under it
+   the plan, which scrolls on its own when it's taller than the room left.
+   Always the window's height, not just at most: while things slide up
+   after a card leaves, their old places still count towards what the plan
+   holds, and a column the height of the plan would briefly overflow and
+   show a scrollbar. */
+.plan-column {
+  position: sticky;
+  top: 0;
+  display: flex;
+  flex-direction: column;
+  height: 100vh;
+  /* biome-ignore lint/suspicious/noDuplicateProperties: 100vh is the fallback */
+  height: 100dvh;
+}
+
+.plan-heading {
+  flex: none;
+  margin: 0;
+  padding: 12px 14px 4px;
+  color: var(--accent);
+  font-family: 'Tan Pearl', Georgia, serif;
+  font-size: clamp(1.8rem, 3vw, 2.4rem);
+  font-weight: 400;
+  line-height: 1.2;
+  text-align: center;
+  text-shadow: var(--background-text-shadow);
+}
+
+/* How far each end of the plan fades out: none, until there's something
+   scrolled out of sight past it (data-more-above and data-more-below, set
+   by PlanBuilder). Registered, so the fades ease in and out. */
+@property --fade-top {
+  syntax: '<length>';
+  inherits: false;
+  initial-value: 0px;
+}
+
+@property --fade-bottom {
+  syntax: '<length>';
+  inherits: false;
+  initial-value: 0px;
+}
+
+.plan-scroll {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  mask-image: linear-gradient(
+    to bottom,
+    transparent,
+    #000 var(--fade-top),
+    #000 calc(100% - var(--fade-bottom)),
+    transparent
+  );
+  transition:
+    --fade-top 0.2s ease,
+    --fade-bottom 0.2s ease;
+  /* Room for a scrollbar that takes up space is always kept, so the plan
+     starting or stopping scrolling doesn't change the cards' width. It
+     would re-wrap their text, and cards a little narrower are a little
+     shorter too, so the scrollbar could come and go (docs/card-layout.md
+     § "The plan column" - stays in the window). */
+  /* On both sides, so the cards stay in the middle, under the title. */
+  scrollbar-gutter: stable both-edges;
+  scrollbar-width: thin;
+  scrollbar-color: var(--accent) transparent;
+}
+
+.plan-scroll[data-more-above] {
+  --fade-top: 48px;
+}
+
+.plan-scroll[data-more-below] {
+  --fade-bottom: 48px;
+}
+
+/* The padding leaves room for a hovered card as it grows and tilts
+   (docs/card-layout.md § "Tilting on hover"). */
+.plan-section {
+  position: relative;
   container-type: inline-size;
-  padding: 26px 0 44px;
+  padding: 16px 14px 32px;
+}
+
+/* Both sections are positioned, so their grids' places are measured within
+   them, in their own units even while shrunk (docs/card-layout.md
+   § "Shuffling to a new number of columns"). */
+.deck-section {
+  position: relative;
+  container-type: inline-size;
+  padding: 16px 0 44px;
 }
 
 .filter-button {
@@ -531,45 +632,284 @@ h1 {
   padding-top: 12px;
 }
 
-/* Beside the cards: a column on the left, lined up with the tops of the
-   cards, with Remove group under the notes. The cards start next to it
-   rather than centred, and still run on to the right edge of the screen
-   (docs/card-layout.md § "The plan track"). */
+/* Beside the cards, on the plan page: a column on the left, lined up with the
+   tops of the cards, with Remove group under the notes. The cards start next
+   to it rather than centred, and still run on to the right edge of the
+   screen (docs/card-layout.md § "The plan track"). The builder's plan column
+   keeps them above the cards. */
 @media (min-width: 900px) {
-  .plan-group {
+  .plan-group:not(.plan-column *) {
     display: grid;
     grid-template-columns: minmax(11rem, 16rem) minmax(0, 1fr);
     column-gap: 24px;
     align-items: start;
   }
 
-  .plan-group-info {
+  .plan-group-info:not(.plan-column *) {
     grid-column: 1;
     grid-template-columns: minmax(0, 1fr);
     padding-top: 12px;
   }
 
-  .plan-group-info > :is(.plan-group-title, .plan-group-heading) {
+  .plan-group-info:not(.plan-column *) > :is(.plan-group-title, .plan-group-heading) {
     grid-column: 1;
   }
 
-  .plan-group-info > .plan-group-remove {
+  .plan-group-info:not(.plan-column *) > .plan-group-remove {
     grid-row: auto;
     grid-column: 1;
     justify-self: start;
     margin-top: 8px;
   }
 
-  .plan-group-track {
+  .plan-group-track:not(.plan-column *) {
     grid-column: 2;
     justify-content: start;
     margin-left: 0;
     padding-left: 14px;
   }
 
-  .plan-group-track::-webkit-scrollbar-track {
+  .plan-group-track:not(.plan-column *)::-webkit-scrollbar-track {
     margin-inline: 14px max(14px, var(--bleed));
   }
+}
+
+/* Save plan and Clear plan, above both columns, or how to start a plan until
+   there is one (docs/card-layout.md § "Save plan and Clear plan"). It has no
+   background: its text has the halo instead, as text on the background
+   does. */
+.builder-bar {
+  display: flex;
+  flex-direction: column;
+  grid-column: 1 / -1;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  min-height: 64px;
+  padding: 10px 0;
+}
+
+/* The prompt and the buttons in the same place, so one can fade out as the
+   other fades in. */
+.builder-bar-swap {
+  display: grid;
+  place-items: center;
+  width: 100%;
+}
+
+.builder-bar-content {
+  grid-area: 1 / 1;
+}
+
+.builder-bar .plan-actions {
+  flex-wrap: wrap;
+  margin-bottom: 0;
+}
+
+.plan-prompt {
+  margin: 0;
+  color: var(--accent);
+  font-size: clamp(1.1rem, 2.4vw, 1.35rem);
+  text-align: center;
+}
+
+/* How many columns a grid of cards has, worked out to a whole number by the
+   browser, so code can read it too (columnCount in gridShuffle.ts). */
+@property --columns {
+  syntax: '<integer>';
+  inherits: true;
+  initial-value: 1;
+}
+
+/* The grid of cards, shared by the deck and the rows of the builder's plan,
+   so the plan lays its cards out just as the deck does (docs/card-layout.md
+   § "Narrow screens" - the plan in a grid). As many 200px columns as fit
+   its section, each card stretching to share the line, up to 250px; past
+   that the grid stops widening and centres, so the spare room goes to the
+   outside edges rather than between the cards. It's lines of cards that
+   wrap rather than a CSS grid, so a last line that isn't full is centred
+   (§ "The grid of cards"). */
+.card-grid,
+.plan-column .plan-track {
+  --gap: 16px;
+  /* tan(atan2(a, b)) is a / b as a plain number, for browsers that can't
+     divide one length by another. */
+  --columns: max(1, round(down, tan(atan2(100cqw + var(--gap), 200px + var(--gap)))));
+  /* Holds cards leaving the deck in place while they fade (AnimatePresence's
+     popLayout), and is the offset parent a card flying in or back is
+     measured from (docs/card-layout.md § "Flying cards"). */
+  position: relative;
+  display: flex;
+  flex-flow: row wrap;
+  align-items: flex-start;
+  justify-content: center;
+  gap: var(--gap);
+  width: auto;
+  max-width: calc(var(--columns) * (250px + var(--gap)) - var(--gap));
+  margin-inline: auto;
+}
+
+/* Each a column's width. */
+:is(.card-grid, .plan-column .plan-track) > * {
+  flex: none;
+  width: calc((100% - (var(--columns) - 1) * var(--gap)) / var(--columns));
+}
+
+/* Across the whole line: Draw random card, and an empty group's Drag ideas
+   here. */
+:is(.card-grid, .plan-column .plan-track) > :is(.random-pick, .group-slot) {
+  width: 100%;
+}
+
+/* Real division where it's supported: iOS Safari takes atan2() of lengths
+   as 0. */
+@supports (width: calc(1px / 1px * 1px)) {
+  .card-grid,
+  .plan-column .plan-track {
+    --columns: max(1, round(down, (100cqw + var(--gap)) / (200px + var(--gap))));
+  }
+}
+
+.plan-column .plan-track {
+  margin-block: 0;
+  padding: 8px 0 12px;
+  overflow: visible;
+}
+
+/* On a wide screen, where the plan is a thin column beside the deck, each
+   row runs down it, one card under the next (docs/card-layout.md § "The
+   plan column"). */
+@media (min-width: 900px) {
+  .plan-column .plan-track {
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+    width: min(100%, 250px);
+    max-width: none;
+  }
+}
+
+/* Under the cards, a little apart from them. */
+.random-pick {
+  display: flex;
+  justify-content: center;
+  margin-top: 12px;
+}
+
+/* The slot the first card picked is flying onto, left where it was under
+   the card's place at the top of the row, the only card there and so in the
+   middle, until the card lands and covers it. */
+.plan-column .empty-slot[data-covered='true'] {
+  position: absolute;
+  top: 8px;
+  left: 50%;
+  translate: -50% 0;
+}
+
+/* An empty group's Drag ideas here: short. */
+.plan-column .group-slot {
+  aspect-ratio: auto;
+  padding: 20px 16px;
+  font-size: 1.1rem;
+}
+
+.plan-column .plan-group {
+  margin-top: 28px;
+}
+
+/* A group's title and notes go above its cards, with Remove group under
+   them, as the column is too thin to put anything beside them. */
+.plan-column .plan-group-info > .plan-group-remove {
+  grid-row: auto;
+  grid-column: 1 / -1;
+  justify-self: start;
+  margin-top: 6px;
+}
+
+/* On a narrow screen one column is in use and the other is shrunk to a
+   fifth of its size, everything in it included, until it's clicked
+   (docs/card-layout.md § "Narrow screens"). The width is the same as
+   narrowScreen in PlanBuilder.tsx. */
+@media (max-width: 899px) {
+  /* The shrunk column is a fifth as wide as the one in use, and drawn at a
+     fifth of its size, so it's laid out just as wide as it is in use: the
+     same columns of cards, only smaller (§ "Narrow screens" - the whole
+     column shrinks). The widths are lengths rather than fr, and the
+     shrinking is zoom, so both animate as one column grows and the other
+     shrinks, on the same curve. Then a column's width over its zoom stays
+     the same all the way through, so nothing in it is laid out afresh
+     part way. switchDuration in PlanBuilder.tsx is a little longer. */
+  .builder {
+    --switch: 0.5s cubic-bezier(0.3, 0.7, 0.2, 1);
+    grid-template-columns: calc((100% - 12px) / 6) calc((100% - 12px) * 5 / 6);
+    gap: 0 12px;
+    transition: grid-template-columns var(--switch);
+  }
+
+  .builder[data-active='plan'] {
+    grid-template-columns: calc((100% - 12px) * 5 / 6) calc((100% - 12px) / 6);
+  }
+
+  .plan-heading,
+  .plan-section,
+  .deck-section {
+    transition: zoom var(--switch);
+  }
+
+  .builder[data-active='deck'] :is(.plan-heading, .plan-section),
+  .builder[data-active='plan'] .deck-section {
+    zoom: 0.2;
+  }
+
+  /* At least the window's height, so a click on the space under a shrunk
+     column's cards puts it in use too. */
+  .deck-column {
+    min-height: 100vh;
+    /* biome-ignore lint/suspicious/noDuplicateProperties: 100vh is the fallback */
+    min-height: 100dvh;
+  }
+
+  /* Covered by its switch, which doesn't scroll with it. With no scrollbar,
+     it keeps no room for one either: that room isn't shrunk with the rest,
+     so it would take a much bigger share of the strip. Its width is padding
+     on each side instead (--scrollbar-gutter, measured by PlanBuilder), in
+     the shrunk plan's own units, so its cards are laid out just as wide as
+     when it's in use. */
+  .builder[data-active='deck'] .plan-scroll,
+  .builder[data-switching] .plan-scroll {
+    overflow: hidden;
+    scrollbar-width: none;
+  }
+
+  /* The same while it grows or shrinks, until it's in use at full size:
+     room for the scrollbar kept while it's still small would cost a much
+     bigger share of it, and the cards would narrow part way. */
+  .builder[data-active='deck'] .plan-section,
+  .builder[data-switching] .plan-section {
+    padding-inline: calc(14px + var(--scrollbar-gutter, 0px));
+  }
+}
+
+/* Over a shrunk column, so a click anywhere on it puts it in use. */
+.column-switch {
+  position: absolute;
+  z-index: 5;
+  inset: 0;
+  width: 100%;
+  padding: 0;
+  border: 1px solid transparent;
+  border-radius: 6px;
+  background: transparent;
+  cursor: pointer;
+}
+
+.column-switch:hover {
+  border-color: var(--line);
+  background: rgba(229, 188, 129, 0.08);
+}
+
+.column-switch:focus-visible {
+  outline-offset: -3px;
 }
 
 .plan-group-add {
@@ -662,33 +1002,6 @@ fieldset.filters {
   .filter-button[data-active='true']:hover {
     border-color: #f0d3a8;
     background: #f0d3a8;
-  }
-}
-
-/* Cards run from 200px to 250px wide. Columns stretch to share the row, and
-   once they reach 250px the grid stops widening and centres, so the spare
-   room goes to the outside edges rather than between the cards. The grid
-   can't cap a 1fr column itself (a 250px column maximum pins every column at
-   250px, since auto-fill sizes repeats by their maximum), so it caps its own
-   width instead, from the number of 200px columns that fit the deck. */
-.card-grid {
-  --gap: 16px;
-  /* tan(atan2(a, b)) is a / b as a plain number, for browsers that can't
-     divide one length by another. */
-  --columns: max(1, round(down, tan(atan2(100cqw + var(--gap), 200px + var(--gap)))));
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(min(100%, 200px), 1fr));
-  gap: var(--gap);
-  place-items: center;
-  max-width: calc(var(--columns) * (250px + var(--gap)) - var(--gap));
-  margin-inline: auto;
-}
-
-/* Real division where it's supported: iOS Safari takes atan2() of lengths
-   as 0. */
-@supports (width: calc(1px / 1px * 1px)) {
-  .card-grid {
-    --columns: max(1, round(down, (100cqw + var(--gap)) / (200px + var(--gap))));
   }
 }
 
@@ -1186,6 +1499,7 @@ textarea:focus-visible {
   top: 0;
 }
 
+/* biome-ignore lint/style/noDescendingSpecificity: only the cursor, which the grid of cards doesn't set */
 .editor-preview > * {
   cursor: default;
 }
@@ -1269,7 +1583,8 @@ textarea:focus-visible {
     padding: 12px;
   }
 
-  .card-grid {
+  .card-grid,
+  .plan-column .plan-track {
     --gap: 10px;
   }
 

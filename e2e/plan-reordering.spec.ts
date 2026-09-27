@@ -32,10 +32,11 @@ test('someone drags a card from anywhere on it to a new place in the plan', asyn
   const cardBox = await stargazing.boundingBox()
   const picnicBox = await picnic.boundingBox()
   if (!cardBox || !picnicBox) throw new Error('Cards have no size')
-  const y = cardBox.y + cardBox.height * 0.5
-  await guest.mouse.move(cardBox.x + cardBox.width * 0.25, y)
+  // Down the plan's column, past the card under it.
+  const x = cardBox.x + cardBox.width * 0.25
+  await guest.mouse.move(x, cardBox.y + cardBox.height * 0.5)
   await guest.mouse.down()
-  await guest.mouse.move(picnicBox.x + picnicBox.width * 0.9, y, { steps: 20 })
+  await guest.mouse.move(x, picnicBox.y + picnicBox.height * 0.9, { steps: 20 })
   await guest.mouse.up()
 
   await expect.poll(async () => (await planOrder(guest))[0]).toContain('Picnic in the Park')
@@ -83,7 +84,7 @@ test("letting go of a drag doesn't do the option on that side of the card", asyn
     await expect(guest.getByRole('button', { name: `Discard: ${title}` })).toBeAttached()
   }
 
-  // Dragged left, once by the right half, where a click opens the notes, then
+  // Dragged up, once by the right half, where a click opens the notes, then
   // by the left half, where a click discards the card.
   for (const side of [0.75, 0.25]) {
     const [, secondTitle] = await planOrder(guest)
@@ -94,10 +95,10 @@ test("letting go of a drag doesn't do the option on that side of the card", asyn
     const box = await card.boundingBox()
     const otherBox = await other.boundingBox()
     if (!box || !otherBox) throw new Error('Cards have no size')
-    const y = box.y + box.height * 0.5
-    await guest.mouse.move(box.x + box.width * side, y)
+    const x = box.x + box.width * side
+    await guest.mouse.move(x, box.y + box.height * 0.5)
     await guest.mouse.down()
-    await guest.mouse.move(otherBox.x + otherBox.width * side - 10, y, { steps: 20 })
+    await guest.mouse.move(x, otherBox.y + 10, { steps: 20 })
     await guest.mouse.up()
 
     await expect.poll(async () => (await planOrder(guest))[0]).toBe(secondTitle)
@@ -109,14 +110,14 @@ test("letting go of a drag doesn't do the option on that side of the card", asyn
 })
 
 /** @see docs/card-layout.md § "Reordering the plan" - scrolls with the drag */
-for (const end of ['right', 'left'] as const) {
-  test(`dragging a card up to the ${end} end of a plan that scrolls scrolls it`, async ({ page, browser, request }) => {
+for (const end of ['bottom', 'top'] as const) {
+  test(`dragging a card up to the ${end} of a plan that scrolls scrolls it`, async ({ page, browser, request }) => {
     await signUp(page, request, 'Alex')
     const shareUrl = await createDeck(page, 'Ideas for Sam')
 
     const guestContext = await newVisitor(browser)
     const guest = await guestContext.newPage()
-    await guest.setViewportSize({ width: 480, height: 800 })
+    await guest.setViewportSize({ width: 1280, height: 800 })
     await guest.goto(shareUrl)
     const titles = await guest
       .locator('[data-deck-card-id]')
@@ -128,27 +129,33 @@ for (const end of ['right', 'left'] as const) {
       await expect(guest.getByRole('button', { name: `Discard: ${title}` })).toBeAttached()
     }
 
-    // Scrolled all the way away from the end the card is taken to.
-    const track = guest.locator('.plan-track')
-    const scrollLeft = () => track.evaluate((element) => element.scrollLeft)
-    const furthest = await track.evaluate((element, end) => {
-      element.scrollLeft = end === 'right' ? 0 : element.scrollWidth
-      return element.scrollLeft
+    // The page scrolled down until the plan's column stays put at the top of
+    // the window, and the column scrolled all the way away from the end the
+    // card is taken to.
+    const column = guest.locator('.plan-scroll')
+    const scrollTop = () => column.evaluate((element) => element.scrollTop)
+    const furthest = await column.evaluate((element, end) => {
+      window.scrollTo(0, element.getBoundingClientRect().top + window.scrollY)
+      element.scrollTop = end === 'bottom' ? 0 : element.scrollHeight
+      return element.scrollTop
     }, end)
-    const trackBox = await track.boundingBox()
+    expect(await column.evaluate((element) => element.scrollHeight > element.clientHeight)).toBe(true)
+    const columnBox = await column.boundingBox()
     const cards = guest.locator('[data-card-id]')
-    const card = end === 'right' ? cards.first() : cards.last()
+    const card = end === 'bottom' ? cards.first() : cards.last()
     await card.hover()
     const box = await card.boundingBox()
-    if (!trackBox || !box) throw new Error('Plan has no size')
-    const y = box.y + box.height * 0.5
-    await guest.mouse.move(box.x + box.width * 0.5, y)
+    if (!columnBox || !box) throw new Error('Plan has no size')
+    const x = box.x + box.width * 0.5
+    await guest.mouse.move(x, box.y + box.height * 0.5)
     await guest.mouse.down()
-    await guest.mouse.move(end === 'right' ? trackBox.x + trackBox.width - 10 : trackBox.x + 10, y, { steps: 20 })
+    await guest.mouse.move(x, end === 'bottom' ? columnBox.y + columnBox.height - 10 : columnBox.y + 10, {
+      steps: 20,
+    })
 
     // Held still at the end, it keeps going.
-    if (end === 'right') await expect.poll(scrollLeft).toBeGreaterThan(furthest + 100)
-    else await expect.poll(scrollLeft).toBeLessThan(furthest - 100)
+    if (end === 'bottom') await expect.poll(scrollTop).toBeGreaterThan(furthest + 100)
+    else await expect.poll(scrollTop).toBeLessThan(furthest - 100)
     await guest.mouse.up()
 
     await guestContext.close()

@@ -2,15 +2,15 @@ import type { Locator, Page } from '@playwright/test'
 import { expect, newVisitor, test } from './fixtures'
 import { createDeck, signUp } from './helpers'
 
-// Drags a card by its middle to the middle of a spot, or just left of it, a
-// step at a time, as a mouse would. The spot is measured once the card is
-// hovered, which can scroll the page.
+// Drags a card by its middle to the middle of a spot, or into the top of it,
+// above its middle, a step at a time, as a mouse would. The spot is measured
+// once the card is hovered, which can scroll the page.
 async function dragCard(page: Page, card: Locator, spot: Locator, { before = false } = {}) {
   await card.hover()
   const box = await card.boundingBox()
   const spotBox = await spot.boundingBox()
   if (!box || !spotBox) throw new Error('Card has no size')
-  const to = { x: before ? spotBox.x - 20 : spotBox.x + spotBox.width / 2, y: spotBox.y + spotBox.height / 2 }
+  const to = { x: spotBox.x + spotBox.width / 2, y: before ? spotBox.y + 10 : spotBox.y + spotBox.height / 2 }
   await page.mouse.move(box.x + box.width / 2, box.y + box.height / 2)
   await page.mouse.down()
   await page.mouse.move(to.x, to.y, { steps: 25 })

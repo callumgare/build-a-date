@@ -16,68 +16,81 @@ type FlyingCardProps = {
   scrawl?: Notes
   // Where the deck card sits, as if it weren't tilted, and how far it leans.
   from: Box
-  track: RefObject<HTMLElement | null>
+  // The column the card is flying into, and the attribute its slot there is
+  // marked with, holding the card's id. The plan's column scrolls to show
+  // the slot.
+  into: RefObject<HTMLElement | null>
+  slot: 'data-card-id' | 'data-deck-card-id'
   transition: Transition
-  onDone: () => void
+  onDone: (id: string) => void
 }
 
-// The plan track scrolls horizontally, which also clips it vertically, so a
-// card animating up from the deck would be cut off at the track's edge. This
-// flies a stand-in above the page instead, while the real card waits hidden
-// in its slot.
-export default function FlyingCard({ card, frame, scrawl, from, track, transition, onDone }: FlyingCardProps) {
+// A card picked from the deck, or discarded from the plan, flying across to
+// its new place (docs/card-layout.md § "Flying cards"). The plan scrolls,
+// which clips it, and either column may be shrunk, so this flies a stand-in
+// above the page instead, while the real card waits hidden in its slot.
+export default function FlyingCard({ card, frame, scrawl, from, into, slot, transition, onDone }: FlyingCardProps) {
   const [scope, animate] = useAnimate<HTMLDivElement>()
 
   useLayoutEffect(() => {
-    const trackElement = track.current
-    const slot = trackElement?.querySelector<HTMLElement>(`[data-card-id="${CSS.escape(card.id)}"]`)
-    if (!trackElement || !slot) {
-      onDone()
+    const column = into.current
+    const target = column?.querySelector<HTMLElement>(`[${slot}="${CSS.escape(card.id)}"]`)
+    const parent = target?.offsetParent
+    if (!column || !target || !(parent instanceof HTMLElement)) {
+      onDone(card.id)
       return
     }
 
-    // Offsets rather than getBoundingClientRect, as the slot may already have
-    // a layout-animation transform applied.
-    const overflow = slot.offsetLeft + slot.offsetWidth - trackElement.clientWidth
-    if (overflow > trackElement.scrollLeft) trackElement.scrollTo({ left: overflow + 14 })
+    // Scrolls the column to show the slot, if it's below what's showing and
+    // the column scrolls.
+    const columnBottom = Math.min(column.getBoundingClientRect().bottom, window.innerHeight)
+    const before = slotBox(target, parent)
+    const overflow = before.top + before.height - columnBottom
+    if (overflow > 0) column.scrollTop += overflow + 14
 
-    const trackRect = trackElement.getBoundingClientRect()
-    const left = trackRect.left + trackElement.clientLeft + slot.offsetLeft - trackElement.scrollLeft
-    const top = trackRect.top + trackElement.clientTop + slot.offsetTop - trackElement.scrollTop
+    const { left, top, width, height } = slotBox(target, parent)
+    // In a shrunk column the slot is drawn a fifth of its size. The stand-in
+    // is laid out at the card's own size, so its text wraps and fits as the
+    // card's does, and scaled down to land on it, rather than laid out that
+    // small, where the text can't shrink to match.
+    const shrunk = (target as HTMLElement & { currentCSSZoom?: number }).currentCSSZoom ?? 1
+    const layoutWidth = width / shrunk
+    const layoutHeight = height / shrunk
+    const centreX = left + width / 2
+    const centreY = top + height / 2
 
-    // Lay the stand-in out at the slot's exact size so it lands matching the
-    // real card, then start it scaled down (or up) and leaning over the deck
-    // card, straightening as it goes. It scales and turns about its centre,
-    // as the cards themselves do.
+    // Start it scaled to the card it leaves and leaning as that card did,
+    // straightening as it goes. It scales and turns about its centre, as the
+    // cards themselves do.
     const flyer = scope.current
     Object.assign(flyer.style, {
-      top: `${top}px`,
-      left: `${left}px`,
-      width: `${slot.offsetWidth}px`,
-      height: `${slot.offsetHeight}px`,
+      top: `${centreY - layoutHeight / 2}px`,
+      left: `${centreX - layoutWidth / 2}px`,
+      width: `${layoutWidth}px`,
+      height: `${layoutHeight}px`,
     })
 
     let cancelled = false
     const controls = animate(
       flyer,
       {
-        x: [from.left + from.width / 2 - (left + slot.offsetWidth / 2), 0],
-        y: [from.top + from.height / 2 - (top + slot.offsetHeight / 2), 0],
-        scaleX: [from.width / slot.offsetWidth, 1],
-        scaleY: [from.height / slot.offsetHeight, 1],
+        x: [from.left + from.width / 2 - centreX, 0],
+        y: [from.top + from.height / 2 - centreY, 0],
+        scaleX: [from.width / layoutWidth, shrunk],
+        scaleY: [from.height / layoutHeight, shrunk],
         rotate: [from.rotate ?? 0, 0],
       },
       transition,
     )
     controls.then(() => {
-      if (!cancelled) onDone()
+      if (!cancelled) onDone(card.id)
     })
 
     return () => {
       cancelled = true
       controls.stop()
     }
-  }, [animate, card.id, from, onDone, scope, track, transition])
+  }, [animate, card.id, from, onDone, scope, into, slot, transition])
 
   return createPortal(
     <div className={`${styles.card} ${styles.flying}`} ref={scope} aria-hidden="true">
@@ -85,4 +98,20 @@ export default function FlyingCard({ card, frame, scrawl, from, track, transitio
     </div>,
     document.body,
   )
+}
+
+// Where the slot is on screen. Offsets rather than getBoundingClientRect, as
+// the slot may already have a layout-animation transform applied. Offsets
+// aren't shrunk with a column that isn't in use on a narrow screen
+// (docs/card-layout.md § "Narrow screens"), so they're scaled to match the
+// slot's offset parent (its row, or the deck's grid) as it's drawn.
+function slotBox(slot: HTMLElement, parent: HTMLElement) {
+  const parentRect = parent.getBoundingClientRect()
+  const scale = parent.offsetWidth ? parentRect.width / parent.offsetWidth : 1
+  return {
+    left: parentRect.left + (parent.clientLeft + slot.offsetLeft) * scale,
+    top: parentRect.top + (parent.clientTop + slot.offsetTop) * scale,
+    width: slot.offsetWidth * scale,
+    height: slot.offsetHeight * scale,
+  }
 }

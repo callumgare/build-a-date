@@ -15,14 +15,15 @@ import { createPortal } from 'react-dom'
 import cardStyles from './Card.module.css'
 import { cardBox } from './cardControls'
 import { edgeScrollSpeed } from './edgeScroll'
+import { columnCount } from './gridShuffle'
 import { dragLean } from './tilt'
 
 // Where a dragged card would go: a row of the plan (its first row, or a
 // group) and its place among the other cards there.
 export type DropPlace = { row: string; index: number }
 
-// One step from the keyboard: along its row, or onto the row above or below.
-export type KeyboardMove = { along?: -1 | 1; across?: -1 | 1 }
+// One step from the keyboard: up the plan, or down it.
+export type KeyboardMove = -1 | 1
 
 type PlanCardProps = Omit<HTMLMotionProps<'div'>, 'onPointerDown' | 'children'> & {
   children: ReactNode
@@ -36,19 +37,16 @@ type PlanCardProps = Omit<HTMLMotionProps<'div'>, 'onPointerDown' | 'children'> 
 
 // A card in the plan, which a mouse can drag from anywhere on it, onto any
 // row. A touch only drags from the grip, so a swipe across the card still
-// scrolls the plan (docs/card-layout.md § "Reordering the plan").
+// scrolls the plan (docs/card-layout.md § "Reordering the plan"). The plan is
+// a column, so up and down (or left and right) move it from the keyboard.
 export function PlanCard({ title, lifted, onPress, onMove, className, children, ...props }: PlanCardProps) {
   function moveFromKeyboard(event: ReactKeyboardEvent) {
     const move: KeyboardMove | null =
-      event.key === 'ArrowLeft'
-        ? { along: -1 }
-        : event.key === 'ArrowRight'
-          ? { along: 1 }
-          : event.key === 'ArrowUp'
-            ? { across: -1 }
-            : event.key === 'ArrowDown'
-              ? { across: 1 }
-              : null
+      event.key === 'ArrowUp' || event.key === 'ArrowLeft'
+        ? -1
+        : event.key === 'ArrowDown' || event.key === 'ArrowRight'
+          ? 1
+          : null
     if (!move) return
     event.preventDefault()
     onMove(move)
@@ -66,7 +64,7 @@ export function PlanCard({ title, lifted, onPress, onMove, className, children, 
         className={cardStyles.grip}
         type="button"
         aria-label={`Move ${title}`}
-        aria-description="Drag, or use the arrow keys, to move it along the plan or to another group"
+        aria-description="Drag, or use the up and down arrow keys, to move it up or down the plan, into or out of a group"
         onKeyDown={moveFromKeyboard}
       >
         <svg viewBox="0 0 24 12" aria-hidden="true">
@@ -101,8 +99,9 @@ type Press = {
 type Lifted = { id: string; left: number; top: number; width: number; height: number }
 
 type PlanDragOptions = {
-  // Holds the plan's rows: tracks marked with data-plan-row, holding cards
-  // marked with data-card-id.
+  // Holds the plan's rows: tracks marked with data-plan-row, one above the
+  // other, holding cards marked with data-card-id, one above the other. It
+  // scrolls up and down.
   container: RefObject<HTMLElement | null>
   onMove: (id: string, place: DropPlace) => void
   reduceMotion: boolean
@@ -116,9 +115,9 @@ const dragThreshold = 4
 // so this does it instead. The card stays in the plan, faded, and moves to
 // wherever it would be dropped as the pointer goes, while a stand-in on top
 // of the page follows the pointer. Once a frame, the stand-in leans back from
-// the way it's going and the row under it scrolls when it's taken up to
-// either end, as does the page at the top and bottom of the window. Let go,
-// the stand-in settles into the card's place.
+// the way it's going, and the plan scrolls when it's taken up to its top or
+// bottom, or the page does while that end of the plan is out of the window.
+// Let go, the stand-in settles into the card's place.
 export function usePlanDrag({ container, onMove, reduceMotion }: PlanDragOptions) {
   const [lifted, setLifted] = useState<Lifted | null>(null)
   const x = useMotionValue(0)
@@ -155,16 +154,30 @@ export function usePlanDrag({ container, onMove, reduceMotion }: PlanDragOptions
 
   // Goes by the stand-in's middle against the other cards' middles, measured
   // from their offsets, which layout animations don't move, so cards sliding
-  // out of the way don't change the answer.
+  // out of the way don't change the answer. Down the row when it's one
+  // column; in reading order when it's a grid of several, as on a narrow
+  // screen (docs/card-layout.md § "Reordering the plan" - by dragging it).
   function findPlace(state: Press) {
     const row = rowAt(state.pointerY)
     if (!row) return
     const standIn = standInBox(state)
-    const middle = (standIn.left + standIn.right) / 2
-    const start = row.getBoundingClientRect().left + row.clientLeft - row.scrollLeft
-    const index = [...row.querySelectorAll<HTMLElement>(':scope > [data-card-id]')].filter(
-      (card) => card.dataset.cardId !== state.id && start + card.offsetLeft + card.offsetWidth / 2 < middle,
-    ).length
+    const middleX = (standIn.left + standIn.right) / 2
+    const middleY = (standIn.top + standIn.bottom) / 2
+    const rowRect = row.getBoundingClientRect()
+    const left = rowRect.left + row.clientLeft - row.scrollLeft
+    const top = rowRect.top + row.clientTop - row.scrollTop
+    const others = [...row.querySelectorAll<HTMLElement>(':scope > [data-card-id]')].filter(
+      (card) => card.dataset.cardId !== state.id,
+    )
+    const grid = columnCount(row) > 1
+    const index = others.filter((card) => {
+      const cardX = left + card.offsetLeft + card.offsetWidth / 2
+      const cardY = top + card.offsetTop + card.offsetHeight / 2
+      if (!grid) return cardY < middleY
+      // An earlier line of the grid, or further along the same one.
+      const halfHeight = card.offsetHeight / 2
+      return cardY < middleY - halfHeight || (Math.abs(cardY - middleY) <= halfHeight && cardX < middleX)
+    }).length
     const place = { row: row.dataset.planRow ?? '', index }
     if (state.place?.row === place.row && state.place.index === place.index) return
     state.place = place
@@ -187,18 +200,22 @@ export function usePlanDrag({ container, onMove, reduceMotion }: PlanDragOptions
       animate(rotate, lean, dragSpring)
     }
 
-    const standIn = standInBox(state)
-    const row = rowAt(state.pointerY)
-    if (row) {
-      const scroll = edgeScrollSpeed(standIn, row.getBoundingClientRect(), state.pointerX - state.startX)
-      if (scroll) row.scrollLeft += scroll * seconds
+    const plan = container.current
+    if (plan) {
+      // Up to the ends of the plan that are in the window. While the end it's
+      // taken to is out of the window, the page scrolls to bring it in;
+      // after that the plan itself scrolls.
+      const box = plan.getBoundingClientRect()
+      const standIn = standInBox(state)
+      const scroll = edgeScrollSpeed(
+        { left: standIn.top, right: standIn.bottom },
+        { left: Math.max(0, box.top), right: Math.min(window.innerHeight, box.bottom) },
+        state.pointerY - state.startY,
+      )
+      const endHidden = scroll > 0 ? box.bottom > window.innerHeight + 1 : box.top < -1
+      if (scroll && endHidden) window.scrollBy(0, scroll * seconds)
+      else if (scroll) plan.scrollTop += scroll * seconds
     }
-    const pageScroll = edgeScrollSpeed(
-      { left: standIn.top, right: standIn.bottom },
-      { left: 0, right: window.innerHeight },
-      state.pointerY - state.startY,
-    )
-    if (pageScroll) window.scrollBy(0, pageScroll * seconds)
 
     findPlace(state)
     state.frame = requestAnimationFrame(step)

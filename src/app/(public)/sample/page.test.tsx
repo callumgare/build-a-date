@@ -1,5 +1,5 @@
 import type { ComponentProps, ReactElement } from 'react'
-import type DeckBuilder from '@/components/DeckBuilder'
+import type PlanBuilder from '@/components/PlanBuilder'
 import { starterCards } from '@/data/starter-cards'
 import SampleDeck from './page'
 
@@ -7,7 +7,7 @@ vi.mock('server-only', () => ({}))
 vi.mock('next/server', () => import('@/test/next'))
 
 async function open() {
-  return ((await SampleDeck()) as ReactElement<ComponentProps<typeof DeckBuilder>>).props
+  return ((await SampleDeck()) as ReactElement<ComponentProps<typeof PlanBuilder>>).props
 }
 
 /** @see docs/sample-deck.md § "The deck" */

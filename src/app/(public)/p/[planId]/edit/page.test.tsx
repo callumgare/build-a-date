@@ -1,5 +1,5 @@
 import type { ComponentProps, ReactElement } from 'react'
-import type DeckBuilder from '@/components/DeckBuilder'
+import type PlanBuilder from '@/components/PlanBuilder'
 import * as decks from '@/lib/decks'
 import { useTestDb } from '@/test/cloudflare'
 import { createTestDb, createUser } from '@/test/db'
@@ -25,7 +25,7 @@ function props(planId: string) {
 }
 
 async function open(planId: string) {
-  const page = (await EditPlan(props(planId))) as ReactElement<ComponentProps<typeof DeckBuilder>>
+  const page = (await EditPlan(props(planId))) as ReactElement<ComponentProps<typeof PlanBuilder>>
   return page.props
 }
 

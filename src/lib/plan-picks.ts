@@ -65,21 +65,20 @@ export function placeCard(picks: PlanPicks, id: string, row: string, index: numb
   return mapRows(removeCard(picks, id), (cardIds, rowId) => (rowId === row ? placed : cardIds))
 }
 
-// From the keyboard: one place along its row, or onto the row above or below
-// at the same place, or the end of it if that's shorter (docs/card-layout.md
-// § "Reordering the plan").
-export function moveCardBy(picks: PlanPicks, id: string, move: { along?: -1 | 1; across?: -1 | 1 }): PlanPicks {
+// From the keyboard: one place up or down the plan. Off either end of a row
+// it goes onto the start of the row below, or the end of the row above, so
+// it can step through every group in turn (docs/card-layout.md § "Reordering
+// the plan" - from the keyboard).
+export function stepCard(picks: PlanPicks, id: string, by: -1 | 1): PlanPicks {
   const rows = rowsOf(picks)
   const rowIndex = rows.findIndex((row) => row.cardIds.includes(id))
   if (rowIndex === -1) return picks
-  const index = rows[rowIndex].cardIds.indexOf(id)
-  if (move.across) {
-    const target = rows[rowIndex + move.across]
-    return target ? placeCard(picks, id, target.id, index) : picks
-  }
-  const to = index + (move.along ?? 0)
-  if (to < 0 || to >= rows[rowIndex].cardIds.length) return picks
-  return placeCard(picks, id, rows[rowIndex].id, to)
+  const row = rows[rowIndex]
+  const to = row.cardIds.indexOf(id) + by
+  if (to >= 0 && to < row.cardIds.length) return placeCard(picks, id, row.id, to)
+  const next = rows[rowIndex + by]
+  if (!next) return picks
+  return placeCard(picks, id, next.id, by > 0 ? 0 : next.cardIds.length)
 }
 
 // Only cards that pass, each once, in the first place it's found.

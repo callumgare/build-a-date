@@ -10,14 +10,14 @@ A plan lists card ids, not copies: the `plan` table's `card_ids` for its first r
 
 Cards in a plan can be put in groups, each with a title and notes, such as "Dinner" with "Book for 7pm", or two ideas to choose between on the day.
 
-- **Rows of their own.** The plan's first row holds the cards not in a group. Each group is a row of its own under it. Cards picked from the deck go onto the end of the first row.
-- **Title and notes beside the cards.** On a screen at least 900px wide, a group's title, notes and **Remove group** sit in a column to the left of its cards, which start next to them rather than centred. On a narrower screen they're above the cards, with **Remove group** beside the title. The plan page lays groups out the same way.
+- **Rows of their own.** The plan's first row holds the cards not in a group. Each group is a row of its own under it. Cards picked from the deck go onto the end of the first row. In the builder, each row runs down the plan's column ([card-layout.md](card-layout.md) § "The plan column").
+- **Title and notes.** In the builder, a group's title and notes are above its cards, with **Remove group** under them. On the plan page, on a screen at least 900px wide, the title and notes sit in a column to the left of the group's cards, which start next to them rather than centred. On a narrower screen they're above the cards.
 - **Add group** under the last row adds an empty group at the bottom and puts the cursor in its title. Until it has a title it's called **Group 1**, **Group 2** and so on, by its place.
 - **Moving cards between them.** A card is dragged from one row to another the same way it's dragged along a row, or moved with the arrow keys on its grip ([card-layout.md](card-layout.md) § "Reordering the plan"). An empty group says **Drag ideas here**.
 - **Remove group** takes the group out of the plan. Its cards aren't discarded; they go back onto the end of the first row. Its title and notes are gone.
 - **Discard** on a card in a group puts it back in the deck, as it does anywhere in the plan. **Clear plan** empties the groups too.
 - **What's saved.** Titles are up to 80 characters and notes up to 2000, trimmed. A plan can have up to 20 groups, and needs at least one card somewhere, in its first row or a group. A group with no title, no notes and no cards isn't saved. A group with a title or notes but no cards is, so a plan can say "Get a taxi home" without an idea for it. The first row can be empty when every card is in a group.
-- **On the plan page** each group shows its title as a heading and its notes as written (line breaks kept), beside or above its cards as in the builder. A group without a title has no heading. The title and notes are changed from **Edit plan**, not on the plan page.
+- **On the plan page** each group shows its title as a heading and its notes as written (line breaks kept), beside or above its cards, as described under **Title and notes**. A group without a title has no heading. The title and notes are changed from **Edit plan**, not on the plan page.
 
 The rules (`placeCard`, `moveCardBy`, `keepCards` and so on) are in `src/lib/plan-picks.ts`, used by the builder, the kept picks and `savePlan`/`updatePlan`, so they can't disagree.
 
@@ -29,10 +29,10 @@ The picks in progress are kept in the browser. They aren't in the URL, so a link
 - **One set per plan being edited, for a reload only.** Changes to a saved plan are kept under `build-a-date:picks:plan:<planId>` in session storage, apart from the deck's own picks. A reload of the edit page keeps them. They're forgotten when they're saved (**Update Plan**), on **Cancel**, when the plan page is shown again (by a link, the back button or a reload), and when the tab is closed. So **Edit plan** always starts from the saved plan, including changes other people have made to it.
 - **Groups too.** What's kept is the first row and the groups, with their titles and notes (`{ cardIds, groups }`). Picks kept before there were groups, a plain list of ids, are read as the first row.
 - **Nothing kept for nothing.** When there's nothing unsaved (no picks and no groups, or the plan as it was last saved), the entry is removed. An emptied plan that's being edited is kept as empty.
-- **Straight into the plan.** After a reload, the kept picks are in the plan from the first frame. They don't fly up from the deck.
+- **Straight into the plan.** After a reload, the kept picks are in the plan from the first frame. They don't fly in from the deck.
 - **Only this browser.** Picks don't follow someone to another browser or device. If storage is unavailable or full (a private window, blocked site data), the plan still works, it just isn't kept.
 
-The server can't see local storage, so the page first renders with no picks (or the saved plan). `DeckBuilder` reads the kept picks in a layout effect, before the browser paints. If they change the plan, the plan and the deck remount under a new `LayoutGroup` id. Their shared-layout ids (`layoutId`) are then new, so Motion has no earlier position to animate the cards from.
+The server can't see local storage, so the page first renders with no picks (or the saved plan). `PlanBuilder` reads the kept picks in a layout effect, before the browser paints. If they change the plan, the plan and the deck remount under a new `LayoutGroup` id, so the cards are laid out afresh: nothing slides into place, flies, or fades out of the deck.
 
 ## The plan page
 

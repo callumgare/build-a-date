@@ -1,7 +1,7 @@
 import type { Metadata } from 'next'
 import { notFound } from 'next/navigation'
 import { connection } from 'next/server'
-import DeckBuilder from '@/components/DeckBuilder'
+import PlanBuilder from '@/components/PlanBuilder'
 import { getDb } from '@/db'
 import { getSession } from '@/lib/auth'
 import { getAccessState, getPlan, getSharedDeck, listPlanSummaries, NotFoundError } from '@/lib/decks'
@@ -40,7 +40,7 @@ export default async function EditPlan({ params }: PageProps<'/p/[planId]/edit'>
   const picks = keepCards({ cardIds: plan.cardIds, groups: plan.groups }, (id) => inDeck.has(id))
 
   return (
-    <DeckBuilder
+    <PlanBuilder
       deckName={deck.name}
       shareId={deck.shareId}
       cards={cards}

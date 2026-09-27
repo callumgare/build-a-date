@@ -6,7 +6,6 @@ import {
   firstRow,
   isBlankGroup,
   keepCards,
-  moveCardBy,
   noPicks,
   parsePicks,
   pickedIds,
@@ -14,6 +13,7 @@ import {
   placeCard,
   removeCard,
   removeGroup,
+  stepCard,
 } from './plan-picks'
 
 function group(id: string, cardIds: string[], rest: Partial<PlanGroup> = {}): PlanGroup {
@@ -59,17 +59,27 @@ describe('plan picks', () => {
 
   /** @see docs/card-layout.md § "Reordering the plan" - from the keyboard */
   describe('moving a card from the keyboard', () => {
-    it('goes one place along its row, and no further than the ends', () => {
-      expect(moveCardBy(picks, 'a', { along: 1 }).cardIds).toEqual(['b', 'a'])
-      expect(moveCardBy(picks, 'a', { along: -1 })).toBe(picks)
+    it('goes one place up or down its row', () => {
+      expect(stepCard(picks, 'a', 1).cardIds).toEqual(['b', 'a'])
+      expect(stepCard(picks, 'b', -1).cardIds).toEqual(['b', 'a'])
     })
 
-    it('goes onto the row below or above, at the same place or the end', () => {
-      const down = moveCardBy(picks, 'b', { across: 1 })
+    it('goes onto the start of the row below off the end of its row, and the end of the row above off the start', () => {
+      const down = stepCard(picks, 'b', 1)
       expect(down.cardIds).toEqual(['a'])
-      expect(down.groups[0].cardIds).toEqual(['c', 'b'])
-      expect(moveCardBy(picks, 'c', { across: -1 }).cardIds).toEqual(['c', 'a', 'b'])
-      expect(moveCardBy(picks, 'a', { across: -1 })).toBe(picks)
+      expect(down.groups[0].cardIds).toEqual(['b', 'c'])
+      expect(stepCard(picks, 'c', -1).cardIds).toEqual(['a', 'b', 'c'])
+    })
+
+    it('steps into an empty group', () => {
+      expect(stepCard(picks, 'c', 1).groups).toEqual([group('g1', []), group('g2', ['c'])])
+    })
+
+    it('goes no further than the ends of the plan', () => {
+      expect(stepCard(picks, 'a', -1)).toBe(picks)
+      const last = { cardIds: ['a'], groups: [group('g1', ['c'])] }
+      expect(stepCard(last, 'c', 1)).toBe(last)
+      expect(stepCard(picks, 'nope', 1)).toBe(picks)
     })
   })
 

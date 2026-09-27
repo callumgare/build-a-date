@@ -7,7 +7,7 @@ Quick Add fills in a new card from a line or two of free text, or just a link. A
 The first spot in the **Ideas** grid on a deck's page (`/decks/…`) has no outline, just three things stacked in the middle:
 
 1. **Add an idea** opens the empty **New idea** form, as before.
-2. An **or** between two short rules, the same divider as under **Pick a card below** on `/d/…`.
+2. An **or** between two short rules (`.empty-slot-divider`).
 3. A **Quick Add** button, which opens a dialog with one box to type into.
 
 The same three things take the last spot in the deck on the shared deck (`/d/…`) for owners and editors (see [card-notes.md](card-notes.md) § "Editing a card"). Both are `src/components/decks/AddCardControls.tsx`, and `useCardEditor` in `src/components/decks/useCardEditor.tsx` wires Quick Add to the card form on both pages.

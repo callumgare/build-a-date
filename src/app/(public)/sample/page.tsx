@@ -1,6 +1,6 @@
 import type { Metadata } from 'next'
 import { connection } from 'next/server'
-import DeckBuilder from '@/components/DeckBuilder'
+import PlanBuilder from '@/components/PlanBuilder'
 import { sampleDeck } from '@/data/sample-deck'
 
 export const metadata: Metadata = {
@@ -16,6 +16,6 @@ export default async function SampleDeck() {
   const seed = Math.floor(Math.random() * 2 ** 32)
 
   return (
-    <DeckBuilder deckName={sampleDeck.name} shareId={sampleDeck.shareId} cards={sampleDeck.cards} seed={seed} sample />
+    <PlanBuilder deckName={sampleDeck.name} shareId={sampleDeck.shareId} cards={sampleDeck.cards} seed={seed} sample />
   )
 }

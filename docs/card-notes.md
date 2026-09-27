@@ -37,7 +37,7 @@ Owners and editors (see [deck-sharing.md](deck-sharing.md) § "Who can do what")
 - A small round pencil button sits in the bottom left corner of every card, in the deck, in the plan and on a saved plan. It shows whenever the card's options do (see [When the options show](#when-the-options-show)). A click on it doesn't add, discard or open the notes. It opens the same **Edit idea** form as the deck's edit page, with **Save**, **Delete** and **Cancel**.
 - **Add an idea** and **Quick Add** take the last spot in the deck, after the cards. A saved plan doesn't have them. They're the same as the first spot in the grid on the edit page (see [quick-add.md](quick-add.md) § "Adding an idea").
 
-Nobody else sees either. The page only gets the deck's own id (`deckId` on `DeckBuilder`) for people who can edit it.
+Nobody else sees either. The page only gets the deck's own id (`deckId` on `PlanBuilder`) for people who can edit it.
 
 Saving or deleting a card refreshes the page with the deck's new cards. On a saved plan, a deleted card drops out of the plan. The deck doesn't shuffle again: the cards stay where they were, with their new text, and a new card goes first. `keepArrangement` in `src/lib/deck-order.ts` does this. A card in the plan that's deleted drops out of the plan. Ratings and notes changed on this visit stay as they were.
 

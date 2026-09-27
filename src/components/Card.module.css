@@ -28,7 +28,7 @@
    dark shade that fades out below it, the same distance from the top on every
    card. A white line, fading out with the shade, splits it into the card's two
    halves: a click on either half does what's written on that side (see
-   clickCard in DeckBuilder), and the side under the mouse is in bold. The
+   clickCard in PlanBuilder), and the side under the mouse is in bold. The
    shortest frame's top inset (50 frame units) still clears the labels on the
    smallest cards, so they never cover the text, and the shade doesn't take
    clicks, so links in the description keep working. Shown on hover, after a

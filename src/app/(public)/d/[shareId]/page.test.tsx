@@ -1,5 +1,5 @@
 import type { ComponentProps, ReactElement } from 'react'
-import type DeckBuilder from '@/components/DeckBuilder'
+import type PlanBuilder from '@/components/PlanBuilder'
 import * as decks from '@/lib/decks'
 import { saveDeckSort } from '@/lib/preferences'
 import { useTestDb } from '@/test/cloudflare'
@@ -26,7 +26,7 @@ function signIn(id: string) {
 async function open(shareId = deck.shareId) {
   const page = (await SharedDeck({
     params: Promise.resolve({ shareId }),
-  } as PageProps<'/d/[shareId]'>)) as ReactElement<ComponentProps<typeof DeckBuilder>>
+  } as PageProps<'/d/[shareId]'>)) as ReactElement<ComponentProps<typeof PlanBuilder>>
   return page.props
 }
 
