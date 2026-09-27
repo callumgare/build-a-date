@@ -1,14 +1,6 @@
 import { buildPrompt, DEFAULT_MODEL, extractIdea, findUrls, pageText, parseReply, QuickAddError } from './quick-add'
 
 const env = { OPENROUTER_API_KEY: 'test-key' }
-const examples = [
-  {
-    title: 'Berlin Bar',
-    description: 'A Cold War themed bar. [More info](https://berlinbar.com.au/)',
-    tags: ['food & drink', 'night'],
-  },
-  { title: 'Stargazing Drive', description: '', tags: ['free', 'night'], date: 'Clear nights' },
-]
 
 function reply(card: object) {
   return Response.json({ choices: [{ message: { content: JSON.stringify(card) } }] })
@@ -84,18 +76,24 @@ describe('pageText', () => {
 
 describe('buildPrompt', () => {
   /** @see docs/quick-add.md § "Matching the deck's style" */
-  it("gives the model the deck's tags and cards as examples, with what was typed and the pages", () => {
-    const { user } = buildPrompt({
+  it("gives the model the deck's tags and the sample deck's style, with what was typed and the pages", () => {
+    const { system, user } = buildPrompt({
       text: 'Boat hire',
       pages: [{ url: 'https://boats.example', content: 'Row boats' }],
-      examples,
       tags: ['food & drink', 'free', 'night'],
     })
     expect(user).toContain('Tags already used in the deck: food & drink, free, night')
-    expect(user).toContain('"title": "Berlin Bar"')
-    expect(user).toContain('"date": "Clear nights"')
+    expect(user).toContain('"title": "Picnic in the Park"')
+    expect(system).toContain('"date": "Every Tuesday"')
+    expect(system).toContain('at most 200 characters of Markdown')
     expect(user).toContain('<typed>\nBoat hire\n</typed>')
     expect(user).toContain('<page url="https://boats.example">\nRow boats\n</page>')
+  })
+
+  /** @see docs/quick-add.md § "Matching the deck's style" - a deck with no tags gets suggestions */
+  it('suggests the starter tags when the deck has none', () => {
+    const { user } = buildPrompt({ text: 'Boat hire', pages: [], tags: [] })
+    expect(user).toContain('The deck has no tags yet. Some suggestions: active, at home, creative')
   })
 })
 
@@ -151,7 +149,7 @@ describe('extractIdea', () => {
 
     const draft = await extractIdea(
       env,
-      { text: 'open on wednesdays https://boats.example/', examples, tags: ['outside', 'relaxed'] },
+      { text: 'open on wednesdays https://boats.example/', tags: ['outside', 'relaxed'] },
       fetcher,
     )
 
@@ -164,7 +162,7 @@ describe('extractIdea', () => {
 
   it('works from the text alone when there are no links', async () => {
     const fetcher = fakeFetch({}, reply({ title: 'Stargazing', description: '', tags: [], date: '' }))
-    expect((await extractIdea(env, { text: 'Stargazing', examples, tags: [] }, fetcher)).title).toBe('Stargazing')
+    expect((await extractIdea(env, { text: 'Stargazing', tags: [] }, fetcher)).title).toBe('Stargazing')
     expect(fetcher).toHaveBeenCalledTimes(1)
   })
 
@@ -178,7 +176,7 @@ describe('extractIdea', () => {
 
     await extractIdea(
       env,
-      { text: 'https://down.example https://missing.example https://file.example/menu.pdf', examples, tags: [] },
+      { text: 'https://down.example https://missing.example https://file.example/menu.pdf', tags: [] },
       fetcher,
     )
 
@@ -191,14 +189,14 @@ describe('extractIdea', () => {
   /** @see docs/quick-add.md § "Setting it up" */
   it('uses OPENROUTER_MODEL when it is set', async () => {
     const fetcher = fakeFetch({})
-    await extractIdea({ ...env, OPENROUTER_MODEL: 'some/model' }, { text: 'Golf', examples, tags: [] }, fetcher)
+    await extractIdea({ ...env, OPENROUTER_MODEL: 'some/model' }, { text: 'Golf', tags: [] }, fetcher)
     expect(sentPrompt(fetcher).model).toBe('some/model')
   })
 
   /** @see docs/quick-add.md § "Setting it up" */
   it('says Quick Add is not set up when there is no key, without calling anything', async () => {
     const fetcher = fakeFetch({})
-    await expect(extractIdea({}, { text: 'Golf', examples, tags: [] }, fetcher)).rejects.toThrow(
+    await expect(extractIdea({}, { text: 'Golf', tags: [] }, fetcher)).rejects.toThrow(
       'Quick Add isn’t set up on this server yet.',
     )
     expect(fetcher).not.toHaveBeenCalled()
@@ -206,19 +204,19 @@ describe('extractIdea', () => {
 
   it('says the helper could not be reached when OpenRouter fails', async () => {
     const failing = fakeFetch({}, new Response('rate limited', { status: 429 }))
-    await expect(extractIdea(env, { text: 'Golf', examples, tags: [] }, failing)).rejects.toThrow(
+    await expect(extractIdea(env, { text: 'Golf', tags: [] }, failing)).rejects.toThrow(
       'Couldn’t reach the helper just now',
     )
 
     const empty = fakeFetch({}, Response.json({ choices: [] }))
-    await expect(extractIdea(env, { text: 'Golf', examples, tags: [] }, empty)).rejects.toThrow(QuickAddError)
+    await expect(extractIdea(env, { text: 'Golf', tags: [] }, empty)).rejects.toThrow(QuickAddError)
 
     // What a slow model looks like once the timeout gives up on it.
     const slow = vi.fn().mockRejectedValue(new DOMException('The operation timed out.', 'TimeoutError'))
-    await expect(extractIdea(env, { text: 'Golf', examples, tags: [] }, slow)).rejects.toThrow(QuickAddError)
+    await expect(extractIdea(env, { text: 'Golf', tags: [] }, slow)).rejects.toThrow(QuickAddError)
     expect(slow.mock.calls[0][1].signal).toBeInstanceOf(AbortSignal)
 
     const offline = vi.fn().mockRejectedValue(new Error('offline'))
-    await expect(extractIdea(env, { text: 'Golf', examples, tags: [] }, offline)).rejects.toThrow(QuickAddError)
+    await expect(extractIdea(env, { text: 'Golf', tags: [] }, offline)).rejects.toThrow(QuickAddError)
   })
 })

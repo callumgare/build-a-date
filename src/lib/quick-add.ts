@@ -1,5 +1,6 @@
 import { z } from 'zod'
-import type { DateCard } from '@/types'
+import { sampleDeck } from '@/data/sample-deck'
+import { starterTags } from '@/data/starter-cards'
 
 // Turns a few lines someone typed (and whatever pages they link to) into the
 // fields of a new card, using a model on OpenRouter (docs/quick-add.md).
@@ -18,7 +19,9 @@ const PAGE_TIMEOUT_MS = 8000
 // A slow or overloaded model shouldn't leave the dialog spinning forever.
 const MODEL_TIMEOUT_MS = 45_000
 const PAGE_TEXT_LIMIT = 6000
-const MAX_EXAMPLES = 40
+// Asked of the model to keep cards short; the form itself allows more
+// (cardInput in src/lib/validation.ts).
+const DESCRIPTION_LIMIT = 200
 
 // Something went wrong that the person can do something about, or at least
 // should be told about, so the action shows its message rather than throwing.
@@ -27,7 +30,17 @@ export class QuickAddError extends Error {}
 const unreachable = 'Couldn’t reach the helper just now. Try again in a moment.'
 
 export type CardDraft = { title: string; description: string; tags: string[]; date: string }
-export type ExampleCard = Pick<DateCard, 'title' | 'description' | 'tags' | 'date'>
+
+// The deck's own cards are never sent to the model, only its tags, so the
+// examples of style come from the sample deck (docs/quick-add.md § "Matching
+// the deck's style").
+const styleExamples = sampleDeck.cards.slice(0, 5).map(({ title, description }) => ({ title, description }))
+const formatExample: CardDraft = {
+  title: 'Trivia Night',
+  description: 'Join a pub quiz as a team of two, or rope in some friends. [More info](https://example.com/trivia)',
+  tags: ['games', 'night'],
+  date: 'Every Tuesday',
+}
 
 export function findUrls(text: string): string[] {
   const matches = text.match(/https?:\/\/[^\s<>"')\]]+/gi) ?? []
@@ -110,43 +123,37 @@ async function readPage(url: string, fetcher: typeof fetch): Promise<string> {
   }
 }
 
-function exampleCard(card: ExampleCard) {
-  return {
-    title: card.title,
-    description: card.description,
-    tags: card.tags,
-    ...(card.date ? { date: card.date } : {}),
-  }
-}
-
 export function buildPrompt({
   text,
   pages,
-  examples,
   tags,
 }: {
   text: string
   pages: { url: string; content: string }[]
-  examples: ExampleCard[]
   tags: string[]
 }) {
-  const system = `You help someone add a date idea to their deck of date idea cards. From what they typed, and the web pages they linked to, write one card in the same style as the cards already in their deck.
+  const system = `You help someone add a date idea to their deck of date idea cards. From what they typed, and the web pages they linked to, write one card in the style of the example cards.
 
 A card has:
 - "title": a short name for the idea, in Title Case, at most 80 characters. Usually the activity or the place, e.g. "Boat Hire at Fairfield Boathouse".
-- "description": at most 1000 characters of Markdown. Match the length and tone of the example cards: usually one plain sentence saying what it is, where, and anything notable, then any link they gave as "[More info](<url>)". Don't invent facts that neither the text nor the pages support; if there's nothing useful to say, the description can be just the link, or empty.
-- "tags": up to 8 short lowercase tags. Strongly prefer tags from the deck's existing tags; only add a new tag if none of them fit and it would clearly be useful for sorting the deck.
+- "description": at most ${DESCRIPTION_LIMIT} characters of Markdown. Match the length and tone of the example cards: usually one plain sentence saying what it is, where, and anything notable, then any link they gave as "[More info](<url>)". Don't invent facts that neither the text nor the pages support; if there's nothing useful to say, the description can be just the link, or empty.
+- "tags": up to 8 short lowercase tags. Strongly prefer tags from the list you're given; only add a new tag if none of them fit and it would clearly be useful for sorting the deck.
 - "date": when it's on or open, at most 80 characters, e.g. "Open daily", "First Wednesday of the month", "Every Friday until 2 October". Use an empty string if nothing says when.
 
-Reply with only a JSON object with exactly the keys "title", "description", "tags" and "date".`
+Reply with only a JSON object with exactly the keys "title", "description", "tags" and "date", like this:
+${JSON.stringify(formatExample, null, 1)}`
 
   const pageSection = pages.length
     ? pages.map((page) => `<page url="${page.url}">\n${page.content}\n</page>`).join('\n\n')
     : '(no links given)'
-  const user = `Tags already used in the deck: ${tags.length ? tags.join(', ') : '(none yet)'}
+  // A deck with no tags yet gets the starter tags as suggestions.
+  const tagLine = tags.length
+    ? `Tags already used in the deck: ${tags.join(', ')}`
+    : `The deck has no tags yet. Some suggestions: ${starterTags.join(', ')}`
+  const user = `${tagLine}
 
-Cards already in the deck, as examples of the style:
-${JSON.stringify(examples.slice(0, MAX_EXAMPLES).map(exampleCard), null, 1)}
+Example titles and descriptions, to show the style:
+${JSON.stringify(styleExamples, null, 1)}
 
 What they typed:
 <typed>
@@ -193,14 +200,14 @@ export function parseReply(content: string): CardDraft {
 
 export async function extractIdea(
   env: QuickAddEnv,
-  { text, examples, tags }: { text: string; examples: ExampleCard[]; tags: string[] },
+  { text, tags }: { text: string; tags: string[] },
   fetcher: typeof fetch = fetch,
 ): Promise<CardDraft> {
   if (!env.OPENROUTER_API_KEY) throw new QuickAddError('Quick Add isn’t set up on this server yet.')
 
   const urls = findUrls(text)
   const pages = await Promise.all(urls.map(async (url) => ({ url, content: await readPage(url, fetcher) })))
-  const { system, user } = buildPrompt({ text, pages, examples, tags })
+  const { system, user } = buildPrompt({ text, pages, tags })
 
   let content: string
   try {

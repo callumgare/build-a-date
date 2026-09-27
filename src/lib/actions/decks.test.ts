@@ -156,19 +156,23 @@ describe('quickAddCard', () => {
     expect(await decks.getDeckCards(db, deckId)).toEqual([])
   })
 
-  /** @see docs/quick-add.md § "Matching the deck's style" */
-  it("shows the model the deck's own cards and tags", async () => {
-    await decks.saveCard(db, 'owner', deckId, null, { title: 'Berlin Bar', tags: ['night', 'food & drink'] })
+  /** @see docs/quick-add.md § "Matching the deck's style" - the deck's tags, never its cards */
+  it("shows the model the deck's tags but not its cards", async () => {
+    await decks.saveCard(db, 'owner', deckId, null, {
+      title: 'Berlin Bar',
+      description: 'A Cold War themed bar',
+      tags: ['night', 'food & drink'],
+    })
     await quickAddCard(deckId, 'Boat hire')
     expect(sentPrompt()).toContain('Tags already used in the deck: food & drink, night')
-    expect(sentPrompt()).toContain('"title": "Berlin Bar"')
+    expect(sentPrompt()).not.toContain('Berlin Bar')
+    expect(sentPrompt()).not.toContain('Cold War')
   })
 
-  /** @see docs/quick-add.md § "Matching the deck's style" - an empty deck borrows the starter cards */
-  it('falls back to the starter cards for a deck with none of its own', async () => {
+  /** @see docs/quick-add.md § "Matching the deck's style" - a deck with no tags gets suggestions */
+  it('suggests the starter tags for a deck with none of its own', async () => {
     await quickAddCard(deckId, 'Boat hire')
-    expect(sentPrompt()).toContain('"title": "Picnic in the Park"')
-    expect(sentPrompt()).toContain('at home, creative, culture')
+    expect(sentPrompt()).toContain('Some suggestions: active, at home, creative, culture')
   })
 
   /** @see docs/deck-sharing.md § "Who can do what" */

@@ -1,6 +1,6 @@
 # Quick Add
 
-Quick Add fills in a new card from a line or two of free text, or just a link. A model on [OpenRouter](https://openrouter.ai) reads what was typed, plus the pages it links to, and writes the card in the style of the deck's other cards. The code is `src/lib/quick-add.ts`, the `quickAddCard` action in `src/lib/actions/decks.ts`, and `src/components/decks/QuickAdd.tsx`.
+Quick Add fills in a new card from a line or two of free text, or just a link. A model on [OpenRouter](https://openrouter.ai) reads what was typed, plus the pages it links to, and writes the card in the style of the sample deck's cards, using the deck's tags. The code is `src/lib/quick-add.ts`, the `quickAddCard` action in `src/lib/actions/decks.ts`, and `src/components/decks/QuickAdd.tsx`.
 
 ## Adding an idea
 
@@ -32,18 +32,22 @@ A page that can't be read (it's down, it answers with an error, it takes more th
 
 ## Matching the deck's style
 
-The model is shown every card already in the deck (up to 40) and the list of tags the deck uses, and asked to:
+The deck's own cards are never sent to the model: they may say things about the people planning the dates that shouldn't leave the app. Instead the model is shown:
+
+- the titles and descriptions of the first few cards of the sample deck (`src/data/sample-deck.ts`), as examples of the style;
+- one complete card as JSON (a sample card with a made-up link and **When**), as an example of the format;
+- the list of tags the deck uses. A deck with no tags yet gets the starter tags (`starterTags` in `src/data/starter-cards.ts`) as suggestions instead.
+
+It's asked to:
 
 - write the title in Title Case, usually the activity or the place;
-- keep the description as short as the others, usually a sentence then the link as `[More info](…)`, and never make up anything the text or pages don't say;
-- pick tags from the deck's existing ones, and only add a new tag when none fit;
+- keep the description to 200 characters, usually a sentence then the link as `[More info](…)`, and never make up anything the text or pages don't say;
+- pick tags from the ones it's given, and only add a new tag when none fit;
 - fill in **When** only when something says when it's on or open.
-
-A deck with no cards yet has no style of its own, so the starter cards (`src/data/starter-cards.ts`) and their tags stand in.
 
 ## What comes back
 
-A draft of the card's four fields, trimmed to what the card form accepts (title 80 characters, description 1,000, **When** 80, up to 8 lowercase tags of 24 characters each). Nothing is saved: the draft only fills in the form, and the card is made when someone presses **Save**, the same as any other card. The next **Add an idea** starts empty again.
+A draft of the card's four fields, trimmed to what the card form accepts (title 80 characters, description 1,000 (the model is asked for 200, but a longer reply isn't cut short, which could break a link), **When** 80, up to 8 lowercase tags of 24 characters each). Nothing is saved: the draft only fills in the form, and the card is made when someone presses **Save**, the same as any other card. The next **Add an idea** starts empty again.
 
 Models sometimes wrap the JSON in a code fence or a sentence, so the reply is read from its first `{` to its last `}`. A reply with no JSON in it shows **Couldn’t make sense of that. Try adding a little more detail.**
 

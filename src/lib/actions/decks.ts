@@ -4,7 +4,6 @@ import { getCloudflareContext } from '@opennextjs/cloudflare'
 import { revalidatePath } from 'next/cache'
 import { notFound, redirect } from 'next/navigation'
 import { z } from 'zod'
-import { starterCards } from '@/data/starter-cards'
 import { type Database, getDb } from '@/db'
 import { requireUser } from '../auth'
 import * as decks from '../decks'
@@ -69,12 +68,11 @@ export async function quickAddCard(deckId: string, text: string): Promise<Action
   try {
     const db = getDb()
     await decks.getEditableDeck(db, user.id, deckId)
+    // Only the deck's tags go to the model, never its cards (docs/quick-add.md
+    // § "Matching the deck's style").
     const cards = (await decks.getDeckCards(db, deckId)).map(decks.toDateCard)
-    // A new deck has no style of its own yet, so the starter cards stand in.
-    const examples =
-      cards.length > 0 ? cards : starterCards.map(({ title, description = '', tags }) => ({ title, description, tags }))
-    const tags = [...new Set(examples.flatMap((card) => card.tags))].sort()
-    return ok(await extractIdea(getCloudflareContext().env, { text: quickAddInput.parse(text), examples, tags }))
+    const tags = [...new Set(cards.flatMap((card) => card.tags))].sort()
+    return ok(await extractIdea(getCloudflareContext().env, { text: quickAddInput.parse(text), tags }))
   } catch (error) {
     if (error instanceof QuickAddError) return { ok: false, error: error.message }
     return fail(error)
