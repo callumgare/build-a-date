@@ -49,6 +49,16 @@ describe('the plan page', () => {
     expect(await generateMetadata(props(plan.id))).toMatchObject({ title: 'A plan from Weekend' })
   })
 
+  /** @see docs/share-previews.md § "The page's metadata" */
+  it('describes itself for link previews, with a large picture at an absolute address', async () => {
+    const card = await decks.saveCard(db, 'owner', deck.id, null, { title: 'Picnic' })
+    const plan = await decks.savePlan(db, deck.shareId, [card.id])
+    const metadata = await generateMetadata(props(plan.id))
+    expect(metadata.metadataBase).toEqual(new URL('http://localhost:3000'))
+    expect(metadata.openGraph).toMatchObject({ title: 'A plan from Weekend', description: expect.any(String) })
+    expect(metadata.twitter).toMatchObject({ card: 'summary_large_image' })
+  })
+
   /** @see docs/card-notes.md § "Rating and notes on the card" */
   it("jots each idea's rating and notes in its corner, without the notes themselves", async () => {
     const card = await decks.saveCard(db, 'owner', deck.id, null, { title: 'Picnic' })

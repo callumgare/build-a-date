@@ -2,10 +2,13 @@ import type { Metadata } from 'next'
 import { connection } from 'next/server'
 import PlanBuilder from '@/components/PlanBuilder'
 import { sampleDeck } from '@/data/sample-deck'
+import { shareMetadata } from '@/lib/og/metadata'
 
-export const metadata: Metadata = {
-  title: 'Sample deck',
-  description: 'Try Build-a-Date by picking some date ideas from a sample deck.',
+export function generateMetadata(): Metadata {
+  return shareMetadata({
+    title: 'Sample deck',
+    description: 'Try Build-a-Date by picking some date ideas from a sample deck.',
+  })
 }
 
 // The builder for the sample deck, with nothing to save it to

@@ -20,7 +20,8 @@
     "db:migrate:remote": "CLOUDFLARE_ENV= wrangler d1 migrations apply build-a-date --remote",
     "db:migrate:e2e": "wrangler d1 migrations apply build-a-date-e2e --local --env e2e --persist-to .wrangler/e2e",
     "auth:generate": "auth generate --config src/lib/auth-cli.ts --output src/db/auth-schema.ts --yes",
-    "format": "biome check --write ."
+    "format": "biome check --write .",
+    "og:background": "node scripts/og-background.ts"
   },
   "dependencies": {
     "@better-auth/passkey": "1.7.5",

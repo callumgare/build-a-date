@@ -8,6 +8,7 @@ import Stars from '@/components/Stars'
 import { getDb } from '@/db'
 import { getSession } from '@/lib/auth'
 import { getAccessState, getPlan, getSharedDeck, NotFoundError } from '@/lib/decks'
+import { shareMetadata } from '@/lib/og/metadata'
 
 async function findPlan(planId: string) {
   try {
@@ -20,7 +21,7 @@ async function findPlan(planId: string) {
 
 export async function generateMetadata({ params }: PageProps<'/p/[planId]'>): Promise<Metadata> {
   const { deck } = await findPlan((await params).planId)
-  return { title: `A plan from ${deck.name}` }
+  return shareMetadata({ title: `A plan from ${deck.name}`, description: `The date ideas picked from ${deck.name}.` })
 }
 
 export default async function PlanPage({ params, searchParams }: PageProps<'/p/[planId]'>) {

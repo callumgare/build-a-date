@@ -5,6 +5,7 @@ import PlanBuilder from '@/components/PlanBuilder'
 import { getDb } from '@/db'
 import { getSession } from '@/lib/auth'
 import { getAccessState, getSharedDeck, listPlanSummaries, NotFoundError } from '@/lib/decks'
+import { shareMetadata } from '@/lib/og/metadata'
 import { getDeckSort } from '@/lib/preferences'
 
 async function findDeck(shareId: string) {
@@ -18,10 +19,7 @@ async function findDeck(shareId: string) {
 
 export async function generateMetadata({ params }: PageProps<'/d/[shareId]'>): Promise<Metadata> {
   const { deck } = await findDeck((await params).shareId)
-  return {
-    title: deck.name,
-    description: `Pick your favourite date ideas from ${deck.name}.`,
-  }
+  return shareMetadata({ title: deck.name, description: `Pick your favourite date ideas from ${deck.name}.` })
 }
 
 export default async function SharedDeck({ params }: PageProps<'/d/[shareId]'>) {

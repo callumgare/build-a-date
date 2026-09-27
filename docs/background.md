@@ -1,6 +1,6 @@
 # The background
 
-Behind every page is a field of swirling dark blue, dusted with pale blue specks and streaked with gold, where gold flakes glint now and then and a shooting star falls once in a while. It used to be a photo of paint and glitter (`public/background.png`), stretched with `background-size: cover`. Stretched over a wide or tall screen, the grain went soft and blurry, and the file was 6.8 MB. Now it's drawn by a WebGL shader that recreates the photo's look at whatever size the screen is, and it scrolls with the page like an ordinary background.
+Behind every page is a field of swirling dark blue, dusted with pale blue specks and streaked with gold, where gold flakes glint now and then and a shooting star falls once in a while. Stretched over a wide or tall screen, the grain went soft and blurry, and the file was 6.8 MB. Now it's drawn by a WebGL shader that recreates the photo's look at whatever size the screen is, and it scrolls with the page like an ordinary background.
 
 - `src/components/GalaxyBackground.tsx`: the layer behind the page and its tiles, mounted once in `src/app/layout.tsx`
 - `src/components/galaxy/tiles.ts`: which tiles to paint and which to let go
@@ -95,3 +95,7 @@ For a moment that matters, `celebrate()` in `sparkle.ts` sets off a **burst**: `
 Where WebGL 2 isn't available, and anywhere a tile isn't painted yet, the layer's own colour shows: the palette's body blue, `#0e1a57`.
 
 The pixel ratio is capped at 2.
+
+## In link previews
+
+The pictures messaging apps show for a shared link can't run the shader, so they use a still of it, `public/og/background.jpg` (docs/share-previews.md § "The background"). After changing the shader, its palette or the seed, take the still again with `npm run og:background`.

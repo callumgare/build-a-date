@@ -117,4 +117,14 @@ describe('the shared deck page', () => {
     } as PageProps<'/d/[shareId]'>)
     expect(metadata).toMatchObject({ title: 'Weekend' })
   })
+
+  /** @see docs/share-previews.md § "The page's metadata" */
+  it('describes itself for link previews, with a large picture at an absolute address', async () => {
+    const metadata = await generateMetadata({
+      params: Promise.resolve({ shareId: deck.shareId }),
+    } as PageProps<'/d/[shareId]'>)
+    expect(metadata.metadataBase).toEqual(new URL('http://localhost:3000'))
+    expect(metadata.openGraph).toMatchObject({ title: 'Weekend', description: expect.stringContaining('Weekend') })
+    expect(metadata.twitter).toMatchObject({ card: 'summary_large_image', title: 'Weekend' })
+  })
 })

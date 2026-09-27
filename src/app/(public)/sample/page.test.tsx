@@ -1,10 +1,11 @@
 import type { ComponentProps, ReactElement } from 'react'
 import type PlanBuilder from '@/components/PlanBuilder'
 import { starterCards } from '@/data/starter-cards'
-import SampleDeck from './page'
+import SampleDeck, { generateMetadata } from './page'
 
 vi.mock('server-only', () => ({}))
 vi.mock('next/server', () => import('@/test/next'))
+vi.mock('@opennextjs/cloudflare', () => import('@/test/cloudflare'))
 
 async function open() {
   return ((await SampleDeck()) as ReactElement<ComponentProps<typeof PlanBuilder>>).props
@@ -35,5 +36,12 @@ describe('the sample deck page', () => {
     expect(props.editHref).toBeUndefined()
     expect(props.deckId).toBeUndefined()
     expect(props.plans).toBeUndefined()
+  })
+
+  /** @see docs/share-previews.md § "The page's metadata" */
+  it('describes itself for link previews, with a large picture at an absolute address', () => {
+    const metadata = generateMetadata()
+    expect(metadata).toMatchObject({ title: 'Sample deck', twitter: { card: 'summary_large_image' } })
+    expect(metadata.metadataBase).toEqual(new URL('http://localhost:3000'))
   })
 })
