@@ -68,7 +68,7 @@ A card with neither has nothing in its corner. The marks follow changes made on 
 
 ## Who can change them
 
-Anyone with the deck's share link can rate cards and write notes, including people who aren't signed in. This is the same as building a plan. There's only one rating and one set of notes per card, so whoever saves last wins.
+Anyone with the deck's share link can rate cards and write notes, including people who aren't signed in. This is the same as building a plan. There's only one rating and one set of notes per card, so whoever saves last wins. On the sample deck, ratings and notes aren't saved at all ([sample-deck.md](sample-deck.md) § "What's different").
 
 `saveCardNotes` in `src/lib/decks.ts` finds the card through the share id. A card from another deck looks the same as one that doesn't exist.
 

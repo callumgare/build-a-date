@@ -969,6 +969,55 @@ describe('DeckBuilder', () => {
     })
   })
 
+  /** @see docs/sample-deck.md § "What's different" */
+  describe('the sample deck', () => {
+    function renderSample() {
+      return render(<DeckBuilder deckName="Sample Deck" shareId="sample" cards={cards} seed={1} sample />)
+    }
+
+    it('offers to make a deck in place of Save plan', async () => {
+      const user = userEvent.setup()
+      renderSample()
+
+      await user.click(screen.getByRole('button', { name: 'Add to plan: Hike' }))
+      expect(screen.getByText('To save a plan')).toBeInTheDocument()
+      expect(screen.getByRole('link', { name: 'Create your own deck' })).toHaveAttribute('href', '/sign-up')
+      expect(screen.queryByRole('button', { name: 'Save plan' })).not.toBeInTheDocument()
+      expect(screen.getByRole('button', { name: 'Clear plan' })).toBeInTheDocument()
+      expect(savePlan).not.toHaveBeenCalled()
+    })
+
+    it("doesn't save ratings or notes, but keeps them on the card for the visit", async () => {
+      const user = userEvent.setup()
+      renderSample()
+
+      await user.click(screen.getByRole('button', { name: 'Notes on Hike' }))
+      let notes = await screen.findByRole('dialog', { name: 'Hike' })
+      await user.click(within(notes).getByRole('radio', { name: '4 stars' }))
+      await user.type(within(notes).getByRole('textbox', { name: 'Notes' }), 'Early start')
+      expect(within(notes).getByRole('status')).toHaveTextContent('')
+      await user.click(within(notes).getByRole('button', { name: 'Done' }))
+      await waitFor(() => expect(screen.queryByRole('dialog', { name: 'Hike' })).not.toBeInTheDocument())
+      expect(saveCardNotes).not.toHaveBeenCalled()
+
+      await user.click(screen.getByRole('button', { name: 'Notes on Hike' }))
+      notes = await screen.findByRole('dialog', { name: 'Hike' })
+      expect(within(notes).getByRole('textbox', { name: 'Notes' })).toHaveValue('Early start')
+    })
+
+    it('has no footer links', () => {
+      renderSample()
+      expect(screen.queryByRole('link', { name: 'Request edit access' })).not.toBeInTheDocument()
+      expect(screen.queryByRole('link', { name: 'Edit this deck' })).not.toBeInTheDocument()
+    })
+
+    /** @see docs/sample-deck.md § "The deck" */
+    it('says it is a sample deck to try out', () => {
+      renderSample()
+      expect(screen.getByText(/A sample deck to try out/)).toBeInTheDocument()
+    })
+  })
+
   /** @see docs/plans.md § "Sharing a plan" */
   describe('sharing the plan', () => {
     it("has no share dialog of its own; the plan's page shares it", async () => {

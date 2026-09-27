@@ -69,6 +69,9 @@ type DeckBuilderProps = {
   plan?: { id: string } & PlanPicks
   // The deck's plans, only for owners and editors, as on the deck's page.
   plans?: PlanSummary[]
+  // The sample deck, which isn't saved anywhere, so it can't save a plan or
+  // notes (docs/sample-deck.md).
+  sample?: boolean
 }
 
 export default function DeckBuilder({
@@ -83,6 +86,7 @@ export default function DeckBuilder({
   remembersSort = false,
   plan,
   plans,
+  sample = false,
 }: DeckBuilderProps) {
   const [arranged, setArranged] = useState(() => arrangeDeck(deckCards, seed))
   const [arrangedFrom, setArrangedFrom] = useState(deckCards)
@@ -379,6 +383,7 @@ export default function DeckBuilder({
       <header className="hero">
         <h1>{deckName}</h1>
         {plan && <p className="lede">Editing a plan</p>}
+        {sample && <p className="lede">A sample deck to try out. Pick the ideas you like best to make a plan.</p>}
       </header>
 
       <Stars />
@@ -392,14 +397,25 @@ export default function DeckBuilder({
               a plan they always show, so Cancel is there even once it's
               emptied (docs/plans.md § "Editing a plan"). */}
           <div className="plan-actions" data-visible={showActions} inert={!showActions}>
-            <button
-              className="done-button"
-              type="button"
-              onClick={sharePlan}
-              disabled={saving || deleting || selectedIds.length === 0}
-            >
-              {saving ? 'Saving…' : plan ? 'Update Plan' : 'Save plan'}
-            </button>
+            {sample ? (
+              // Where Make your own deck goes from the home page
+              // (docs/sample-deck.md § "What's different").
+              <span className="plan-sample-save">
+                <span className="muted">To save a plan</span>
+                <Link className="done-button" href="/sign-up">
+                  Create your own deck
+                </Link>
+              </span>
+            ) : (
+              <button
+                className="done-button"
+                type="button"
+                onClick={sharePlan}
+                disabled={saving || deleting || selectedIds.length === 0}
+              >
+                {saving ? 'Saving…' : plan ? 'Update Plan' : 'Save plan'}
+              </button>
+            )}
             {plan && (
               // Unsaved changes are dropped, so the edit page starts from the
               // saved plan next time.
@@ -640,7 +656,7 @@ export default function DeckBuilder({
           key={notesOpen.id}
           card={notesCard}
           frame={frameFor(notesCard.id)}
-          shareId={shareId}
+          shareId={sample ? undefined : shareId}
           initial={notesById.get(notesCard.id) ?? { interest: null, notes: '' }}
           from={notesOpen.from}
           returnTo={() => {
@@ -656,7 +672,7 @@ export default function DeckBuilder({
       {cardEditor.dialogs}
 
       <footer className="site-footer">
-        {editHref ? (
+        {sample ? null : editHref ? (
           <Link className="text-action" href={editHref}>
             Edit this deck
           </Link>

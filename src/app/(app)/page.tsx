@@ -22,11 +22,16 @@ export default async function Home() {
         <h1>Build-a-Date</h1>
       </header>
       <p className="lede">
-        Make a deck of date ideas and share it. Whoever you send it to picks the cards they like and sends a plan back.
+        Make a deck of date ideas and share it (it's free!). Whoever you send it to picks the cards they like and sends
+        a plan back.
       </p>
       <div className="hero-actions">
+        <Link className="done-button" href="/sample">
+          Try a sample deck
+        </Link>
+        <span className="muted">- or -</span>
         <Link className="done-button" href="/sign-up">
-          Make a deck
+          Make your own deck
         </Link>
         <Link className="text-action" href="/sign-in">
           Sign in

@@ -16,7 +16,9 @@ export type Notes = { interest: number | null; notes: string }
 type CardNotesProps = {
   card: DateCard
   frame: Frame
-  shareId: string
+  // Left out on the sample deck, whose notes aren't saved anywhere
+  // (docs/sample-deck.md § "What's different").
+  shareId?: string
   initial: Notes
   // Where the card sits in the deck, as if it weren't tilted, to flip up
   // from and back down to. A card lifted while leaning straightens as it goes.
@@ -93,6 +95,7 @@ export default function CardNotes({
   const save = useCallback(() => {
     if (pending.current) clearTimeout(pending.current)
     pending.current = null
+    if (!shareId) return
     const toSave = latest.current
     setStatus('saving')
     queue.current = queue.current.then(async () => {

@@ -12,10 +12,12 @@ vi.mock('@/lib/auth-config', () => import('@/test/session'))
 vi.mock('next/link', () => ({ default: (props: object) => <a {...props} /> }))
 
 describe('the home page', () => {
-  it('invites someone signed out to make a deck or sign in', async () => {
+  /** @see docs/sample-deck.md § "Sample deck" */
+  it('invites someone signed out to try the sample deck, make their own, or sign in', async () => {
     signInAs(null)
     render(await Home())
-    expect(screen.getByRole('link', { name: 'Make a deck' })).toHaveAttribute('href', '/sign-up')
+    expect(screen.getByRole('link', { name: 'Try a sample deck' })).toHaveAttribute('href', '/sample')
+    expect(screen.getByRole('link', { name: 'Make your own deck' })).toHaveAttribute('href', '/sign-up')
     expect(screen.getByRole('link', { name: 'Sign in' })).toHaveAttribute('href', '/sign-in')
   })
 

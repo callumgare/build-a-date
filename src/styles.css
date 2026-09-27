@@ -52,7 +52,8 @@ h1,
 }
 
 dialog,
-dialog .text-action {
+dialog .text-action,
+.done-button {
   text-shadow: initial;
 }
 
@@ -307,7 +308,7 @@ h1 {
 }
 
 .done-button {
-  padding: 9px 22px 8px;
+  padding: 9px 12px 8px;
   border: 1px solid var(--accent);
   border-radius: 3px;
   color: #173847;
@@ -701,6 +702,12 @@ fieldset.filters {
   margin: 0 0 12px;
 }
 
+.plan-sample-save {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
 a.done-button {
   display: inline-block;
   text-decoration: none;
@@ -782,9 +789,10 @@ a {
 
 .hero-actions {
   display: flex;
+  flex-wrap: wrap;
   align-items: center;
   justify-content: center;
-  gap: 28px;
+  gap: 20px 28px;
   margin: 32px 0 56px;
 }
 
