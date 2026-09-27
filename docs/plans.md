@@ -11,13 +11,13 @@ A plan lists card ids, not copies: the `plan` table's `card_ids` for its first r
 Cards in a plan can be put in groups, each with a title and notes, such as "Dinner" with "Book for 7pm", or two ideas to choose between on the day.
 
 - **Rows of their own.** The plan's first row holds the cards not in a group. Each group is a row of its own under it. Cards picked from the deck go onto the end of the first row. In the builder, each row runs down the plan's column ([card-layout.md](card-layout.md) § "The plan column").
-- **Title and notes.** In the builder, a group's title and notes are above its cards, with **Remove group** under them. On the plan page, on a screen at least 900px wide, the title and notes sit in a column to the left of the group's cards, which start next to them rather than centred. On a narrower screen they're above the cards.
+- **Title and notes.** A group's title and notes are above its cards, both in the builder, with **Remove group** under them, and on the plan page. On the plan page they're centred, and there's more room between them and the cards above than between them and the group's own cards, so they read as belonging to the cards under them.
 - **Add group** under the last row adds an empty group at the bottom and puts the cursor in its title. Until it has a title it's called **Group 1**, **Group 2** and so on, by its place.
 - **Moving cards between them.** A card is dragged from one row to another the same way it's dragged along a row, or moved with the arrow keys on its grip ([card-layout.md](card-layout.md) § "Reordering the plan"). An empty group says **Drag ideas here**.
 - **Remove group** takes the group out of the plan. Its cards aren't discarded; they go back onto the end of the first row. Its title and notes are gone.
 - **Discard** on a card in a group puts it back in the deck, as it does anywhere in the plan. **Clear plan** empties the groups too.
 - **What's saved.** Titles are up to 80 characters and notes up to 2000, trimmed. A plan can have up to 20 groups, and needs at least one card somewhere, in its first row or a group. A group with no title, no notes and no cards isn't saved. A group with a title or notes but no cards is, so a plan can say "Get a taxi home" without an idea for it. The first row can be empty when every card is in a group.
-- **On the plan page** each group shows its title as a heading and its notes as written (line breaks kept), beside or above its cards, as described under **Title and notes**. A group without a title has no heading. The title and notes are changed from **Edit plan**, not on the plan page.
+- **On the plan page** each group shows its title as a heading and its notes as written (line breaks kept), above its cards. A group without a title has no heading. The title and notes are changed from **Edit plan**, not on the plan page.
 
 The rules (`placeCard`, `moveCardBy`, `keepCards` and so on) are in `src/lib/plan-picks.ts`, used by the builder, the kept picks and `savePlan`/`updatePlan`, so they can't disagree.
 
@@ -37,6 +37,8 @@ The server can't see local storage, so the page first renders with no picks (or 
 ## The plan page
 
 `/p/[planId]` shows the plan's cards in order, then its groups (see [Groups](#groups)), with **Share**, **Edit plan** and **Create new plan** (which goes to the deck's builder).
+
+Each row, the first and each group's, is the same grid of cards as the deck's, wrapping onto as many lines as it needs ([card-layout.md](card-layout.md) § "The plan page's grids").
 
 - Each card has only **Notes** in its options band, not **Discard** (see [card-notes.md](card-notes.md) § "Card actions"). A click anywhere on the card opens its notes, the same flip-over view as on the shared deck.
 - Ratings and notes are jotted in the corner of each card, as on the shared deck ([card-notes.md](card-notes.md) § "Rating and notes on the card").
@@ -62,7 +64,7 @@ Once **Save plan** has saved a new plan, the browser goes to the plan's page wit
 
 - **Copy link** copies the plan's link.
 - **Share…** opens the device's share sheet, on devices that have one. Browsers only open the sheet straight after a press, so it can't open by itself when the page loads.
-- **Close** closes it.
+- **View** closes it, onto the plan behind it. So does the cross in its top corner (**Close**, to a screen reader), and the Escape key.
 
 There's no link to open the plan, since that's the page it's on. While saving, the button says **Saving…** and can't be pressed again. If saving fails, the builder stays put and shows why.
 

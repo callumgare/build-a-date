@@ -93,6 +93,14 @@ describe('SharePlanButton', () => {
       render(<SharePlanButton title="Our date" openOnLoad />)
       expect(screen.queryByRole('button', { name: 'Share…' })).not.toBeInTheDocument()
     })
+
+    it.each(['View', 'Close'])('closes the dialog onto the plan with %s', async (name) => {
+      const user = userEvent.setup()
+      render(<SharePlanButton title="Our date" openOnLoad />)
+
+      await user.click(screen.getByRole('button', { name }))
+      expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
+    })
   })
 
   it("doesn't open the dialog by itself otherwise", () => {

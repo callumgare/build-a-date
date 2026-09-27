@@ -13,7 +13,7 @@ Cards sit straight in their rows. While the mouse is over a card, it grows a lit
 
 The lean is a Motion `rotate` value, so layout animations measure cards as if they were straight. Animations that start from a card's place on screen use `untiltedBox`, which works out where the card would be if it were straight. They start from the lean the card has at that moment, read with `leanOf` from its computed transform. That lean is 0 when the card was opened from the keyboard, and part-way when the card was still springing back. `untiltedBox` also measures the card at the size it's drawn, so the animations start from a grown card's real size.
 
-The plan's column, and the plan track on the plan page, have extra padding so a hovered card's edges and corners aren't clipped where they scroll.
+The plan's column has extra padding so a hovered card's edges and corners aren't clipped where it scrolls.
 
 ## The plan column
 
@@ -35,7 +35,7 @@ The layout is `.builder` in `src/styles.css`, with `.builder-bar`, `.plan-column
 
 ## The grid of cards
 
-The deck's cards, and the cards in each row of the plan on a narrow screen, are laid out the same way (the shared `.card-grid, .plan-column .plan-track` rule in `src/styles.css`).
+The deck's cards, the cards in each row of the plan on a narrow screen, and each row on the plan page ([The plan page's grids](#the-plan-pages-grids)) are laid out the same way (the shared `.card-grid, .plan-column .plan-track` rule in `src/styles.css`).
 
 - **As many columns as fit.** Each card is between 200px and 250px wide, and the columns share the width. Once they'd be wider than 250px, the grid stops getting wider and sits in the middle, with the spare room outside it.
 - **A short last line is in the middle.** When the last line isn't full, its cards are centred under the ones above, not lined up on the left. So is a line with a single card, or the plan's blank slot on its own.
@@ -71,7 +71,7 @@ Motion works out an animation in the screen's pixels but draws it inside the zoo
 
 ## Shuffling to a new number of columns
 
-When a grid of cards gains or loses a column, its cards shuffle into their new places rather than jumping there. That's the deck's grid on any screen, and the plan's grid on a narrow one, as the window is resized or a column grows or shrinks on a switch. Each card slides from where it was to where it now goes, over 450ms, and a card part way through a slide carries on from where it is.
+When a grid of cards gains or loses a column, its cards shuffle into their new places rather than jumping there. That's the deck's grid on any screen, the plan's grid on a narrow one, and the plan page's grids, as the window is resized or a column grows or shrinks on a switch. Each card slides from where it was to where it now goes, over 450ms, and a card part way through a slide carries on from where it is.
 
 - **Only on screen.** A card slides when it's on screen both before and after. One that arrives on screen from off it fades in where it lands instead: sliding, it would come flying in from past the edge of the window. One that ends up off screen just goes there.
 - **While a column grows or shrinks.** A switch on a narrow screen doesn't change any grid's columns ([Narrow screens](#narrow-screens) - the whole column shrinks). Crossing 900px does, as the columns go from side by side to one shrunk. Then each grid keeps the columns it had while the column zooms, and shuffles to its new columns once the zoom is over. Shuffling part way through would send cards a long way across a column that's itself moving and changing size.
@@ -92,13 +92,11 @@ The stand-in is used both ways, rather than Motion's shared layout (`layoutId`),
 
 Cards leaving the deck only fade, and don't shrink. The hover tilt and spring back (`tiltCard`, `leaveCard`) animate the same card's `scale`, and a mouse leaving a card as it went would take over the shrink, which then never finished. The card was left in the deck, invisible but still clickable.
 
-## The plan track
+## The plan page's grids
 
-On the plan page (`/p/…`), the plan's rows run across the page instead. The plan track reaches across the whole width of the screen, past the edges of the page's column, so cards scroll right out to the edges of the screen instead of being cut off at the page's edges. It stops at a desktop scrollbar rather than running underneath it.
+On the plan page (`/p/…`), the plan's first row, and each group's, is a grid of cards, the same as the deck's ([The grid of cards](#the-grid-of-cards)): as many columns as fit the page, wrapping onto more lines, rather than a row that scrolls sideways. A group's title and notes are above its grid, on any screen ([plans.md](plans.md) § "Groups").
 
-Its own scrollbar doesn't run the full width. It starts and ends in line with the page's content, in Chromium and Safari. Firefox can't inset a scrollbar, so there it runs the full width of the track. While it's scrolled to the start, the first card lines up with the page's content, and at the end the last one does. A short plan stays centred.
-
-A group's row is a track too, and does the same, except on a wide screen, where the group's title and notes are in a column to its left ([plans.md](plans.md) § "Groups"). There the track starts beside that column instead of at the left edge of the screen, its cards start from the left rather than centred, and its scrollbar starts there too. It still runs on to the right edge of the screen.
+The grids shuffle to a new number of columns as the window is resized, as the deck's do ([Shuffling to a new number of columns](#shuffling-to-a-new-number-of-columns)). Nothing zooms there, so nothing is held. This is `PlanView` in `src/components/PlanView.tsx`, whose rows are `.card-grid`s.
 
 ## Reordering the plan
 

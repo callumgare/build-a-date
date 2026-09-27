@@ -64,11 +64,24 @@ test('someone groups cards in their plan, gives the group a title and notes, and
 
   await guest.getByRole('button', { name: 'Save plan' }).click()
   await expect(guest).toHaveURL(/\/p\/[^/?]+/)
-  await guest.getByRole('button', { name: 'Close' }).click()
+  await guest.getByRole('button', { name: 'View' }).click()
   const savedGroup = guest.getByRole('region', { name: 'After dark' })
   await expect(savedGroup.getByRole('heading', { name: 'After dark' })).toBeVisible()
   await expect(savedGroup).toContainText('Bring a blanket')
   await expect(savedGroup.locator('[data-card-id]')).toContainText('Stargazing')
+  // docs/plans.md § "Groups" - on the plan page, the title and notes are above the cards.
+  const notesBox = await savedGroup.getByText('Bring a blanket').boundingBox()
+  const savedCardBox = await savedGroup.locator('[data-card-id]').first().boundingBox()
+  expect(notesBox && savedCardBox && notesBox.y + notesBox.height <= savedCardBox.y).toBe(true)
+  // Centred over the cards, and closer to them than to the first row above.
+  const headingBox = await savedGroup.getByRole('heading', { name: 'After dark' }).boundingBox()
+  const groupBox = await savedGroup.boundingBox()
+  const firstRowCardBox = await guest.locator('.plan-section > div > .card-grid [data-card-id]').first().boundingBox()
+  if (!headingBox || !groupBox || !notesBox || !savedCardBox || !firstRowCardBox) throw new Error('Not laid out')
+  expect(Math.abs(headingBox.x + headingBox.width / 2 - (groupBox.x + groupBox.width / 2))).toBeLessThan(2)
+  const gapAbove = headingBox.y - (firstRowCardBox.y + firstRowCardBox.height)
+  const gapBelow = savedCardBox.y - (notesBox.y + notesBox.height)
+  expect(gapAbove).toBeGreaterThan(gapBelow)
 
   // And back out of the group, from editing the plan.
   await guest.getByRole('link', { name: 'Edit plan' }).click()

@@ -138,8 +138,7 @@ body {
 
 .app-root {
   /* Its width is the page's without a desktop scrollbar, which 100vw would
-     count, for the plan track to reach out to (docs/card-layout.md § "The
-     plan track"). */
+     count. */
   container-type: inline-size;
   overflow-x: clip;
 }
@@ -160,8 +159,8 @@ button:focus-visible {
 }
 
 .page-shell {
-  /* In container units, which measure .app-root, so the plan track and its
-     scrollbar can work out the gap beside the page from it. */
+  /* In container units, which measure .app-root, so it leaves out a desktop
+     scrollbar. */
   --page-width: min(1240px, 100cqw - 40px);
   position: relative;
   width: var(--page-width);
@@ -430,6 +429,36 @@ h1 {
   background: rgba(9, 42, 58, 0.96);
 }
 
+/* The cross in its top corner. */
+.share-dialog-close {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  display: grid;
+  place-items: center;
+  width: 32px;
+  height: 32px;
+  padding: 0;
+  border: 0;
+  border-radius: 4px;
+  color: rgba(255, 249, 239, 0.7);
+  background: transparent;
+  cursor: pointer;
+}
+
+.share-dialog-close:hover {
+  color: #fff9ef;
+}
+
+.share-dialog-close svg {
+  width: 14px;
+  height: 14px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.6;
+  stroke-linecap: round;
+}
+
 .share-dialog::backdrop {
   background: rgba(4, 23, 31, 0.6);
 }
@@ -444,55 +473,6 @@ h1 {
   flex-direction: column;
   align-items: center;
   gap: 14px;
-}
-
-.plan-track {
-  position: relative;
-  display: grid;
-  grid-auto-columns: minmax(clamp(150px, 38vw, 220px), 250px);
-  grid-auto-flow: column;
-  justify-content: safe center;
-  gap: clamp(12px, 3vw, 20px);
-  /* Reaches out to both edges of the screen, up to but not under a desktop
-     scrollbar, so cards scroll all the way to them, while the padding lines
-     the first and last card up with the page (docs/card-layout.md § "The plan
-     track"). 100cqw is .app-root's width, which leaves the scrollbar out. No
-     percentages, which don't work out in the scrollbar's styles. The padding
-     also leaves room for a hovered card as it grows and tilts (§ "Tilting on
-     hover"). */
-  --bleed: calc((100cqw - var(--page-width)) / 2);
-  padding: 16px max(14px, var(--bleed)) 24px;
-  margin: 0 calc(-1 * var(--bleed));
-  overflow-x: auto;
-  overflow-y: hidden;
-  overscroll-behavior-inline: contain;
-  scrollbar-color: var(--accent) transparent;
-}
-
-/* The scrollbar keeps in line with the page's content while the track runs
-   on to the edges of the screen (docs/card-layout.md § "The plan track").
-   Only Chromium and Safari can inset a scrollbar, and Chromium ignores these
-   while scrollbar-color is set, so they take its place there. Firefox keeps
-   a full-width scrollbar. */
-@supports selector(::-webkit-scrollbar) {
-  .plan-track {
-    scrollbar-color: auto;
-  }
-
-  .plan-track::-webkit-scrollbar {
-    height: 10px;
-  }
-
-  .plan-track::-webkit-scrollbar-track {
-    margin-inline: max(14px, var(--bleed));
-    background: transparent;
-  }
-
-  .plan-track::-webkit-scrollbar-thumb {
-    border: 2px solid transparent;
-    border-radius: 999px;
-    background: var(--accent) padding-box;
-  }
 }
 
 .empty-slot {
@@ -541,8 +521,7 @@ h1 {
 }
 
 /* A group in the plan: a row of its own under the plan's first row, with its
-   title and notes beside its cards when there's room, and above them when
-   there isn't (docs/plans.md § "Groups"). In the builder the title and notes
+   title and notes above its cards (docs/plans.md § "Groups"). In the builder the title and notes
    are fields that look like the text they'll be, so they're kept apart from
    the site's other fields. */
 .plan-group {
@@ -632,46 +611,25 @@ h1 {
   padding-top: 12px;
 }
 
-/* Beside the cards, on the plan page: a column on the left, lined up with the
-   tops of the cards, with Remove group under the notes. The cards start next
-   to it rather than centred, and still run on to the right edge of the
-   screen (docs/card-layout.md § "The plan track"). The builder's plan column
-   keeps them above the cards. */
-@media (min-width: 900px) {
-  .plan-group:not(.plan-column *) {
-    display: grid;
-    grid-template-columns: minmax(11rem, 16rem) minmax(0, 1fr);
-    column-gap: 24px;
-    align-items: start;
-  }
+/* On the plan page: the title and notes centred over the group's cards, and
+   further from the cards above than from their own, so they read as the
+   group's (docs/plans.md § "Groups"). The builder's column keeps them on the
+   left. */
+.plan-group:not(.plan-column *) {
+  margin-top: 48px;
+}
 
-  .plan-group-info:not(.plan-column *) {
-    grid-column: 1;
-    grid-template-columns: minmax(0, 1fr);
-    padding-top: 12px;
-  }
+.plan-group-info:not(.plan-column *) {
+  grid-template-columns: minmax(0, 1fr);
+  text-align: center;
+}
 
-  .plan-group-info:not(.plan-column *) > :is(.plan-group-title, .plan-group-heading) {
-    grid-column: 1;
-  }
+.plan-group-info:not(.plan-column *) > .plan-group-text {
+  margin-inline: auto;
+}
 
-  .plan-group-info:not(.plan-column *) > .plan-group-remove {
-    grid-row: auto;
-    grid-column: 1;
-    justify-self: start;
-    margin-top: 8px;
-  }
-
-  .plan-group-track:not(.plan-column *) {
-    grid-column: 2;
-    justify-content: start;
-    margin-left: 0;
-    padding-left: 14px;
-  }
-
-  .plan-group-track:not(.plan-column *)::-webkit-scrollbar-track {
-    margin-inline: 14px max(14px, var(--bleed));
-  }
+.plan-group-track:not(.plan-column *) {
+  padding-top: 16px;
 }
 
 /* Save plan and Clear plan, above both columns, or how to start a plan until
@@ -1523,10 +1481,6 @@ textarea:focus-visible {
 
   .hero {
     padding-top: 12px;
-  }
-
-  .plan-track {
-    grid-auto-columns: clamp(140px, 44vw, 200px);
   }
 
   .star--1 {

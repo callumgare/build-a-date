@@ -84,6 +84,6 @@ export async function closeShareDialog(page: Page) {
   const dialog = page.getByRole('dialog', { name: 'Share this date plan' })
   await expect(dialog).toBeVisible()
   await expect(page).toHaveURL(/\/p\/[a-z0-9]+$/)
-  await dialog.getByRole('button', { name: 'Close' }).click()
+  await dialog.getByRole('button', { name: 'View' }).click()
   await expect(dialog).toBeHidden()
 }

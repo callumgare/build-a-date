@@ -1,7 +1,7 @@
 'use client'
 
 import { useReducedMotion } from 'motion/react'
-import { useCallback, useState } from 'react'
+import { useCallback, useRef, useState } from 'react'
 import type { DateCard } from '@/types'
 import Card from './Card'
 import cardStyles from './Card.module.css'
@@ -18,6 +18,7 @@ import {
 } from './cardControls'
 import { useCardEditor } from './decks/useCardEditor'
 import { frameFor } from './frames'
+import { useGridShuffle } from './gridShuffle'
 import type { Box } from './tilt'
 
 type PlanViewProps = {
@@ -47,6 +48,9 @@ export default function PlanView({ shareId, cards, groups = [], deckId, deckTags
   )
   const reduceMotion = useReducedMotion()
   const cardEditor = useCardEditor(deckId, deckTags)
+  const viewReference = useRef<HTMLDivElement>(null)
+  // Nothing zooms here, so there's never anything to hold.
+  useGridShuffle(viewReference, { disabled: Boolean(reduceMotion), holdKey: '', holdFor: 0 })
 
   function cardElement(id: string) {
     return document.querySelector(`[data-card-id="${CSS.escape(id)}"]`)
@@ -100,8 +104,11 @@ export default function PlanView({ shareId, cards, groups = [], deckId, deckTags
   }
 
   return (
-    <>
-      {cards.length > 0 && <div className="plan-track">{cards.map(renderCard)}</div>}
+    // Each row is the same grid of cards as the deck's, and a group's title
+    // and notes are above its cards (docs/card-layout.md § "The plan page's
+    // grids").
+    <div ref={viewReference}>
+      {cards.length > 0 && <div className="card-grid">{cards.map(renderCard)}</div>}
 
       {groups.map((group) => (
         <section className="plan-group" key={group.id} aria-label={group.title || 'A group'}>
@@ -111,7 +118,7 @@ export default function PlanView({ shareId, cards, groups = [], deckId, deckTags
               {group.notes && <p className="plan-group-text">{group.notes}</p>}
             </div>
           )}
-          {group.cards.length > 0 && <div className="plan-track plan-group-track">{group.cards.map(renderCard)}</div>}
+          {group.cards.length > 0 && <div className="card-grid plan-group-track">{group.cards.map(renderCard)}</div>}
         </section>
       ))}
 
@@ -134,6 +141,6 @@ export default function PlanView({ shareId, cards, groups = [], deckId, deckTags
       )}
 
       {cardEditor.dialogs}
-    </>
+    </div>
   )
 }

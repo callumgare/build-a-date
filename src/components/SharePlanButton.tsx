@@ -71,6 +71,16 @@ export default function SharePlanButton({ title, openOnLoad = false }: SharePlan
         aria-labelledby={headingId}
         onClose={() => setLinkCopied(false)}
       >
+        <button
+          className="share-dialog-close"
+          type="button"
+          aria-label="Close"
+          onClick={() => dialogReference.current?.close()}
+        >
+          <svg viewBox="0 0 16 16" aria-hidden="true">
+            <path d="M4 4 L12 12 M12 4 L4 12" />
+          </svg>
+        </button>
         <p id={headingId}>Share this date plan</p>
         <div className="share-dialog-actions">
           <button className="done-button" type="button" onClick={copyLink}>
@@ -81,8 +91,9 @@ export default function SharePlanButton({ title, openOnLoad = false }: SharePlan
               Share…
             </button>
           )}
+          {/* Closes it, onto the plan behind (docs/plans.md § "Sharing a plan"). */}
           <button className="text-action" type="button" onClick={() => dialogReference.current?.close()}>
-            Close
+            View
           </button>
         </div>
       </dialog>
