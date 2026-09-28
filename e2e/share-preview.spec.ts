@@ -1,37 +1,62 @@
-import type { APIRequestContext, Page } from '@playwright/test'
 import { expect, newVisitor, test } from './fixtures'
-import { closeShareDialog, createDeck, signUp } from './helpers'
+import { createDeck, signUp } from './helpers'
+import { expectJpeg, previewAddress, savePlanAsGuest } from './share-preview-helpers'
 
-// Finds the page's preview picture from its metadata, as a messaging app
-// would, and checks it's a 1200×630 PNG.
-async function expectPreview(page: Page, request: APIRequestContext) {
-  const address = await page.locator('meta[property="og:image"]').getAttribute('content')
-  expect(address).toMatch(/^http:\/\/localhost:3100\//)
-  await expect(page.locator('meta[name="twitter:card"]')).toHaveAttribute('content', 'summary_large_image')
-  const response = await request.get(address ?? '')
-  expect(response.status()).toBe(200)
-  expect(response.headers()['content-type']).toBe('image/png')
-  const png = await response.body()
-  expect([png.readUInt32BE(16), png.readUInt32BE(20)]).toEqual([1200, 630])
-}
-
-/** @see docs/share-previews.md § "The page's metadata" */
-test('a shared deck, a plan and the sample deck each have a preview picture', async ({ page, browser, request }) => {
+/** @see docs/share-previews.md § "When it's drawn" - a plan's picture is drawn as it's saved */
+test('a plan has its own picture as soon as it is saved', async ({ page, browser, request }) => {
   await signUp(page, request, 'Alex')
   const shareUrl = await createDeck(page, 'Ideas for Sam')
 
   const guestContext = await newVisitor(browser)
   const guest = await guestContext.newPage()
-  await guest.goto(shareUrl)
-  await expectPreview(guest, request)
-
-  await guest.locator('[data-deck-card-id]').filter({ hasText: 'Stargazing' }).hover()
-  await guest.getByRole('button', { name: 'Add to plan: Stargazing' }).click()
-  await guest.getByRole('button', { name: 'Save plan' }).click()
-  await closeShareDialog(guest)
-  await expectPreview(guest, request)
-
-  await guest.goto('/sample')
-  await expectPreview(guest, request)
+  await savePlanAsGuest(guest, shareUrl)
+  const address = await previewAddress(guest)
+  expect(address).toMatch(/\/p\/[a-z0-9]+\/preview\?v=[a-z0-9]+$/)
+  await expectJpeg(request, address)
   await guestContext.close()
+})
+
+/** @see docs/share-previews.md § "When it's drawn" - the deck's edit page draws its picture */
+test("a deck's picture is drawn on its edit page, and the shared deck links to it", async ({
+  page,
+  browser,
+  request,
+}) => {
+  await signUp(page, request, 'Alex')
+  const shareUrl = await createDeck(page, 'Ideas for Sam')
+
+  // Until then, the default picture.
+  const visitorContext = await newVisitor(browser)
+  const visitor = await visitorContext.newPage()
+  await visitor.goto(shareUrl)
+  expect(await previewAddress(visitor)).toMatch(/\/og\/default\.jpg$/)
+
+  // The edit page (still open in the owner's tab) draws and sends it.
+  await expect(async () => {
+    await visitor.reload()
+    expect(await previewAddress(visitor)).toMatch(/\/d\/[a-z0-9]+\/preview\?v=[a-z0-9]+$/)
+  }).toPass({ timeout: 30_000 })
+  const first = await previewAddress(visitor)
+  await expectJpeg(request, first)
+
+  // Changing a card the picture shows draws it again.
+  await page.getByRole('button', { name: 'Edit Picnic in the Park' }).click()
+  const editor = page.getByRole('dialog', { name: 'Edit idea' })
+  await editor.getByLabel('Title').fill('Picnic by the River')
+  await editor.getByRole('button', { name: 'Save' }).click()
+  await expect(page.getByRole('button', { name: 'Edit Picnic by the River' })).toBeVisible()
+  await expect(async () => {
+    await visitor.reload()
+    expect(await previewAddress(visitor)).not.toBe(first)
+  }).toPass({ timeout: 30_000 })
+  await expectJpeg(request, await previewAddress(visitor))
+  await visitorContext.close()
+})
+
+/** @see docs/share-previews.md § "The static pictures" */
+test('the sample deck has its picture from public/og', async ({ page, request }) => {
+  await page.goto('/sample')
+  const address = await previewAddress(page)
+  expect(address).toMatch(/\/og\/sample\.jpg$/)
+  await expectJpeg(request, address)
 })

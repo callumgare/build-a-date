@@ -8,6 +8,7 @@ import { type Database, getDb } from '@/db'
 import { requireUser } from '../auth'
 import * as decks from '../decks'
 import { editRequestEmail, sendEmail } from '../email'
+import { deckPreviewInput, keepPreview, type SentPreview } from '../previews'
 import { type CardDraft, extractIdea, QuickAddError } from '../quick-add'
 import { type CardInput, cardInput, deckInput, newDeckInput, quickAddInput } from '../validation'
 import { type ActionResult, fail, ok } from './result'
@@ -85,6 +86,26 @@ export async function deleteCard(deckId: string, cardId: string): Promise<Action
     const db = getDb()
     await decks.deleteCard(db, user.id, deckId, cardId)
     await revalidateCards(db, user.id, deckId)
+  } catch (error) {
+    return fail(error)
+  }
+  return ok(undefined)
+}
+
+// Only the owner and editors can set a deck's picture, as only they can change
+// what's on it (docs/share-previews.md § "Who can upload a picture").
+export async function saveDeckPreview(deckId: string, preview: SentPreview): Promise<ActionResult> {
+  const user = await requireUser()
+  try {
+    const db = getDb()
+    const { deck } = await decks.getEditableDeck(db, user.id, deckId)
+    await keepPreview(
+      db,
+      'deck',
+      deck.id,
+      deckPreviewInput(deck, (await decks.getDeckCards(db, deck.id)).map(decks.toDateCard)),
+      preview,
+    )
   } catch (error) {
     return fail(error)
   }

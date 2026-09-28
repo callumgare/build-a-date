@@ -13,7 +13,7 @@ There's **- or -** between them.
 
 The sample deck is called **Sample Deck** and holds the starter ideas (`starterCards` in `src/data/starter-cards.ts`), the same ones a new deck can start from. It lives in `src/data/sample-deck.ts`, not in the database, so there's no share link, owner or editors, and nothing done with it reaches the server. Each card's id is its title in lower case with dashes (`picnic-in-the-park`).
 
-The page is `src/app/(public)/sample/page.tsx`. It renders the usual shared-deck builder (`PlanBuilder`, with `sample`), shuffled afresh on each visit, with **A sample deck to try out. Pick the ideas you like best to make a plan.** under the deck's name. Anyone can open it, signed in or not. Its link gets a preview picture of the sample deck, like a shared deck's ([share-previews.md](share-previews.md) § "A deck").
+The page is `src/app/(public)/sample/page.tsx`. It renders the usual shared-deck builder (`PlanBuilder`, with `sample`), shuffled afresh on each visit, with **A sample deck to try out. Pick the ideas you like best to make a plan.** under the deck's name. Anyone can open it, signed in or not. Its link's preview picture is the sample deck as a shared deck's is drawn, but drawn once and kept in `public/og/sample.jpg` ([share-previews.md](share-previews.md) § "The static pictures").
 
 ## What's different
 

@@ -1,9 +1,12 @@
 import type { ComponentProps, ReactElement } from 'react'
 import type PlanBuilder from '@/components/PlanBuilder'
 import * as decks from '@/lib/decks'
+import { previewKey } from '@/lib/og/preview-key'
 import { saveDeckSort } from '@/lib/preferences'
+import { savePreview } from '@/lib/previews'
 import { useTestDb } from '@/test/cloudflare'
 import { createTestDb, createUser } from '@/test/db'
+import { fakeJpeg } from '@/test/jpeg'
 import { NotFoundPage } from '@/test/next'
 import { signInAs } from '@/test/session'
 import SharedDeck, { generateMetadata } from './page'
@@ -126,5 +129,37 @@ describe('the shared deck page', () => {
     expect(metadata.metadataBase).toEqual(new URL('http://localhost:3000'))
     expect(metadata.openGraph).toMatchObject({ title: 'Weekend', description: expect.stringContaining('Weekend') })
     expect(metadata.twitter).toMatchObject({ card: 'summary_large_image', title: 'Weekend' })
+  })
+
+  /** @see docs/share-previews.md § "The page's metadata" */
+  it("points link previews at the deck's picture, or the default until there is one", async () => {
+    const metadata = () =>
+      generateMetadata({ params: Promise.resolve({ shareId: deck.shareId }) } as PageProps<'/d/[shareId]'>)
+    const image = async () => {
+      const { openGraph, twitter } = await metadata()
+      const [og] = (openGraph?.images ?? []) as { url: string }[]
+      const [tw] = (twitter?.images ?? []) as { url: string }[]
+      expect(tw.url).toBe(og.url)
+      return og
+    }
+    expect(await image()).toMatchObject({ url: '/og/default.jpg', width: 1200, height: 630, type: 'image/jpeg' })
+    await savePreview(db, 'deck', deck.id, 'abc', fakeJpeg())
+    expect((await image()).url).toBe(`/d/${deck.shareId}/preview?v=abc`)
+  })
+
+  /** @see docs/share-previews.md § "When it's drawn" - owners and editors redraw a deck's picture */
+  it("hands owners and editors what the deck's picture should show, and only them", async () => {
+    expect((await open()).preview).toBeUndefined()
+    signIn('owner')
+    const { preview } = await open()
+    expect(preview).toEqual({
+      kind: 'deck',
+      id: deck.id,
+      input: { title: 'Weekend', cards: [{ id: expect.any(String), title: 'Picnic' }], layout: 'grid' },
+      stored: null,
+    })
+    if (!preview) throw new Error('No preview')
+    await savePreview(db, 'deck', deck.id, previewKey(preview.input), fakeJpeg())
+    expect((await open()).preview?.stored).toBe(previewKey(preview.input))
   })
 })

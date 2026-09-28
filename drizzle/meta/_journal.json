@@ -36,6 +36,13 @@
       "when": 1790358697962,
       "tag": "0004_add_plan_groups",
       "breakpoints": true
+    },
+    {
+      "idx": 5,
+      "version": "6",
+      "when": 1790553303743,
+      "tag": "0005_add_share_previews",
+      "breakpoints": true
     }
   ]
 }

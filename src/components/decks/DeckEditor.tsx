@@ -7,6 +7,7 @@ import type { DateCard } from '@/types'
 import Card from '../Card'
 import cardStyles from '../Card.module.css'
 import { frameFor } from '../frames'
+import SharePreviewRefresher, { type PreviewProps } from '../SharePreviewRefresher'
 import AddCardControls from './AddCardControls'
 import { AccessRequests, type DeckPerson, Editors } from './DeckAccess'
 import PlanList, { type PlanSummary } from './PlanList'
@@ -21,6 +22,8 @@ type DeckEditorProps = {
   shareUrl: string
   cards: DateCard[]
   plans: PlanSummary[]
+  // Keeps the deck's link preview up to date (docs/share-previews.md § "When it's drawn").
+  preview?: PreviewProps
 }
 
 // Cards are divs rather than buttons so their descriptions can hold links,
@@ -32,7 +35,7 @@ function clickOnActivationKey(event: KeyboardEvent<HTMLElement>) {
   event.currentTarget.click()
 }
 
-export default function DeckEditor({ deck, role, access, shareUrl, cards, plans }: DeckEditorProps) {
+export default function DeckEditor({ deck, role, access, shareUrl, cards, plans, preview }: DeckEditorProps) {
   const [renaming, setRenaming] = useState(false)
   const [copied, setCopied] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -72,6 +75,7 @@ export default function DeckEditor({ deck, role, access, shareUrl, cards, plans 
 
   return (
     <section className="app-section">
+      {preview && <SharePreviewRefresher {...preview} />}
       <div className="section-heading">
         {renaming ? (
           <form className="rename-form" onSubmit={rename}>

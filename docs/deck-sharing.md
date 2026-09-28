@@ -44,6 +44,10 @@ The owner sees pending requests near the top of the deck's page, with **Accept**
 
 The owner's deck page lists editors at the bottom, each with **Remove**. An editor sees **Leave deck** in place of Rename and Delete. Either way the row is deleted, so the person can ask again. Deleting the deck, or either person's account, deletes its access rows too.
 
+## The link's preview
+
+Pasted into a messaging app, a deck's link shows a picture of the deck. Owners and editors keep it up to date: their browser draws it again whenever they open the deck, or change its cards, and it's out of date. Only they can send one, as only they can change the deck ([share-previews.md](share-previews.md) § "Who can upload a picture").
+
 ## Shared decks
 
 `/decks` lists your own decks, then the ones you've been accepted to edit under **Shared decks**. Each shows the owner's name. Pending requests don't appear there. Instead, your own decks show a count of pending edit requests.

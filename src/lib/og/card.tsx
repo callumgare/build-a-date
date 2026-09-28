@@ -1,4 +1,4 @@
-import { Children, isValidElement, type ReactNode } from 'react'
+import { Children, cloneElement, Fragment, isValidElement, type ReactNode } from 'react'
 import { type Frame, frameFor } from '@/components/frames'
 import type { DateCard } from '@/types'
 import type { Placed } from './layout'
@@ -40,14 +40,7 @@ export function PreviewCard({ card, at }: { card: Pick<DateCard, 'id' | 'title' 
         boxShadow: '0 12px 28px rgba(4, 23, 31, 0.35)',
       }}
     >
-      {/* biome-ignore lint/performance/noImgElement: Satori draws <img>, not next/image */}
-      <img
-        alt=""
-        src={frameImage(frame, width - 2 * edge, height - 2 * edge)}
-        width={width - 2 * edge}
-        height={height - 2 * edge}
-        style={{ position: 'absolute', left: edge, top: edge }}
-      />
+      <PreviewFrame frame={frame} width={width - 2 * edge} height={height - 2 * edge} left={edge} top={edge} />
       <div
         style={{
           display: 'flex',
@@ -99,57 +92,68 @@ export function titleScale(title: string) {
 }
 
 /**
- * The frame as one SVG, sized to the card: the top piece, rails stretched
- * down to the bottom piece, and the bottom piece, as FrameArt lays them out
- * with CSS. Strokes are 1px wide, as `non-scaling-stroke` makes them on the
- * page.
+ * The frame as one inline SVG, sized to the card: the top piece, rails
+ * stretched down to the bottom piece, and the bottom piece, as FrameArt lays
+ * them out with CSS. Strokes are 1px wide, as `non-scaling-stroke` makes them
+ * on the page.
+ *
+ * It's drawn inline rather than as a picture inside the preview: Firefox
+ * loads pictures inside an SVG in their own time, and the canvas the preview
+ * is drawn onto doesn't wait for them (docs/share-previews.md § "Drawing in
+ * the browser"). Satori copies inline SVG as it is, without stylesheets, so
+ * the frames' classes become attributes.
  */
-export function frameSvg(frame: Frame, width: number, height: number) {
+export function PreviewFrame({
+  frame,
+  width,
+  height,
+  left,
+  top,
+}: {
+  frame: Frame
+  width: number
+  height: number
+  left: number
+  top: number
+}) {
   const unit = width / 200
-  const tall = height / unit
-  const railsFrom = frame.top.height
+  const tall = round(height / unit)
   const railsTo = round(tall - frame.bottom.height)
-  const rails = frame.rails.map((x) => `M ${x} ${railsFrom} V ${railsTo}`).join(' ')
-  return [
-    `<svg xmlns="http://www.w3.org/2000/svg" width="${width}" height="${height}" viewBox="0 0 200 ${round(tall)}">`,
-    `<style>svg * { fill: none; stroke: ${ART_COLOUR}; stroke-width: ${round(1 / unit)} } .fill, .fill * { fill: ${ART_COLOUR}; stroke: none } .faint { opacity: 0.55 }</style>`,
-    toMarkup(frame.top.art),
-    `<path d="${rails}"/>`,
-    `<g transform="translate(0 ${railsTo})">${toMarkup(frame.bottom.art)}</g>`,
-    '</svg>',
-  ].join('')
+  const rails = frame.rails.map((x) => `M ${x} ${frame.top.height} V ${railsTo}`).join(' ')
+  return (
+    <svg
+      xmlns="http://www.w3.org/2000/svg"
+      width={width}
+      height={height}
+      viewBox={`0 0 200 ${tall}`}
+      fill="none"
+      stroke={ART_COLOUR}
+      strokeWidth={round(1 / unit)}
+      style={{ position: 'absolute', left, top }}
+    >
+      {restyle(frame.top.art)}
+      <path d={rails} />
+      <g transform={`translate(0 ${railsTo})`}>{restyle(frame.bottom.art)}</g>
+    </svg>
+  )
 }
 
-function frameImage(frame: Frame, width: number, height: number) {
-  return `data:image/svg+xml;utf8,${encodeURIComponent(frameSvg(frame, width, height))}`
+// The classes Card.module.css gives the frames' art, as SVG attributes, which
+// the pieces inside inherit.
+const classAttributes: Record<string, Record<string, string | number>> = {
+  fill: { fill: ART_COLOUR, stroke: 'none' },
+  faint: { opacity: 0.55 },
 }
 
-/**
- * Just enough of renderToStaticMarkup for the frames' art, which is plain SVG
- * elements: react-dom/server doesn't belong in a route.
- */
-function toMarkup(node: ReactNode): string {
-  return Children.toArray(node)
-    .map((child) => {
-      if (!isValidElement<Record<string, unknown>>(child)) return typeof child === 'string' ? escapeXml(child) : ''
-      const { children, ...props } = child.props
-      if (typeof child.type !== 'string') return toMarkup(children as ReactNode)
-      const attributes = Object.entries(props)
-        .filter(([, value]) => value !== undefined && value !== null && value !== false)
-        .map(([name, value]) => ` ${attributeName(name)}="${escapeXml(String(value))}"`)
-        .join('')
-      return `<${child.type}${attributes}>${toMarkup(children as ReactNode)}</${child.type}>`
-    })
-    .join('')
-}
-
-function attributeName(name: string) {
-  if (name === 'className') return 'class'
-  return name.replace(/[A-Z]/g, (letter) => `-${letter.toLowerCase()}`)
-}
-
-function escapeXml(text: string) {
-  return text.replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/</g, '&lt;')
+function restyle(node: ReactNode): ReactNode {
+  return Children.map(node, (child) => {
+    if (!isValidElement<{ className?: string; children?: ReactNode }>(child)) return child
+    const { className, children } = child.props
+    // Satori's SVG writer only knows elements, so fragments are unwrapped.
+    if (child.type === Fragment) return restyle(children)
+    const attributes = Object.assign({}, ...(className ?? '').split(' ').map((name) => classAttributes[name] ?? {}))
+    return cloneElement(child, className ? { ...attributes, className: undefined } : {}, restyle(children))
+  })
 }
 
 function round(value: number) {

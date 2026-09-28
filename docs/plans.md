@@ -68,6 +68,8 @@ Once **Save plan** has saved a new plan, the browser goes to the plan's page wit
 
 There's no link to open the plan, since that's the page it's on. While saving, the button says **Saving…** and can't be pressed again. If saving fails, the builder stays put and shows why.
 
+Before saving, the builder draws the plan's link preview, the picture a messaging app shows with its link, and sends it with the plan, so it's ready to share ([share-previews.md](share-previews.md) § "When it's drawn"). If it can't be drawn within 3 seconds, the plan saves without it and the plan page draws it.
+
 The builder goes to `/p/<planId>?share`, and the plan page opens the dialog when it sees `share` (`openOnLoad` on `SharePlanButton`). The dialog then takes `?share` off the address, so a reload doesn't open it again. The link it shares never includes it either.
 
 ## Deleting a plan

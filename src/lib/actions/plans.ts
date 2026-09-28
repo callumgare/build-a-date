@@ -4,18 +4,24 @@ import { revalidatePath } from 'next/cache'
 import { getDb } from '@/db'
 import type { PlanGroup } from '@/types'
 import * as decks from '../decks'
+import { keepPreview, PreviewRejected, planPreviewInput, type SentPreview } from '../previews'
 import { cardNotesInput, planIdInput, planInput, planUpdateInput } from '../validation'
 import { type ActionResult, fail, ok } from './result'
 
-// Public: anyone with a deck's share link can save a plan from it.
+// Public: anyone with a deck's share link can save a plan from it. The
+// browser sends the plan's link preview with it, if it could draw one, so the
+// picture is there when the plan's link is shared (docs/share-previews.md
+// § "When it's drawn").
 export async function savePlan(
   shareId: string,
   cardIds: string[],
   groups: PlanGroup[] = [],
+  preview?: SentPreview,
 ): Promise<ActionResult<{ planId: string }>> {
   try {
     const input = planInput.parse({ shareId, cardIds, groups })
     const saved = await decks.savePlan(getDb(), input.shareId, input.cardIds, input.groups)
+    if (preview) await keepPlanPreview(saved.id, preview)
     revalidatePlanLists()
     return ok({ planId: saved.id })
   } catch (error) {
@@ -37,10 +43,12 @@ export async function updatePlan(
   planId: string,
   cardIds: string[],
   groups: PlanGroup[] = [],
+  preview?: SentPreview,
 ): Promise<ActionResult<{ planId: string }>> {
   try {
     const input = planUpdateInput.parse({ planId, cardIds, groups })
     const saved = await decks.updatePlan(getDb(), input.planId, input.cardIds, input.groups)
+    if (preview) await keepPlanPreview(saved.id, preview)
     revalidatePlanLists()
     return ok({ planId: saved.id })
   } catch (error) {
@@ -72,5 +80,30 @@ export async function saveCardNotes(
     return ok(undefined)
   } catch (error) {
     return fail(error)
+  }
+}
+
+// Public too, like editing the plan: anyone with its link can draw its
+// picture (docs/share-previews.md § "Who can upload a picture").
+export async function savePlanPreview(planId: string, preview: SentPreview): Promise<ActionResult> {
+  try {
+    const db = getDb()
+    const id = planIdInput.parse(planId)
+    await keepPreview(db, 'plan', id, planPreviewInput(await decks.getPlan(db, id)), preview)
+    return ok(undefined)
+  } catch (error) {
+    return fail(error)
+  }
+}
+
+// A picture sent with a save that can't be kept (drawn from picks that were
+// then trimmed, say) doesn't stop the plan saving: the plan's page draws
+// another.
+async function keepPlanPreview(planId: string, preview: SentPreview) {
+  const db = getDb()
+  try {
+    await keepPreview(db, 'plan', planId, planPreviewInput(await decks.getPlan(db, planId)), preview)
+  } catch (error) {
+    if (!(error instanceof PreviewRejected)) throw error
   }
 }

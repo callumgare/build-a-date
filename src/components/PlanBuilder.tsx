@@ -18,6 +18,7 @@ import { deletePlan, savePlan, updatePlan } from '@/lib/actions/plans'
 import { saveDeckSort } from '@/lib/actions/preferences'
 import { arrangeDeck, type DeckSort, deckSorts, keepArrangement, sortDeck } from '@/lib/deck-order'
 import type { AccessState } from '@/lib/decks'
+import { drawPreview, preloadPreview } from '@/lib/og/client'
 import {
   addCard,
   addGroup,
@@ -32,6 +33,7 @@ import {
   removeGroup,
   stepCard,
 } from '@/lib/plan-picks'
+import type { SentPreview } from '@/lib/previews'
 import type { DateCard, PlanPicks } from '@/types'
 import Card from './Card'
 import cardStyles from './Card.module.css'
@@ -55,6 +57,7 @@ import { useGridShuffle } from './gridShuffle'
 import InstallHint from './InstallHint'
 import { readPicks, writePicks } from './keptPicks'
 import { DragStandIn, PlanCard, usePlanDrag } from './PlanCard'
+import SharePreviewRefresher, { type PreviewProps } from './SharePreviewRefresher'
 import Stars from './Stars'
 import type { Box } from './tilt'
 
@@ -82,6 +85,9 @@ type PlanBuilderProps = {
   // The sample deck, which isn't saved anywhere, so it can't save a plan or
   // notes (docs/sample-deck.md).
   sample?: boolean
+  // For owners and editors, who keep the deck's link preview up to date
+  // (docs/share-previews.md § "When it's drawn").
+  preview?: PreviewProps
 }
 
 export default function PlanBuilder({
@@ -97,6 +103,7 @@ export default function PlanBuilder({
   plan,
   plans,
   sample = false,
+  preview,
 }: PlanBuilderProps) {
   const [arranged, setArranged] = useState(() => arrangeDeck(deckCards, seed))
   const [arrangedFrom, setArrangedFrom] = useState(deckCards)
@@ -105,6 +112,12 @@ export default function PlanBuilder({
   // kept is read in before the first paint.
   const [picks, setPicks] = useState<PlanPicks>(() => (plan ? { cardIds: plan.cardIds, groups: plan.groups } : noPicks))
   const selectedIds = useMemo(() => pickedIds(picks), [picks])
+  const hasPicks = selectedIds.length > 0
+  // Once there's something to save, start loading what drawing the plan's
+  // link preview needs, so Save plan isn't kept waiting for it.
+  useEffect(() => {
+    if (hasPicks && !sample) preloadPreview()
+  }, [hasPicks, sample])
   // Cards edited from here come back from the server, which shouldn't
   // reshuffle the deck. A card that's been deleted drops out of the plan.
   if (arrangedFrom !== deckCards) {
@@ -462,9 +475,10 @@ export default function PlanBuilder({
     if (!planId) {
       setSaving(true)
       try {
+        const preview = await drawPlanPreview()
         const result = plan
-          ? await updatePlan(plan.id, picks.cardIds, picks.groups)
-          : await savePlan(shareId, picks.cardIds, picks.groups)
+          ? await updatePlan(plan.id, picks.cardIds, picks.groups, preview)
+          : await savePlan(shareId, picks.cardIds, picks.groups, preview)
         if (!result.ok) {
           setSaveError(result.error)
           setSaving(false)
@@ -483,6 +497,25 @@ export default function PlanBuilder({
     // empty, and Edit plan starts from what was saved.
     writePicks(picksPlace, null)
     router.push(plan ? `/p/${planId}` : `/p/${planId}?share`)
+  }
+
+  // The plan's link preview, drawn from the picks and sent with the save, so
+  // it's ready when the link is shared (docs/share-previews.md § "When it's
+  // drawn"). If it can't be drawn in time, the plan saves without it and its
+  // page draws one.
+  async function drawPlanPreview(): Promise<SentPreview | undefined> {
+    const byId = new Map(deckCards.map((card) => [card.id, card]))
+    const cards = selectedIds.flatMap((id) => {
+      const card = byId.get(id)
+      if (!card) return []
+      return card.date ? { id, title: card.title, date: card.date } : { id, title: card.title }
+    })
+    try {
+      return await drawPreview({ title: deckName, cards, layout: 'fan' })
+    } catch (error) {
+      console.warn("Couldn't draw the plan's link preview", error)
+      return undefined
+    }
   }
 
   // Deletes the plan being edited, once they've said yes, and goes back to the
@@ -560,6 +593,7 @@ export default function PlanBuilder({
   return (
     <main className="page-shell">
       <InstallHint />
+      {preview && <SharePreviewRefresher {...preview} />}
 
       <header className="hero">
         <h1>{deckName}</h1>

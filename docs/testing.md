@@ -28,8 +28,8 @@ vi.mock('@/lib/auth-config', () => import('@/test/session'))
 ```
 
 - **`src/test/next.ts`** stands in for `next/navigation`, `next/headers`, `next/cache` and `next/server`. Like Next's own, `redirect()` and `notFound()` throw, so nothing after them runs. They throw a `RedirectError` whose message is `Redirected to <path>`, and a `NotFoundPage`, so a test can write `await expect(page()).rejects.toThrow('Redirected to /decks')`.
-- **`src/test/cloudflare.ts`** stands in for `getCloudflareContext()` and `getDb()`. Its `env` is a local one (`http://localhost:3000`, no Resend key, so emails go to the outbox), and its `ASSETS` serves files from `public/`, as the Worker's static assets do. `resetEnv({ … })` changes it for one test. For example, a production URL with no key makes `sendEmail` throw. Call `useTestDb(db)` in `beforeEach` to hand code the test database.
-- **`src/test/png.ts`** has `pngSize(response)`, which reads the width and height from a PNG's header, for the link preview images.
+- **`src/test/cloudflare.ts`** stands in for `getCloudflareContext()` and `getDb()`. Its `env` is a local one (`http://localhost:3000`, no Resend key, so emails go to the outbox). `resetEnv({ … })` changes it for one test. For example, a production URL with no key makes `sendEmail` throw. Call `useTestDb(db)` in `beforeEach` to hand code the test database.
+- **`src/test/jpeg.ts`** has `fakeJpeg()` and `fakeJpegBlob()`: just enough of a JPEG (its start, a JFIF header and a start-of-frame with a width and height) for the link preview checks in `src/lib/og/jpeg.ts`. jsdom can't draw, so component tests mock `@/lib/og/client` instead of drawing a real picture.
 - **`src/test/session.ts`** stands in for `createAuth`, so the real `getSession` and `requireUser` run against whoever `signInAs(user)` signed in, or nobody after `signInAs(null)`. Its `api.listPasskeys` is a `vi.fn` to set per test.
 
 Better Auth itself is only real in `src/lib/auth-config.test.ts` and the e2e tests. The action tests for `sendSignInLink` and `signOut` mock `getAuth` directly, to check what's passed to Better Auth and how its errors are handled.

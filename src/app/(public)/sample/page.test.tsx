@@ -43,5 +43,7 @@ describe('the sample deck page', () => {
     const metadata = generateMetadata()
     expect(metadata).toMatchObject({ title: 'Sample deck', twitter: { card: 'summary_large_image' } })
     expect(metadata.metadataBase).toEqual(new URL('http://localhost:3000'))
+    // Drawn once and kept in public/og/ (docs/share-previews.md § "The static pictures").
+    expect(metadata.openGraph?.images).toMatchObject([{ url: '/og/sample.jpg', width: 1200, height: 630 }])
   })
 })

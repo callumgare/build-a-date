@@ -6,7 +6,9 @@ import { getDb } from '@/db'
 import { getSession } from '@/lib/auth'
 import { getAccessState, getSharedDeck, listPlanSummaries, NotFoundError } from '@/lib/decks'
 import { shareMetadata } from '@/lib/og/metadata'
+import { previewAddress } from '@/lib/og/serve'
 import { getDeckSort } from '@/lib/preferences'
+import { deckPreviewInput, getPreviewKey } from '@/lib/previews'
 
 async function findDeck(shareId: string) {
   try {
@@ -19,7 +21,12 @@ async function findDeck(shareId: string) {
 
 export async function generateMetadata({ params }: PageProps<'/d/[shareId]'>): Promise<Metadata> {
   const { deck } = await findDeck((await params).shareId)
-  return shareMetadata({ title: deck.name, description: `Pick your favourite date ideas from ${deck.name}.` })
+  const stored = await getPreviewKey(getDb(), 'deck', deck.id)
+  return shareMetadata({
+    title: deck.name,
+    description: `Pick your favourite date ideas from ${deck.name}.`,
+    image: previewAddress(`/d/${deck.shareId}/preview`, stored),
+  })
 }
 
 export default async function SharedDeck({ params }: PageProps<'/d/[shareId]'>) {
@@ -47,6 +54,18 @@ export default async function SharedDeck({ params }: PageProps<'/d/[shareId]'>) 
       editHref={canEdit ? `/decks/${deck.id}` : undefined}
       deckId={canEdit ? deck.id : undefined}
       plans={canEdit ? await listPlanSummaries(getDb(), deck.id) : undefined}
+      // Only they can change the deck, so only they redraw its link preview
+      // (docs/share-previews.md § "When it's drawn").
+      preview={
+        canEdit
+          ? {
+              kind: 'deck',
+              id: deck.id,
+              input: deckPreviewInput(deck, cards),
+              stored: await getPreviewKey(getDb(), 'deck', deck.id),
+            }
+          : undefined
+      }
     />
   )
 }

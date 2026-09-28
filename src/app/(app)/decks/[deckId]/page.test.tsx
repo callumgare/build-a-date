@@ -1,8 +1,10 @@
 import type { ComponentProps, ReactElement } from 'react'
 import type DeckEditor from '@/components/decks/DeckEditor'
 import * as decks from '@/lib/decks'
+import { savePreview } from '@/lib/previews'
 import { useTestDb } from '@/test/cloudflare'
 import { createTestDb, createUser } from '@/test/db'
+import { fakeJpeg } from '@/test/jpeg'
 import { NotFoundPage } from '@/test/next'
 import { signInAs } from '@/test/session'
 import DeckPage from './page'
@@ -73,4 +75,22 @@ describe("the deck's edit page", () => {
     signInAs(null)
     await expect(open()).rejects.toThrow(/^Redirected to \/sign-in$/)
   })
+})
+
+/** @see docs/share-previews.md § "When it's drawn" - the deck's edit page keeps its picture up to date */
+it("hands the deck editor what the deck's link preview should show, and the picture kept", async () => {
+  await decks.saveCard(db, 'owner', deck.id, null, { title: 'Picnic', date: 'Sat 4 Oct' })
+  expect((await open()).preview).toEqual({
+    kind: 'deck',
+    id: deck.id,
+    input: {
+      title: 'Weekend',
+      cards: [{ id: expect.any(String), title: 'Picnic', date: 'Sat 4 Oct' }],
+      layout: 'grid',
+    },
+    stored: null,
+  })
+  await savePreview(db, 'deck', deck.id, 'abc', fakeJpeg())
+  signIn('helper')
+  expect((await open()).preview?.stored).toBe('abc')
 })

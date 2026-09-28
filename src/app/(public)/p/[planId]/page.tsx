@@ -4,11 +4,14 @@ import { notFound } from 'next/navigation'
 import ForgetPlanEdits from '@/components/ForgetPlanEdits'
 import PlanView from '@/components/PlanView'
 import SharePlanButton from '@/components/SharePlanButton'
+import SharePreviewRefresher from '@/components/SharePreviewRefresher'
 import Stars from '@/components/Stars'
 import { getDb } from '@/db'
 import { getSession } from '@/lib/auth'
 import { getAccessState, getPlan, getSharedDeck, NotFoundError } from '@/lib/decks'
 import { shareMetadata } from '@/lib/og/metadata'
+import { previewAddress } from '@/lib/og/serve'
+import { deckPreviewInput, getPreviewKey, planPreviewInput } from '@/lib/previews'
 
 async function findPlan(planId: string) {
   try {
@@ -20,12 +23,17 @@ async function findPlan(planId: string) {
 }
 
 export async function generateMetadata({ params }: PageProps<'/p/[planId]'>): Promise<Metadata> {
-  const { deck } = await findPlan((await params).planId)
-  return shareMetadata({ title: `A plan from ${deck.name}`, description: `The date ideas picked from ${deck.name}.` })
+  const { plan, deck } = await findPlan((await params).planId)
+  return shareMetadata({
+    title: `A plan from ${deck.name}`,
+    description: `The date ideas picked from ${deck.name}.`,
+    image: previewAddress(`/p/${plan.id}/preview`, await getPreviewKey(getDb(), 'plan', plan.id)),
+  })
 }
 
 export default async function PlanPage({ params, searchParams }: PageProps<'/p/[planId]'>) {
-  const { plan, deck, cards, groups } = await findPlan((await params).planId)
+  const found = await findPlan((await params).planId)
+  const { plan, deck, cards, groups } = found
   // Save plan lands here with ?share (docs/plans.md § "Sharing a plan").
   const justSaved = (await searchParams)?.share !== undefined
   const session = await getSession()
@@ -34,13 +42,30 @@ export default async function PlanPage({ params, searchParams }: PageProps<'/p/[
   // (docs/card-notes.md § "Editing a card"). The card form suggests the
   // deck's tags, not just the plan's.
   const canEdit = access === 'owner' || access === 'editor'
-  const deckTags = canEdit
-    ? [...new Set((await getSharedDeck(getDb(), deck.shareId)).cards.flatMap((card) => card.tags))].sort()
-    : undefined
+  const deckCards = canEdit ? (await getSharedDeck(getDb(), deck.shareId)).cards : undefined
+  const deckTags = deckCards ? [...new Set(deckCards.flatMap((card) => card.tags))].sort() : undefined
 
   return (
     <main className="page-shell">
       <ForgetPlanEdits planId={plan.id} />
+      {/* Anyone with the link can change the plan, so anyone can redraw its
+          link preview (docs/share-previews.md § "When it's drawn"). */}
+      <SharePreviewRefresher
+        kind="plan"
+        id={plan.id}
+        input={planPreviewInput(found)}
+        stored={await getPreviewKey(getDb(), 'plan', plan.id)}
+      />
+      {/* A card changed from here can change the deck's picture too, and only
+          owners and editors can change cards, or redraw it. */}
+      {deckCards && (
+        <SharePreviewRefresher
+          kind="deck"
+          id={deck.id}
+          input={deckPreviewInput(deck, deckCards)}
+          stored={await getPreviewKey(getDb(), 'deck', deck.id)}
+        />
+      )}
       <Stars />
       <header className="hero">
         <h1>{deck.name}</h1>

@@ -18,6 +18,10 @@ vi.mock('@/lib/actions/preferences', () => ({ saveDeckSort }))
 vi.mock('next/link', () => ({ default: (props: object) => <a {...props} /> }))
 const router = vi.hoisted(() => ({ push: vi.fn(), refresh: vi.fn() }))
 vi.mock('next/navigation', () => ({ useRouter: () => router }))
+// jsdom can't draw, so the plan's link preview is a stand-in.
+const previews = vi.hoisted(() => ({ drawPreview: vi.fn(), preloadPreview: vi.fn() }))
+vi.mock('@/lib/og/client', () => previews)
+const drawn = { key: 'drawn-key', image: new Blob(['jpeg']) }
 
 const cards: DateCard[] = [
   { id: 'picnic', title: 'Picnic', description: '', tags: ['outside'], interest: 2, notes: 'Bring a rug' },
@@ -51,6 +55,9 @@ function keepPicks(ids: string[] | PlanPicks, key = deckPicks) {
 }
 
 beforeEach(() => {
+  previews.drawPreview.mockReset()
+  previews.drawPreview.mockResolvedValue(drawn)
+  previews.preloadPreview.mockReset()
   savePlan.mockReset()
   updatePlan.mockReset()
   deletePlan.mockReset()
@@ -172,10 +179,62 @@ describe('PlanBuilder', () => {
     expect(screen.queryByRole('link', { name: 'Cancel' })).not.toBeInTheDocument()
     await user.click(screen.getByRole('button', { name: 'Save plan' }))
 
-    expect(savePlan).toHaveBeenCalledWith('share123', ['hike', 'museum'], [])
+    expect(savePlan).toHaveBeenCalledWith('share123', ['hike', 'museum'], [], drawn)
     await waitFor(() => expect(router.push).toHaveBeenCalledExactlyOnceWith('/p/plan42?share'))
     // Saving till the page changes, so it can't be pressed twice.
     expect(screen.getByRole('button', { name: 'Saving…' })).toBeDisabled()
+  })
+
+  /** @see docs/share-previews.md § "When it's drawn" */
+  describe("the plan's link preview", () => {
+    it('is drawn from the picks, fanned out, and sent with the plan', async () => {
+      savePlan.mockResolvedValue({ ok: true, data: { planId: 'plan42' } })
+      const user = userEvent.setup()
+      render(
+        <PlanBuilder
+          deckName="Test deck"
+          shareId="share123"
+          cards={[...cards, { id: 'gig', title: 'Gig', description: '', tags: [], date: 'Fri 3 Oct' }]}
+          seed={1}
+        />,
+      )
+
+      await user.click(screen.getByRole('button', { name: 'Add to plan: Hike' }))
+      await user.click(screen.getByRole('button', { name: 'Add to plan: Gig' }))
+      await user.click(screen.getByRole('button', { name: 'Save plan' }))
+
+      expect(previews.drawPreview).toHaveBeenCalledWith({
+        title: 'Test deck',
+        cards: [
+          { id: 'hike', title: 'Hike' },
+          { id: 'gig', title: 'Gig', date: 'Fri 3 Oct' },
+        ],
+        layout: 'fan',
+      })
+      expect(savePlan).toHaveBeenCalledWith('share123', ['hike', 'gig'], [], drawn)
+    })
+
+    it("saves the plan without one when it can't be drawn", async () => {
+      vi.spyOn(console, 'warn').mockImplementation(() => {})
+      previews.drawPreview.mockRejectedValue(new Error('Drawing the link preview took too long'))
+      savePlan.mockResolvedValue({ ok: true, data: { planId: 'plan42' } })
+      const user = userEvent.setup()
+      renderBuilder()
+
+      await user.click(screen.getByRole('button', { name: 'Add to plan: Hike' }))
+      await user.click(screen.getByRole('button', { name: 'Save plan' }))
+
+      expect(savePlan).toHaveBeenCalledWith('share123', ['hike'], [], undefined)
+      await waitFor(() => expect(router.push).toHaveBeenCalledExactlyOnceWith('/p/plan42?share'))
+    })
+
+    it('starts loading what drawing needs once there is a pick', async () => {
+      const user = userEvent.setup()
+      renderBuilder()
+      expect(previews.preloadPreview).not.toHaveBeenCalled()
+      await user.click(screen.getByRole('button', { name: 'Add to plan: Hike' }))
+      expect(previews.preloadPreview).toHaveBeenCalled()
+    })
   })
 
   it('shows why a plan could not be saved', async () => {
@@ -773,7 +832,7 @@ describe('PlanBuilder', () => {
       grip.focus()
       await user.keyboard('{ArrowUp}')
       await user.click(screen.getByRole('button', { name: 'Save plan' }))
-      expect(savePlan).toHaveBeenCalledWith('share123', ['hike', 'picnic'], [])
+      expect(savePlan).toHaveBeenCalledWith('share123', ['hike', 'picnic'], [], drawn)
     })
 
     describe('with a mouse', () => {
@@ -887,7 +946,7 @@ describe('PlanBuilder', () => {
 
       expect(screen.getByRole('textbox', { name: 'Title of Later' })).toHaveValue('Later')
       await user.click(screen.getByRole('button', { name: 'Save plan' }))
-      expect(savePlan).toHaveBeenCalledWith('share123', ['picnic'], [group])
+      expect(savePlan).toHaveBeenCalledWith('share123', ['picnic'], [group], drawn)
     })
 
     it('empties the groups too with Clear plan', async () => {
@@ -923,7 +982,12 @@ describe('PlanBuilder', () => {
       await user.clear(title)
       await user.type(title, 'Soon')
       await user.click(screen.getByRole('button', { name: 'Update Plan' }))
-      expect(updatePlan).toHaveBeenCalledWith('plan42', [], [{ id: 'g', title: 'Soon', notes: '', cardIds: ['hike'] }])
+      expect(updatePlan).toHaveBeenCalledWith(
+        'plan42',
+        [],
+        [{ id: 'g', title: 'Soon', notes: '', cardIds: ['hike'] }],
+        drawn,
+      )
     })
   })
 
@@ -1304,7 +1368,7 @@ describe('PlanBuilder', () => {
 
       await user.click(screen.getByRole('button', { name: 'Add to plan: Museum' }))
       await user.click(screen.getByRole('button', { name: 'Update Plan' }))
-      expect(updatePlan).toHaveBeenCalledWith('plan42', ['hike', 'picnic', 'museum'], [])
+      expect(updatePlan).toHaveBeenCalledWith('plan42', ['hike', 'picnic', 'museum'], [], drawn)
       expect(savePlan).not.toHaveBeenCalled()
       await waitFor(() => expect(router.push).toHaveBeenCalledExactlyOnceWith('/p/plan42'))
     })

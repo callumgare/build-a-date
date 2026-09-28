@@ -12,6 +12,7 @@ import {
   NotFoundError,
   toDateCard,
 } from '@/lib/decks'
+import { deckPreviewInput, getPreviewKey } from '@/lib/previews'
 
 async function findDeck(deckId: string) {
   const user = await requireUser()
@@ -30,12 +31,14 @@ export async function generateMetadata({ params }: PageProps<'/decks/[deckId]'>)
 
 export default async function DeckPage({ params }: PageProps<'/decks/[deckId]'>) {
   const { deck, role, user } = await findDeck((await params).deckId)
-  const [cards, plans, access] = await Promise.all([
+  const [cards, plans, access, stored] = await Promise.all([
     getDeckCards(getDb(), deck.id),
     listPlanSummaries(getDb(), deck.id),
     // Only the owner sees who else can edit, and answers requests.
     role === 'owner' ? listDeckAccess(getDb(), user.id, deck.id) : [],
+    getPreviewKey(getDb(), 'deck', deck.id),
   ])
+  const deckCards = cards.map(toDateCard)
 
   return (
     <DeckEditor
@@ -43,8 +46,12 @@ export default async function DeckPage({ params }: PageProps<'/decks/[deckId]'>)
       role={role}
       access={access.map(({ userId, name, email, status }) => ({ userId, name, email, status }))}
       shareUrl={new URL(`/d/${deck.shareId}`, getCloudflareContext().env.BETTER_AUTH_URL).href}
-      cards={cards.map(toDateCard)}
+      cards={deckCards}
       plans={plans}
+      // Owners share the deck's link from here, and edit it here, so this is
+      // where its link preview is kept up to date (docs/share-previews.md
+      // § "When it's drawn").
+      preview={{ kind: 'deck', id: deck.id, input: deckPreviewInput(deck, deckCards), stored }}
     />
   )
 }

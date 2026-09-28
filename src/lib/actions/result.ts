@@ -1,5 +1,6 @@
 import { z } from 'zod'
 import { NotFoundError } from '../decks'
+import { PreviewRejected } from '../previews'
 
 export type ActionResult<T = undefined> = { ok: true; data: T } | { ok: false; error: string }
 
@@ -12,5 +13,6 @@ export function ok<T>(data: T): ActionResult<T> {
 export function fail(error: unknown): { ok: false; error: string } {
   if (error instanceof z.ZodError) return { ok: false, error: error.issues[0]?.message ?? 'Invalid input' }
   if (error instanceof NotFoundError) return { ok: false, error: error.message }
+  if (error instanceof PreviewRejected) return { ok: false, error: error.message }
   throw error
 }

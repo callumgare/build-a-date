@@ -1,8 +1,10 @@
 /** @vitest-environment jsdom */
-import { render, screen, within } from '@testing-library/react'
+import { cleanup, render, screen, within } from '@testing-library/react'
 import * as decks from '@/lib/decks'
+import { savePreview } from '@/lib/previews'
 import { useTestDb } from '@/test/cloudflare'
 import { createTestDb, createUser } from '@/test/db'
+import { fakeJpeg } from '@/test/jpeg'
 import { NotFoundPage } from '@/test/next'
 import { signInAs } from '@/test/session'
 import PlanPage, { generateMetadata } from './page'
@@ -15,6 +17,17 @@ vi.mock('@opennextjs/cloudflare', () => import('@/test/cloudflare'))
 vi.mock('@/db', () => import('@/test/cloudflare'))
 vi.mock('@/lib/auth-config', () => import('@/test/session'))
 vi.mock('next/link', () => ({ default: (props: object) => <a {...props} /> }))
+// Stands in for the refresher, which would draw, to see what it's handed.
+vi.mock('@/components/SharePreviewRefresher', () => ({
+  default: (props: { kind: string; stored: string | null; input: { cards: { title: string }[] } }) => (
+    <output
+      aria-label="Link preview"
+      data-kind={props.kind}
+      data-stored={props.stored ?? ''}
+      data-cards={props.input.cards.map((card) => card.title).join(',')}
+    />
+  ),
+}))
 
 let db: ReturnType<typeof createTestDb>
 let deck: Awaited<ReturnType<typeof decks.createDeck>>
@@ -57,6 +70,51 @@ describe('the plan page', () => {
     expect(metadata.metadataBase).toEqual(new URL('http://localhost:3000'))
     expect(metadata.openGraph).toMatchObject({ title: 'A plan from Weekend', description: expect.any(String) })
     expect(metadata.twitter).toMatchObject({ card: 'summary_large_image' })
+  })
+
+  /** @see docs/share-previews.md § "The page's metadata" */
+  it("points link previews at the plan's picture, or the default until there is one", async () => {
+    const card = await decks.saveCard(db, 'owner', deck.id, null, { title: 'Picnic' })
+    const plan = await decks.savePlan(db, deck.shareId, [card.id])
+    const image = async () =>
+      (((await generateMetadata(props(plan.id))).openGraph?.images ?? []) as { url: string }[])[0].url
+    expect(await image()).toBe('/og/default.jpg')
+    await savePreview(db, 'plan', plan.id, 'abc', fakeJpeg())
+    expect(await image()).toBe(`/p/${plan.id}/preview?v=abc`)
+  })
+
+  /** @see docs/share-previews.md § "When it's drawn" - anyone with the link redraws a plan's picture */
+  it('keeps the link preview up to date for anyone who opens it', async () => {
+    const picnic = await decks.saveCard(db, 'owner', deck.id, null, { title: 'Picnic' })
+    const hike = await decks.saveCard(db, 'owner', deck.id, null, { title: 'Hike' })
+    const plan = await decks.savePlan(
+      db,
+      deck.shareId,
+      [hike.id],
+      [{ id: 'g', title: 'Later', notes: '', cardIds: [picnic.id] }],
+    )
+    await savePreview(db, 'plan', plan.id, 'abc', fakeJpeg())
+
+    render(await PlanPage(props(plan.id)))
+    const refresher = screen.getByRole('status', { name: 'Link preview' })
+    expect(refresher).toHaveAttribute('data-kind', 'plan')
+    expect(refresher).toHaveAttribute('data-stored', 'abc')
+    expect(refresher).toHaveAttribute('data-cards', 'Hike,Picnic')
+  })
+
+  /** @see docs/share-previews.md § "When it's drawn" - cards changed from a plan redraw the deck's picture */
+  it("keeps the deck's link preview up to date too for owners and editors, who can change cards from here", async () => {
+    const card = await decks.saveCard(db, 'owner', deck.id, null, { title: 'Picnic' })
+    const plan = await decks.savePlan(db, deck.shareId, [card.id])
+
+    render(await PlanPage(props(plan.id)))
+    expect(screen.getAllByRole('status', { name: 'Link preview' }).map((it) => it.dataset.kind)).toEqual(['plan'])
+    cleanup()
+
+    signInAs({ id: 'owner', name: 'owner', email: 'owner@example.com' })
+    render(await PlanPage(props(plan.id)))
+    const kinds = screen.getAllByRole('status', { name: 'Link preview' }).map((it) => it.dataset.kind)
+    expect(kinds).toEqual(['plan', 'deck'])
   })
 
   /** @see docs/card-notes.md § "Rating and notes on the card" */

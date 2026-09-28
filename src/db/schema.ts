@@ -1,5 +1,5 @@
 import { relations, sql } from 'drizzle-orm'
-import { index, integer, primaryKey, sqliteTable, text } from 'drizzle-orm/sqlite-core'
+import { blob, index, integer, primaryKey, sqliteTable, text } from 'drizzle-orm/sqlite-core'
 import type { PlanGroup } from '../types'
 import { user } from './auth-schema'
 
@@ -71,6 +71,30 @@ export const plan = sqliteTable(
   },
   (table) => [index('plan_deck_id_idx').on(table.deckId)],
 )
+
+// The link preview pictures browsers drew for a deck and a plan, as JPEGs
+// (docs/share-previews.md § "Storing and serving"). `key` says what each was
+// drawn from, so a page can tell when it's out of date. Kept apart from the
+// deck and plan so their queries don't load the pictures.
+const preview = {
+  key: text('key').notNull(),
+  image: blob('image', { mode: 'buffer' }).notNull(),
+  updatedAt: timestamps.updatedAt,
+}
+
+export const deckPreview = sqliteTable('deck_preview', {
+  deckId: text('deck_id')
+    .primaryKey()
+    .references(() => deck.id, { onDelete: 'cascade' }),
+  ...preview,
+})
+
+export const planPreview = sqliteTable('plan_preview', {
+  planId: text('plan_id')
+    .primaryKey()
+    .references(() => plan.id, { onDelete: 'cascade' }),
+  ...preview,
+})
 
 // Someone other than the owner who asked to edit a deck (pending) and was
 // let in (accepted). Declining or removing someone deletes their row, so

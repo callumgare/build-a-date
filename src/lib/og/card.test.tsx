@@ -1,5 +1,6 @@
+import { renderToStaticMarkup } from 'react-dom/server'
 import { frames } from '@/components/frames'
-import { frameSvg, titleScale } from './card'
+import { PreviewFrame, titleScale } from './card'
 
 /** @see docs/share-previews.md § "The cards" */
 describe('the preview card', () => {
@@ -11,16 +12,27 @@ describe('the preview card', () => {
     expect(new Set(scales).size).toBe(scales.length)
   })
 
-  it('draws every frame as one SVG, with its rails stretched between the top and bottom pieces', () => {
+  it('draws every frame inline, with its rails stretched between the top and bottom pieces', () => {
     for (const frame of frames) {
-      const svg = frameSvg(frame, 192, 256)
-      expect(svg).toMatch(/^<svg xmlns="http:\/\/www.w3.org\/2000\/svg" width="192" height="256"/)
-      expect(svg).not.toContain('className')
-      expect(svg).not.toContain('[object Object]')
-      // 256px tall at 0.96px a unit is 266.667 units.
-      const bottom = 266.667 - frame.bottom.height
-      expect(svg).toContain(`M ${frame.rails[0]} ${frame.top.height} V ${Math.round(bottom * 1000) / 1000}`)
-      expect(svg).toContain(`translate(0 ${Math.round(bottom * 1000) / 1000})`)
+      const svg = renderToStaticMarkup(<PreviewFrame frame={frame} width={192} height={256} left={4} top={4} />)
+      expect(svg).toMatch(
+        /^<svg xmlns="http:\/\/www.w3.org\/2000\/svg" width="192" height="256" viewBox="0 0 200 266.667"/,
+      )
+      // No pictures inside it, which Firefox might not have loaded when it's drawn.
+      expect(svg).not.toContain('<image')
+      // The page's classes, as attributes, since the drawing has no stylesheet.
+      expect(svg).not.toContain('class=')
+      const bottom = Math.round((266.667 - frame.bottom.height) * 1000) / 1000
+      expect(svg).toContain(`M ${frame.rails[0]} ${frame.top.height} V ${bottom}`)
+      expect(svg).toContain(`translate(0 ${bottom})`)
     }
+  })
+
+  it("fills the art that's filled on the page, and fades what's faint", () => {
+    const svg = frames.map((frame) =>
+      renderToStaticMarkup(<PreviewFrame frame={frame} width={192} height={256} left={0} top={0} />),
+    )
+    expect(svg.join('')).toContain('fill="#a07c4c" stroke="none"')
+    expect(svg.join('')).toContain('opacity="0.55"')
   })
 })

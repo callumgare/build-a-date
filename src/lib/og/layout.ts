@@ -59,6 +59,23 @@ export function planFan(count: number): Placed[] {
   })
 }
 
+/**
+ * The highest point of a fan's cards: the top corner that turning each one
+ * lifts highest. The plan's name is centred in the space above it.
+ */
+export function fanTop(places: Placed[]) {
+  if (!places.length) return IMAGE.height
+  return round(
+    Math.min(
+      ...places.map(({ y, width, height, rotate }) => {
+        const radians = (Math.abs(rotate) * Math.PI) / 180
+        const centreY = y + height / 2
+        return centreY - (height / 2) * Math.cos(radians) - (width / 2) * Math.sin(radians)
+      }),
+    ),
+  )
+}
+
 function round(value: number) {
   return Math.round(value * 100) / 100
 }

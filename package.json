@@ -21,7 +21,7 @@
     "db:migrate:e2e": "wrangler d1 migrations apply build-a-date-e2e --local --env e2e --persist-to .wrangler/e2e",
     "auth:generate": "auth generate --config src/lib/auth-cli.ts --output src/db/auth-schema.ts --yes",
     "format": "biome check --write .",
-    "og:background": "node scripts/og-background.ts"
+    "og:images": "node scripts/og-images.ts"
   },
   "dependencies": {
     "@better-auth/passkey": "1.7.5",
@@ -34,6 +34,7 @@
     "react": "19.3.0",
     "react-dom": "19.3.0",
     "react-markdown": "10.1.0",
+    "satori": "0.25.0",
     "server-only": "0.0.1",
     "zod": "4.6.5"
   },

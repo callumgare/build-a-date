@@ -1,9 +1,12 @@
+import { previewKey } from '@/lib/og/preview-key'
 import { resetEnv, useTestDb } from '@/test/cloudflare'
 import { createTestDb, createUser } from '@/test/db'
+import { fakeJpegBlob } from '@/test/jpeg'
 import { NotFoundPage, RedirectError, revalidatePath } from '@/test/next'
 import { signInAs } from '@/test/session'
 import * as decks from '../decks'
 import { devOutbox } from '../email'
+import { deckPreviewInput, getPreviewKey } from '../previews'
 import {
   createDeck,
   deleteCard,
@@ -15,6 +18,7 @@ import {
   requestEditAccess,
   respondToAccessRequest,
   saveCard,
+  saveDeckPreview,
 } from './decks'
 
 vi.mock('server-only', () => ({}))
@@ -301,5 +305,43 @@ describe('answering and removing editors', () => {
     signIn('helper')
     await expect(leaveDeck(deck.id)).rejects.toThrow('Redirected to /decks')
     expect(await decks.getAccessState(db, 'helper', deck)).toBe('none')
+  })
+})
+
+/** @see docs/share-previews.md § "Who can upload a picture" */
+describe('saveDeckPreview', () => {
+  let deck: Awaited<ReturnType<typeof decks.createDeck>>
+  let key: string
+
+  beforeEach(async () => {
+    deck = await decks.createDeck(db, 'owner', { name: 'Weekend', template: 'empty' })
+    await decks.saveCard(db, 'owner', deck.id, null, { title: 'Picnic' })
+    key = previewKey(deckPreviewInput(deck, (await decks.getSharedDeck(db, deck.shareId)).cards))
+  })
+
+  it('keeps the picture for the owner and editors', async () => {
+    expect(await saveDeckPreview(deck.id, { key, image: fakeJpegBlob() })).toEqual({ ok: true, data: undefined })
+    expect(await getPreviewKey(db, 'deck', deck.id)).toBe(key)
+
+    await decks.requestEditAccess(db, 'helper', deck.shareId)
+    await decks.respondToAccessRequest(db, 'owner', deck.id, 'helper', true)
+    signIn('helper')
+    expect(await saveDeckPreview(deck.id, { key, image: fakeJpegBlob() })).toMatchObject({ ok: true })
+  })
+
+  it("won't let anyone else set it", async () => {
+    signIn('helper')
+    expect(await saveDeckPreview(deck.id, { key, image: fakeJpegBlob() })).toEqual({
+      ok: false,
+      error: 'Deck not found',
+    })
+    expect(await getPreviewKey(db, 'deck', deck.id)).toBeNull()
+  })
+
+  it("refuses a picture that isn't of the deck as it is now", async () => {
+    expect(await saveDeckPreview(deck.id, { key: 'old', image: fakeJpegBlob() })).toEqual({
+      ok: false,
+      error: 'The picture is out of date',
+    })
   })
 })

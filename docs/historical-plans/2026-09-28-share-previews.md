@@ -1,3 +1,5 @@
+> **Replaced, 2026-09-28 (post-implementation note by Claude, at Callum Gare's request).** This version drew the pictures in the Worker with `next/og`. On Cloudflare's free plan, that took production down: the Worker grew to 3.25 MB gzipped, and requests failed with "Worker exceeded CPU time limit" (10 ms a request). It was taken out the same day. The pictures are now drawn in the browser and kept in D1: see docs/historical-plans/2026-09-28-browser-drawn-previews.md and docs/share-previews.md.
+
 # Link preview images for shared decks and plans
 
 ## Context

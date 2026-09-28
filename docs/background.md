@@ -98,4 +98,4 @@ The pixel ratio is capped at 2.
 
 ## In link previews
 
-The pictures messaging apps show for a shared link can't run the shader, so they use a still of it, `public/og/background.jpg` (docs/share-previews.md § "The background"). After changing the shader, its palette or the seed, take the still again with `npm run og:background`.
+The pictures messaging apps show for a shared link are drawn over a still of it, `public/og/background.jpg` (docs/share-previews.md § "The background"). After changing the shader, its palette or the seed, take the still again, and redraw the static previews, with `npm run og:images`.

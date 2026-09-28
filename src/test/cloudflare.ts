@@ -1,4 +1,3 @@
-import { readFile } from 'node:fs/promises'
 import type { createTestDb } from './db'
 
 // A stand-in for the Cloudflare request context. Load it with
@@ -6,25 +5,11 @@ import type { createTestDb } from './db'
 // and `vi.mock('@/db', () => import('@/test/cloudflare'))` to hand code the
 // test database from `useTestDb`.
 
-// The Worker's static assets, served from public/.
-const ASSETS = {
-  async fetch(url: URL | string) {
-    const file = new URL(`../../public${new URL(url).pathname}`, import.meta.url)
-    try {
-      return new Response(await readFile(file))
-    } catch {
-      return new Response('Not found', { status: 404 })
-    }
-  },
-}
-
 export const env = {
   BETTER_AUTH_URL: 'http://localhost:3000',
   BETTER_AUTH_SECRET: 'test-secret-that-is-at-least-32-chars',
   EMAIL_FROM: 'Dates <hi@example.com>',
-  ASSETS,
 } as {
-  ASSETS: typeof ASSETS
   BETTER_AUTH_URL: string
   BETTER_AUTH_SECRET: string
   EMAIL_FROM: string

@@ -1,4 +1,4 @@
-import { deckGrid, FAN, GRID, IMAGE, planFan } from './layout'
+import { deckGrid, FAN, fanTop, GRID, IMAGE, planFan } from './layout'
 
 /** @see docs/share-previews.md § "A deck" */
 describe('deckGrid', () => {
@@ -65,5 +65,25 @@ describe('planFan', () => {
     const [only] = planFan(1)
     expect(only.rotate).toBe(0)
     expect(centre(only)).toBe(IMAGE.width / 2)
+  })
+})
+
+/** @see docs/share-previews.md § "A plan" - the name is centred above the fan */
+describe('fanTop', () => {
+  it('is the top of a lone card, which stands up straight', () => {
+    const places = planFan(1)
+    expect(fanTop(places)).toBe(places[0].y)
+  })
+
+  it('is the highest corner of a turned card', () => {
+    // Two cards turned 8° each way: their inner top corners rise above
+    // where their tops would be standing straight.
+    const places = planFan(2)
+    expect(fanTop(places)).toBeLessThan(Math.min(...places.map((place) => place.y)))
+    expect(fanTop(places)).toBeGreaterThan(0)
+  })
+
+  it('is the bottom of the picture when there are no cards', () => {
+    expect(fanTop([])).toBe(IMAGE.height)
   })
 })

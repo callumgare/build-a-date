@@ -1,8 +1,11 @@
+import { previewKey } from '@/lib/og/preview-key'
 import { useTestDb } from '@/test/cloudflare'
 import { createTestDb, createUser } from '@/test/db'
+import { fakeJpegBlob } from '@/test/jpeg'
 import { revalidatePath } from '@/test/next'
 import * as decks from '../decks'
-import { deletePlan, saveCardNotes, savePlan, updatePlan } from './plans'
+import { getPreviewKey, planPreviewInput } from '../previews'
+import { deletePlan, saveCardNotes, savePlan, savePlanPreview, updatePlan } from './plans'
 
 vi.mock('@/db', () => import('@/test/cloudflare'))
 vi.mock('next/cache', () => import('@/test/next'))
@@ -142,5 +145,52 @@ describe('saveCardNotes', () => {
       error: 'Card not found',
     })
     expect((await decks.getSharedDeck(db, deck.shareId)).cards[0].interest).toBeUndefined()
+  })
+})
+
+/** @see docs/share-previews.md § "When it's drawn" */
+describe("a plan's link preview", () => {
+  const fan = (titles: string[], ids: string[]) => ({
+    title: 'Weekend',
+    cards: ids.map((id, index) => ({ id, title: titles[index] })),
+    layout: 'fan' as const,
+  })
+
+  it('is kept when it comes with the plan', async () => {
+    const key = previewKey(fan(['Picnic'], [cardId]))
+    const result = await savePlan(deck.shareId, [cardId], [], { key, image: fakeJpegBlob() })
+    if (!result.ok) throw new Error(result.error)
+    expect(await getPreviewKey(db, 'plan', result.data.planId)).toBe(key)
+  })
+
+  it("doesn't stop the plan saving when it can't be kept", async () => {
+    const result = await savePlan(deck.shareId, [cardId], [], { key: 'something else', image: fakeJpegBlob() })
+    if (!result.ok) throw new Error(result.error)
+    expect(await getPreviewKey(db, 'plan', result.data.planId)).toBeNull()
+  })
+
+  it('is kept when it comes with an update, and the plan saves without one', async () => {
+    const hike = (await decks.saveCard(db, 'owner', deck.id, null, { title: 'Hike' })).id
+    const plan = await decks.savePlan(db, deck.shareId, [cardId])
+    const key = previewKey(fan(['Hike', 'Picnic'], [hike, cardId]))
+    expect(await updatePlan(plan.id, [hike, cardId], [], { key, image: fakeJpegBlob() })).toMatchObject({ ok: true })
+    expect(await getPreviewKey(db, 'plan', plan.id)).toBe(key)
+    expect(await updatePlan(plan.id, [cardId])).toMatchObject({ ok: true })
+  })
+
+  /** @see docs/share-previews.md § "Who can upload a picture" - anyone with a plan's link, as they can edit it */
+  it('can be drawn again by anyone with the link, but only of what the plan shows now', async () => {
+    const plan = await decks.savePlan(db, deck.shareId, [cardId])
+    const key = previewKey(planPreviewInput(await decks.getPlan(db, plan.id)))
+    expect(await savePlanPreview(plan.id, { key: 'old', image: fakeJpegBlob() })).toEqual({
+      ok: false,
+      error: 'The picture is out of date',
+    })
+    expect(await savePlanPreview(plan.id, { key, image: fakeJpegBlob() })).toEqual({ ok: true, data: undefined })
+    expect(await getPreviewKey(db, 'plan', plan.id)).toBe(key)
+    expect(await savePlanPreview('nope', { key, image: fakeJpegBlob() })).toEqual({
+      ok: false,
+      error: 'Plan not found',
+    })
   })
 })

@@ -1,10 +1,17 @@
-// Saves a still of the galaxy background for link previews
-// (docs/share-previews.md § "The background"). The background is a WebGL
-// shader that only runs in a browser, so the previews use this picture of it
-// instead. Run it again whenever the shader or its palette changes:
+// Makes the pictures link previews are drawn with, into public/og/
+// (docs/share-previews.md § "The static pictures"):
+//
+// - background.jpg, a still of the galaxy background. The background is a
+//   WebGL shader, so the previews use this picture of it instead.
+// - sample.jpg, the sample deck's preview, and default.jpg, for a deck or
+//   plan whose own picture hasn't been drawn yet. Both are drawn by
+//   /dev/previews, with the new still.
+//
+// Run it again whenever the shader, its palette or the drawing changes:
 //
 //   npm run dev                  # in another terminal
-//   npm run og:background [http://localhost:3000]
+//   npm run og:images [http://localhost:3000]
+import { writeFileSync } from 'node:fs'
 import { chromium } from '@playwright/test'
 
 const [base = 'http://localhost:3000'] = process.argv.slice(2)
@@ -34,4 +41,16 @@ await page.screenshot({
   type: 'jpeg',
   quality: 85,
 })
+
+// The static previews, drawn by the browser the way every other one is.
+const previews = await browser.newPage()
+await previews.goto(new URL('/dev/previews', base).href)
+await previews.waitForSelector('main[data-done="true"], [data-preview-error]', { timeout: 60_000 })
+const problem = await previews.locator('[data-preview-error]').allTextContents()
+if (problem.length) throw new Error(`Couldn't draw the previews: ${problem.join(' ')}`)
+for (const name of ['sample', 'default']) {
+  const src = await previews.locator(`img[data-preview="${name}"]`).getAttribute('src')
+  if (!src) throw new Error(`/dev/previews didn't draw ${name}`)
+  writeFileSync(new URL(`../public/og/${name}.jpg`, import.meta.url), Buffer.from(src.split(',')[1], 'base64'))
+}
 await browser.close()
