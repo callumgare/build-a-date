@@ -60,6 +60,7 @@ import { DragStandIn, PlanCard, usePlanDrag } from './PlanCard'
 import SharePreviewRefresher, { type PreviewProps } from './SharePreviewRefresher'
 import Stars from './Stars'
 import type { Box } from './tilt'
+import { markZoomedContainerUnits } from './zoomedContainerUnits'
 
 type PlanBuilderProps = {
   deckName: string
@@ -212,6 +213,10 @@ export default function PlanBuilder({
   const availableCards = cards.filter(
     (card) => !selectedIds.includes(card.id) && [...activeTags].every((tag) => card.tags.includes(tag)),
   )
+
+  // Before the browser paints, so a shrunk column is right from the start in
+  // Safari (docs/card-layout.md § "Narrow screens").
+  useLayoutEffect(markZoomedContainerUnits, [])
 
   // Kept picks go straight into the plan, before the browser paints, with no
   // animation (docs/plans.md § "Picks are kept in the browser").

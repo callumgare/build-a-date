@@ -15,6 +15,10 @@
   --paper: #f7f0e4;
   --paper-deep: #eadcc9;
   --line: rgba(229, 188, 129, 0.48);
+  /* --line made opaque, for underlines. Safari draws a see-through underline
+     well below the text when it has more than one text-shadow, as anything
+     with the halo below does. */
+  --underline: color-mix(in srgb, var(--accent) 48%, var(--background-color));
   --background-color: rgb(17, 31, 82);
   --defocused-background-color: color-mix(var(--background-color) 80%, transparent);
   /* A soft dark halo that keeps text readable over the busier parts of the
@@ -379,7 +383,7 @@ h1 {
   background: transparent;
   cursor: pointer;
   text-decoration: underline;
-  text-decoration-color: var(--line);
+  text-decoration-color: var(--underline);
   text-decoration-thickness: 1px;
   text-underline-offset: 0.25em;
 }
@@ -699,7 +703,7 @@ h1 {
   --gap: 16px;
   /* tan(atan2(a, b)) is a / b as a plain number, for browsers that can't
      divide one length by another. */
-  --columns: max(1, round(down, tan(atan2(100cqw + var(--gap), 200px + var(--gap)))));
+  --columns: max(1, round(down, tan(atan2(100cqw * var(--unzoom, 1) + var(--gap), 200px + var(--gap)))));
   /* Holds cards leaving the deck in place while they fade (AnimatePresence's
      popLayout), and is the offset parent a card flying in or back is
      measured from (docs/card-layout.md § "Flying cards"). */
@@ -731,7 +735,7 @@ h1 {
 @supports (width: calc(1px / 1px * 1px)) {
   .card-grid,
   .plan-column .plan-track {
-    --columns: max(1, round(down, (100cqw + var(--gap)) / (200px + var(--gap))));
+    --columns: max(1, round(down, (100cqw * var(--unzoom, 1) + var(--gap)) / (200px + var(--gap))));
   }
 }
 
@@ -801,6 +805,13 @@ h1 {
   margin-top: 6px;
 }
 
+/* How much a column is shrunk, going along with its zoom. */
+@property --shrink {
+  syntax: '<number>';
+  inherits: false;
+  initial-value: 1;
+}
+
 /* On a narrow screen one column is in use and the other is shrunk to a
    fifth of its size, everything in it included, until it's clicked
    (docs/card-layout.md § "Narrow screens"). The width is the same as
@@ -828,12 +839,26 @@ h1 {
   .plan-heading,
   .plan-section,
   .deck-section {
-    transition: zoom var(--switch);
+    transition:
+      zoom var(--switch),
+      --shrink var(--switch);
   }
 
   .builder[data-active='deck'] :is(.plan-heading, .plan-section),
   .builder[data-active='plan'] .deck-section {
+    --shrink: 0.2;
     zoom: 0.2;
+  }
+
+  /* Safari multiplies container units inside a zoomed element by the zoom
+     a second time, so the cards' text and the grid's columns (which are in
+     container units) come out a fifth of the size they should in a shrunk
+     column. Where it does (data-zoomed-container-units, set by
+     zoomedContainerUnits.ts), they're multiplied back up by --unzoom.
+     --shrink goes along with zoom, on the same curve, so it's put right all
+     through a switch too. */
+  :root[data-zoomed-container-units] :is(.plan-heading, .plan-section, .deck-section) {
+    --unzoom: calc(1 / var(--shrink));
   }
 
   /* At least the window's height, so a click on the space under a shrunk
@@ -1049,7 +1074,7 @@ a {
 
 .site-links a {
   color: rgba(255, 249, 239, 0.85);
-  text-decoration-color: var(--line);
+  text-decoration-color: var(--underline);
   text-underline-offset: 0.25em;
 }
 

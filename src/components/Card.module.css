@@ -1,3 +1,5 @@
+/* Container units are multiplied by --unzoom, which puts right Safari's
+   container units inside a zoomed column (see zoomedContainerUnits.ts). */
 .card {
   container-type: inline-size;
   display: flex;
@@ -41,7 +43,7 @@
   z-index: 1;
   display: grid;
   grid-template-columns: 1fr 1fr;
-  padding: calc(var(--edge) + 3cqw) var(--edge) 9cqw;
+  padding: calc(var(--edge) + 3cqw * var(--unzoom, 1)) var(--edge) calc(9cqw * var(--unzoom, 1));
   border-radius: 5px 5px 0 0;
   background: linear-gradient(rgba(4, 23, 31, 0.66), rgba(4, 23, 31, 0.36) 55%, transparent);
   opacity: 0;
@@ -72,13 +74,13 @@
 }
 
 .action {
-  height: clamp(20px, 12cqw, 30px);
-  padding: 0 2cqw;
+  height: clamp(20px, calc(12cqw * var(--unzoom, 1)), 30px);
+  padding: 0 calc(2cqw * var(--unzoom, 1));
   border: 0;
   border-radius: 3px;
   color: #fff;
   font: inherit;
-  font-size: clamp(0.62rem, 5.8cqw, 0.86rem);
+  font-size: clamp(0.62rem, calc(5.8cqw * var(--unzoom, 1)), 0.86rem);
   font-weight: 400;
   letter-spacing: 0.02em;
   white-space: nowrap;
@@ -124,12 +126,12 @@
    whenever the options at the top do. */
 .edit {
   position: absolute;
-  bottom: 5cqw;
-  left: 5cqw;
+  bottom: calc(5cqw * var(--unzoom, 1));
+  left: calc(5cqw * var(--unzoom, 1));
   z-index: 1;
   display: grid;
   place-items: center;
-  width: clamp(24px, 14cqw, 34px);
+  width: clamp(24px, calc(14cqw * var(--unzoom, 1)), 34px);
   aspect-ratio: 1;
   padding: 0;
   border: 0;
@@ -204,7 +206,7 @@
    just below it (see .actions::before below). It shows whenever those
    options do. */
 .card:has(> .grip) {
-  --grip-width: clamp(40px, 26cqw, 64px);
+  --grip-width: clamp(40px, calc(26cqw * var(--unzoom, 1)), 64px);
 }
 
 .grip {
@@ -234,7 +236,7 @@
 /* The options move down to clear the grip, and the line between them starts
    from the bottom of its half circle. */
 .card:has(> .grip) .actions {
-  padding-top: calc(var(--grip-width) / 2 + 1.5cqw);
+  padding-top: calc(var(--grip-width) / 2 + 1.5cqw * var(--unzoom, 1));
 }
 
 .card:has(> .grip) .actions::before {
@@ -277,11 +279,11 @@
 .scrawl {
   --paper: #f5ede0;
   position: absolute;
-  right: calc(var(--edge) + 1.5cqw);
-  bottom: calc(var(--edge) + 1cqw);
+  right: calc(var(--edge) + 1.5cqw * var(--unzoom, 1));
+  bottom: calc(var(--edge) + 1cqw * var(--unzoom, 1));
   display: flex;
   align-items: center;
-  gap: 1.2cqw;
+  gap: calc(1.2cqw * var(--unzoom, 1));
   rotate: -5deg;
   pointer-events: none;
 }
@@ -292,7 +294,7 @@
 
 .scrawl svg {
   display: block;
-  height: 8cqw;
+  height: calc(8cqw * var(--unzoom, 1));
   overflow: visible;
   fill: none;
   stroke-linecap: round;
@@ -302,11 +304,11 @@
 /* The star labels the number, so it sits tight against it, and the notes
    stand apart (docs/card-notes.md § "Rating and notes on the card"). */
 .scrawl svg[data-mark='rating'] {
-  margin-left: -1.2cqw;
+  margin-left: calc(-1.2cqw * var(--unzoom, 1));
 }
 
 .scrawl svg[data-mark='notes'] {
-  margin-left: 2.5cqw;
+  margin-left: calc(2.5cqw * var(--unzoom, 1));
 }
 
 .scrawlPaper {
@@ -385,8 +387,8 @@
 /* Card art is drawn in 200-unit-wide frames; --u converts a frame unit into
    the card's width so the text always lines up with the artwork. */
 .content {
-  --edge: 4cqw;
-  --u: calc((100cqw - 2 * var(--edge)) / 200);
+  --edge: calc(4cqw * var(--unzoom, 1));
+  --u: calc((100cqw * var(--unzoom, 1) - 2 * var(--edge)) / 200);
   position: relative;
   display: flex;
   flex: 1;
@@ -455,7 +457,7 @@
   margin: 0 calc(-5 * var(--u)) 0.5em;
   color: #173d4c;
   font-family: 'Tan Pearl', Georgia, serif;
-  font-size: calc(clamp(0.8rem, 7.3cqw, 1.45rem) * var(--title-fit, 1));
+  font-size: calc(clamp(0.8rem, calc(7.3cqw * var(--unzoom, 1)), 1.45rem) * var(--title-fit, 1));
   line-height: 1.5;
   /* Words never break; a word too long for the line shrinks the whole title
      instead (see useFitText). */
@@ -467,7 +469,7 @@
   display: block;
   margin-bottom: 0.9em;
   color: #947347;
-  font-size: calc(clamp(0.56rem, 4.2cqw, 0.72rem) * var(--fit, 1));
+  font-size: calc(clamp(0.56rem, calc(4.2cqw * var(--unzoom, 1)), 0.72rem) * var(--fit, 1));
   font-weight: 700;
   letter-spacing: 0.1em;
   line-height: 1.4;
@@ -477,7 +479,7 @@
 .description {
   display: block;
   color: #48606a;
-  font-size: calc(clamp(0.72rem, 5.8cqw, 0.92rem) * var(--fit, 1));
+  font-size: calc(clamp(0.72rem, calc(5.8cqw * var(--unzoom, 1)), 0.92rem) * var(--fit, 1));
   line-height: 1.45;
 }
 
