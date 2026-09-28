@@ -51,9 +51,10 @@ test('someone with the link edits a saved plan, and it keeps its link', async ({
   await partner.getByRole('button', { name: 'Discard: Stargazing' }).click()
   await pick(partner, 'Board Game Night')
   await partner.getByRole('button', { name: 'Update Plan' }).click()
-  await closeShareDialog(partner)
 
+  // Its link hasn't changed, so the share dialog doesn't open.
   await expect(partner).toHaveURL(planUrl)
+  await expect(partner.getByRole('dialog', { name: 'Share this date plan' })).toBeHidden()
   const plan = partner.getByRole('region', { name: 'The plan' })
   await expect(plan.getByText('Picnic in the Park')).toBeVisible()
   await expect(plan.getByText('Board Game Night')).toBeVisible()
