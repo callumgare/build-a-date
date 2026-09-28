@@ -4,13 +4,13 @@ Quick Add fills in a new card from a line or two of free text, or just a link. A
 
 ## Adding an idea
 
-The first spot in the **Ideas** grid on a deck's page (`/decks/…`) has no outline, just three things stacked in the middle:
+The first spot in the **Ideas** grid on a deck's page (`/decks/…`) has no outline, just three things stacked with padding around them. It takes a column's width, like a card, but only the height of its contents, so a line it has to itself (on a narrow screen, say) isn't a card tall:
 
 1. **Add an idea** opens the empty **New idea** form, as before.
 2. An **or** between two short rules (`.empty-slot-divider`).
 3. A **Quick Add** button, which opens a dialog with one box to type into.
 
-The same three things take the last spot in the deck on the shared deck (`/d/…`) for owners and editors (see [card-notes.md](card-notes.md) § "Editing a card"). Both are `src/components/decks/AddCardControls.tsx`, and `useCardEditor` in `src/components/decks/useCardEditor.tsx` wires Quick Add to the card form on both pages.
+The same three things take the last spot in the deck on the shared deck (`/d/…`) for owners and editors (see [card-notes.md](card-notes.md) § "Editing a card"), laid out the same way. Both are `src/components/decks/AddCardControls.tsx`, and `useCardEditor` in `src/components/decks/useCardEditor.ts` wires Quick Add to the card form on both pages.
 
 Pressing **Fill in the details** sends the text off. While it's working the button says **Filling in…**, and it usually takes a few seconds, longer when there are pages to read. When it's done, the Quick Add dialog closes and the usual **New idea** form opens with the fields filled in. If it can't fill anything in, the dialog stays open with the reason and the text still in the box.
 

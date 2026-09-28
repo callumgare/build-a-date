@@ -1,6 +1,56 @@
 import { expect, newVisitor, test } from './fixtures'
 import { closeShareDialog, createDeck, signUp } from './helpers'
 
+/** @see docs/card-layout.md § "The grid of cards" - each card is between
+ * 200px and 250px wide, on a window too narrow for a 200px card as much as
+ * on one wider than the page. The spot for adding an idea is never a card
+ * tall: it takes its column's width but only its contents' height
+ * (docs/quick-add.md § "Adding an idea"). */
+test('the deck page keeps its cards their usual size, and the add-card spot no taller than its contents', async ({
+  page,
+  request,
+}) => {
+  // One column: the grid caps the card at 250px rather than stretching it to
+  // the page's width, and the add-card spot has its line to itself.
+  await page.setViewportSize({ width: 380, height: 900 })
+  await signUp(page, request, 'Alex')
+  await createDeck(page, 'Card sizes')
+  await expect(page.getByRole('button', { name: /Edit / }).first()).toBeVisible()
+
+  const measure = () =>
+    page.evaluate(() => {
+      const controls = document.querySelector('.editor-grid .add-card-controls')
+      if (!controls) throw new Error('No add-card controls on the deck page')
+      const grid = controls.closest('.card-grid')
+      if (!grid) throw new Error('The add-card controls are not in a card grid')
+      const cards = [...grid.children].filter((el) => !el.contains(controls))
+      const children = [...controls.children].map((child) => child.getBoundingClientRect().height)
+      const style = getComputedStyle(controls)
+      const gaps = (parseFloat(style.rowGap) || 0) * (children.length - 1)
+      const padding = parseFloat(style.paddingTop) + parseFloat(style.paddingBottom)
+      return {
+        cardWidth: Math.round(cards[0].getBoundingClientRect().width),
+        cardHeight: Math.round(cards[0].getBoundingClientRect().height),
+        controlsHeight: Math.round(controls.getBoundingClientRect().height),
+        controlsContents: Math.round(children.reduce((a, b) => a + b, 0) + gaps + padding),
+      }
+    })
+
+  const narrow = await measure()
+  expect(narrow.cardWidth).toBeLessThanOrEqual(250)
+  expect(narrow.controlsHeight).toBeLessThan(narrow.cardHeight)
+  expect(Math.abs(narrow.controlsHeight - narrow.controlsContents)).toBeLessThan(8)
+
+  // The grid works out its columns from its own section (the page, up to
+  // 1240px), not from the whole 2000px window: measuring the window instead
+  // shares a narrower page between many more columns, and the cards shrink.
+  await page.setViewportSize({ width: 2000, height: 1000 })
+  await expect.poll(async () => (await measure()).cardWidth, { timeout: 15_000 }).toBeLessThanOrEqual(250)
+  const wide = await measure()
+  expect(wide.cardWidth).toBeGreaterThanOrEqual(200)
+  expect(wide.controlsHeight).toBeLessThan(wide.cardHeight)
+})
+
 test('the owner renames a deck, changes its ideas and deletes it', async ({ page, browser, request }) => {
   await signUp(page, request, 'Alex')
   const shareUrl = await createDeck(page, 'Ideas for Sam')

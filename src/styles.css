@@ -62,6 +62,7 @@ h1,
 
 dialog,
 dialog .text-action,
+.panel .text-action,
 .done-button {
   text-shadow: initial;
 }
@@ -720,7 +721,7 @@ h1 {
   position: relative;
   display: flex;
   flex-flow: row wrap;
-  align-items: flex-start;
+  align-items: center;
   justify-content: center;
   gap: var(--gap);
   width: auto;
@@ -1326,6 +1327,12 @@ textarea:focus-visible {
 .app-section {
   position: relative;
   z-index: 1;
+  /* A container, so the grid of cards inside the deck editor works out its
+     columns from the section's width (the page's, up to --page-width) rather
+     than from .app-root, which is the whole viewport and would make many
+     narrow columns share a narrower page (docs/card-layout.md
+     § "The grid of cards"). */
+  container-type: inline-size;
 }
 
 .section-heading {
@@ -1428,8 +1435,10 @@ textarea:focus-visible {
 
 /* Add an idea or Quick Add. It sits in the grid where a card would (first on
    the edit page, last on the shared deck), like the plan's empty slot but
-   without its dashed outline. On the shared deck it's wrapped for Motion's
-   layout animation, hence a descendant rather than a child selector. */
+   without its dashed outline: a column's width, but only its contents' height
+   with padding around, so a line it has to itself isn't a card tall. On the
+   shared deck it's wrapped for Motion's layout animation, hence a descendant
+   rather than a child selector. */
 .add-card-controls {
   display: flex;
   flex-direction: column;
@@ -1442,7 +1451,6 @@ textarea:focus-visible {
 }
 
 .card-grid .add-card-controls {
-  aspect-ratio: 3 / 4;
   padding: 27px 24px;
 }
 
@@ -1468,10 +1476,6 @@ textarea:focus-visible {
 .quick-add-dialog {
   width: min(94vw, 480px);
   text-align: left;
-}
-
-.editor-grid {
-  max-width: none;
 }
 
 .plan-list li,
