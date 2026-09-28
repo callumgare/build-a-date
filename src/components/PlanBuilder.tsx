@@ -59,8 +59,8 @@ import { readPicks, writePicks } from './keptPicks'
 import { DragStandIn, PlanCard, usePlanDrag } from './PlanCard'
 import SharePreviewRefresher, { type PreviewProps } from './SharePreviewRefresher'
 import Stars from './Stars'
+import { shrinkOf } from './shrink'
 import type { Box } from './tilt'
-import { markZoomedContainerUnits } from './zoomedContainerUnits'
 
 type PlanBuilderProps = {
   deckName: string
@@ -214,9 +214,24 @@ export default function PlanBuilder({
     (card) => !selectedIds.includes(card.id) && [...activeTags].every((tag) => card.tags.includes(tag)),
   )
 
-  // Before the browser paints, so a shrunk column is right from the start in
-  // Safari (docs/card-layout.md § "Narrow screens").
-  useLayoutEffect(markZoomedContainerUnits, [])
+  // Each column's height at full size, which a shrunk one takes back most of
+  // with its bottom margin, as its scale doesn't make it take up any less
+  // room (styles.css, --layout-height; docs/card-layout.md § "Narrow
+  // screens"). Before the browser paints, and again whenever the builder is
+  // laid out afresh for kept picks, which replaces it.
+  // biome-ignore lint/correctness/useExhaustiveDependencies: the builder is replaced when layoutGeneration changes
+  useLayoutEffect(() => {
+    const builder = builderReference.current
+    if (!builder) return
+    const sections = [...builder.querySelectorAll<HTMLElement>('.plan-heading, .plan-section, .deck-section')]
+    function measure() {
+      for (const section of sections) section.style.setProperty('--layout-height', `${section.offsetHeight}px`)
+    }
+    measure()
+    const observer = new ResizeObserver(measure)
+    for (const section of sections) observer.observe(section)
+    return () => observer.disconnect()
+  }, [layoutGeneration])
 
   // Kept picks go straight into the plan, before the browser paints, with no
   // animation (docs/plans.md § "Picks are kept in the browser").
@@ -415,8 +430,7 @@ export default function PlanBuilder({
     if (active === 'deck') deckAnchor.current = null
     const offset = anchor
     function keep() {
-      const zoom = Number(getComputedStyle(section as Element).zoom) || 1
-      window.scrollTo(0, deckTop() + offset * zoom)
+      window.scrollTo(0, deckTop() + offset * shrinkOf(section as Element))
     }
     keep()
     const until = performance.now() + switchDuration
@@ -1003,8 +1017,8 @@ type Flight = { id: string; from: Box; to: Column }
 const instant = { duration: 0 }
 
 // How much a column is shrunk while it isn't in use on a narrow screen. The
-// same as the zoom in styles.css.
-const shrunkZoom = 0.2
+// same as --shrink in styles.css.
+const shrunkScale = 0.2
 
 // Motion works out a slide in the screen's pixels, but it's drawn inside the
 // shrunk column, where each pixel is a fifth of the size, so the slide would
@@ -1014,7 +1028,7 @@ function unshrinkSlide(_: unknown, generated: string) {
   return generated.replace(
     /translate3d\((-?[\d.]+)px, (-?[\d.]+)px, (-?[\d.]+)px\)/,
     (_match, x: string, y: string, z: string) =>
-      `translate3d(${Number(x) / shrunkZoom}px, ${Number(y) / shrunkZoom}px, ${z}px)`,
+      `translate3d(${Number(x) / shrunkScale}px, ${Number(y) / shrunkScale}px, ${z}px)`,
   )
 }
 

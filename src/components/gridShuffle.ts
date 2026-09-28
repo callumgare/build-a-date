@@ -1,6 +1,7 @@
 'use client'
 
 import { type RefObject, useEffect, useLayoutEffect, useRef } from 'react'
+import { shrinkOf } from './shrink'
 
 // Shuffling the cards of a grid into their new places when it gains or loses
 // a column, rather than jumping there (docs/card-layout.md § "Shuffling to a
@@ -56,10 +57,9 @@ export function placeOf(item: HTMLElement, grid: HTMLElement): Place {
 // beyond the edge of the window; or just being there, when it ends up off
 // screen.
 function moveFor(item: HTMLElement, from: Place): 'slide' | 'fade' | 'none' {
-  const zoom = (item as HTMLElement & { currentCSSZoom?: number }).currentCSSZoom ?? 1
   const box = item.getBoundingClientRect()
   const onScreen = (top: number) => top + box.height > 0 && top < window.innerHeight
-  const before = box.top + from.y * zoom
+  const before = box.top + from.y * shrinkOf(item)
   if (!onScreen(box.top)) return 'none'
   return onScreen(before) ? 'slide' : 'fade'
 }
@@ -82,8 +82,8 @@ function itemsOf(grid: HTMLElement) {
 // Each time `holdKey` changes, each grid keeps the number of columns it had
 // for `holdFor` milliseconds, however its width changes, and then shuffles to
 // its new number. For a column growing or shrinking on a narrow screen:
-// shuffling part way through, while the column zooms, sends cards a long way
-// across a column that's itself moving, so it's done once the zoom is over.
+// shuffling part way through, while the column scales, sends cards a long way
+// across a column that's itself moving, so it's done once it's finished.
 // Letting go is on a timer rather than a render, so Motion doesn't see the
 // grid change and animate it as well.
 export function useGridShuffle(

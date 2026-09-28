@@ -713,7 +713,7 @@ h1 {
   --gap: 16px;
   /* tan(atan2(a, b)) is a / b as a plain number, for browsers that can't
      divide one length by another. */
-  --columns: max(1, round(down, tan(atan2(100cqw * var(--unzoom, 1) + var(--gap), 200px + var(--gap)))));
+  --columns: max(1, round(down, tan(atan2(100cqw + var(--gap), 200px + var(--gap)))));
   /* Holds cards leaving the deck in place while they fade (AnimatePresence's
      popLayout), and is the offset parent a card flying in or back is
      measured from (docs/card-layout.md § "Flying cards"). */
@@ -745,7 +745,7 @@ h1 {
 @supports (width: calc(1px / 1px * 1px)) {
   .card-grid,
   .plan-column .plan-track {
-    --columns: max(1, round(down, (100cqw * var(--unzoom, 1) + var(--gap)) / (200px + var(--gap))));
+    --columns: max(1, round(down, (100cqw + var(--gap)) / (200px + var(--gap))));
   }
 }
 
@@ -815,7 +815,10 @@ h1 {
   margin-top: 6px;
 }
 
-/* How much a column is shrunk, going along with its zoom. */
+/* How much a column is shrunk on a narrow screen: 1 in use, 0.2 shrunk.
+   Registered, so it animates, and everything that goes along with it (the
+   column's scale, its width and the room it takes up) moves on the same
+   curve. */
 @property --shrink {
   syntax: '<number>';
   inherits: false;
@@ -830,11 +833,11 @@ h1 {
   /* The shrunk column is a fifth as wide as the one in use, and drawn at a
      fifth of its size, so it's laid out just as wide as it is in use: the
      same columns of cards, only smaller (§ "Narrow screens" - the whole
-     column shrinks). The widths are lengths rather than fr, and the
-     shrinking is zoom, so both animate as one column grows and the other
-     shrinks, on the same curve. Then a column's width over its zoom stays
-     the same all the way through, so nothing in it is laid out afresh
-     part way. switchDuration in PlanBuilder.tsx is a little longer. */
+     column shrinks). The widths are lengths rather than fr, so they animate
+     as one column grows and the other shrinks, on the same curve as
+     --shrink. Then a column's width over --shrink stays the same all the
+     way through, so nothing in it is laid out afresh part way.
+     switchDuration in PlanBuilder.tsx is a little longer. */
   .builder {
     --switch: 0.5s cubic-bezier(0.3, 0.7, 0.2, 1);
     grid-template-columns: calc((100% - 12px) * 5 / 6) calc((100% - 12px) / 6);
@@ -849,26 +852,35 @@ h1 {
   .plan-heading,
   .plan-section,
   .deck-section {
-    transition:
-      zoom var(--switch),
-      --shrink var(--switch);
+    transition: --shrink var(--switch);
   }
 
   .builder[data-active='deck'] :is(.plan-heading, .plan-section),
   .builder[data-active='plan'] .deck-section {
     --shrink: 0.2;
-    zoom: 0.2;
   }
 
-  /* Safari multiplies container units inside a zoomed element by the zoom
-     a second time, so the cards' text and the grid's columns (which are in
-     container units) come out a fifth of the size they should in a shrunk
-     column. Where it does (data-zoomed-container-units, set by
-     zoomedContainerUnits.ts), they're multiplied back up by --unzoom.
-     --shrink goes along with zoom, on the same curve, so it's put right all
-     through a switch too. */
-  :root[data-zoomed-container-units] :is(.plan-heading, .plan-section, .deck-section) {
-    --unzoom: calc(1 / var(--shrink));
+  /* Shrunk, or growing or shrinking, a column is laid out as wide as it is
+     in use and scaled down from its top left corner. A transform, not CSS
+     zoom: Safari won't draw text under 9px on screen in a zoomed element,
+     so a zoomed column's text came out several times too big. A transform
+     still takes up the room of the column at full size, so the bottom
+     margin takes back what it no longer needs, from its height at full
+     size (--layout-height, kept by PlanBuilder; the title's is a line and
+     its padding until then). Only while shrunk or switching, so a column
+     in use isn't a stacking context for what's in it. */
+  .builder[data-active='deck'] :is(.plan-heading, .plan-section),
+  .builder[data-active='plan'] .deck-section,
+  .builder[data-switching] :is(.plan-heading, .plan-section, .deck-section) {
+    width: calc(100% / var(--shrink));
+    margin-bottom: calc(var(--layout-height, 0px) * (var(--shrink) - 1));
+    scale: var(--shrink);
+    transform-origin: 0 0;
+  }
+
+  .builder[data-active='deck'] .plan-heading,
+  .builder[data-switching] .plan-heading {
+    margin-bottom: calc(var(--layout-height, 1lh + 16px) * (var(--shrink) - 1));
   }
 
   /* At least the window's height, so a click on the space under a shrunk

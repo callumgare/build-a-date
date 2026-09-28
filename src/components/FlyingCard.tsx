@@ -8,6 +8,7 @@ import Card from './Card'
 import styles from './Card.module.css'
 import type { Notes } from './CardNotes'
 import type { Frame } from './frames'
+import { shrinkOf } from './shrink'
 import type { Box } from './tilt'
 
 type FlyingCardProps = {
@@ -53,7 +54,7 @@ export default function FlyingCard({ card, frame, scrawl, from, into, slot, tran
     // is laid out at the card's own size, so its text wraps and fits as the
     // card's does, and scaled down to land on it, rather than laid out that
     // small, where the text can't shrink to match.
-    const shrunk = (target as HTMLElement & { currentCSSZoom?: number }).currentCSSZoom ?? 1
+    const shrunk = shrinkOf(target)
     const layoutWidth = width / shrunk
     const layoutHeight = height / shrunk
     const centreX = left + width / 2

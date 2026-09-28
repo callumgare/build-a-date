@@ -5,18 +5,20 @@ import { expect, test } from './fixtures'
 // same builder as a shared one, without needing anyone to sign up.
 test.use({ browserName: 'webkit' })
 
-// The font size of the first card's title and description in a section, as
-// a share of the card's width inside its border (both in the section's own
-// units), and how many columns of cards it has. Inside the border, as a
-// border stays at least a pixel on the screen however much it's shrunk.
+// The size of the first card's title and description as they're drawn on
+// the screen, as a share of the card's drawn width, and how many columns of
+// cards the section has. As drawn, so a browser that won't draw text below
+// some size on screen (Safari in a zoomed element) shows up.
 function cardText(section: Locator) {
   return section.evaluate((element) => {
     const card = element.querySelector('[data-deck-card-id]') as HTMLElement
-    const size = (part: string) =>
-      (
-        Number.parseFloat(getComputedStyle(card.querySelector(`[class*="${part}"]`) as Element).fontSize) /
-        card.clientWidth
-      ).toFixed(3)
+    const width = card.getBoundingClientRect().width
+    const size = (part: string) => {
+      const text = document.createRange()
+      text.selectNodeContents(card.querySelector(`[class*="${part}"]`) as Element)
+      const box = text.getBoundingClientRect()
+      return { width: (box.width / width).toFixed(2), height: (box.height / width).toFixed(2) }
+    }
     const columns = [...element.querySelectorAll<HTMLElement>('[data-deck-card-id]')].filter(
       (each) => each.offsetTop === card.offsetTop,
     ).length
@@ -33,7 +35,7 @@ test('in Safari, a shrunk deck has the same text and columns as the deck in use,
   expect(inUse.columns).toBeGreaterThan(1)
 
   await page.getByRole('button', { name: 'Show your plan' }).click()
-  await expect.poll(() => deck.evaluate((element) => getComputedStyle(element).zoom)).toBe('0.2')
+  await expect.poll(() => deck.evaluate((element) => getComputedStyle(element).scale)).toBe('0.2')
   // And the columns' widths have finished changing too.
   await expect.poll(() => deck.evaluate((element) => element.getAnimations({ subtree: true }).length)).toBe(0)
   expect(await cardText(deck)).toEqual(inUse)

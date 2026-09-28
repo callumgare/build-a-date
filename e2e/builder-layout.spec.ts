@@ -1,22 +1,27 @@
 import type { Locator, Page } from '@playwright/test'
 import { expect, test } from './fixtures'
 
-function zoomOf(section: Locator) {
-  return section.evaluate((element) => getComputedStyle(element).zoom)
+// How much a section is drawn smaller than it's laid out: '1' in use, '0.2'
+// shrunk.
+function scaleOf(section: Locator) {
+  return section.evaluate((element) => {
+    const { scale } = getComputedStyle(element)
+    return scale === 'none' ? '1' : scale
+  })
 }
 
-// Whether the section's zoom animated after a click on a spot: a CSS
+// Whether the section's shrink animated after a click on a spot: a CSS
 // transition on it, rather than a jump, however slowly frames come.
-async function zoomAnimatesAfterClick(page: Page, section: Locator, x: number, y: number) {
+async function shrinkAnimatesAfterClick(page: Page, section: Locator, x: number, y: number) {
   const animated = section.evaluate(
     (element) =>
       new Promise<boolean>((resolve) => {
         const until = performance.now() + 900
         requestAnimationFrame(function watch(time) {
-          const zooming = element
+          const shrinking = element
             .getAnimations()
-            .some((animation) => (animation as CSSTransition).transitionProperty === 'zoom')
-          if (zooming) resolve(true)
+            .some((animation) => (animation as CSSTransition).transitionProperty === '--shrink')
+          if (shrinking) resolve(true)
           else if (time < until) requestAnimationFrame(watch)
           else resolve(false)
         })
@@ -82,8 +87,8 @@ test('on a narrow screen one column is in use, and a click on the other puts it 
   await page.goto('/sample')
   const plan = page.getByRole('region', { name: 'Your plan' })
   const deck = page.getByRole('region', { name: 'Date ideas' })
-  await expect.poll(() => zoomOf(plan)).toBe('0.2')
-  expect(await zoomOf(deck)).toBe('1')
+  await expect.poll(() => scaleOf(plan)).toBe('0.2')
+  expect(await scaleOf(deck)).toBe('1')
 
   // Picked from the deck, into the shrunk plan.
   await page.locator('[data-deck-card-id]').filter({ hasText: 'Stargazing' }).hover()
@@ -96,10 +101,10 @@ test('on a narrow screen one column is in use, and a click on the other puts it 
   const cardBox = await page.locator('[data-card-id]').boundingBox()
   if (!cardBox) throw new Error('Card has no size')
   expect(
-    await zoomAnimatesAfterClick(page, plan, cardBox.x + cardBox.width * 0.25, cardBox.y + cardBox.height / 2),
+    await shrinkAnimatesAfterClick(page, plan, cardBox.x + cardBox.width * 0.25, cardBox.y + cardBox.height / 2),
   ).toBe(true)
-  await expect.poll(() => zoomOf(plan)).toBe('1')
-  expect(await zoomOf(deck)).toBe('0.2')
+  await expect.poll(() => scaleOf(plan)).toBe('1')
+  expect(await scaleOf(deck)).toBe('0.2')
   await expect(page.locator('[data-card-id]')).toHaveCount(1)
   await expect(page.getByRole('link', { name: 'Create your own deck' })).toBeVisible()
 
@@ -108,11 +113,11 @@ test('on a narrow screen one column is in use, and a click on the other puts it 
   await page.waitForTimeout(700)
   const deckBox = await page.locator('.deck-column').boundingBox()
   if (!deckBox) throw new Error('Deck has no size')
-  expect(await zoomAnimatesAfterClick(page, plan, deckBox.x + deckBox.width / 2, Math.max(deckBox.y, 0) + 40)).toBe(
+  expect(await shrinkAnimatesAfterClick(page, plan, deckBox.x + deckBox.width / 2, Math.max(deckBox.y, 0) + 40)).toBe(
     true,
   )
-  await expect.poll(() => zoomOf(deck)).toBe('1')
-  expect(await zoomOf(plan)).toBe('0.2')
+  await expect.poll(() => scaleOf(deck)).toBe('1')
+  expect(await scaleOf(plan)).toBe('0.2')
 })
 
 /** @see docs/card-layout.md § "Narrow screens" - click to switch, and back to the same place */
@@ -123,7 +128,7 @@ test('on a narrow screen a click under the shrunk plan puts it in use, and the d
   await page.goto('/sample')
   const plan = page.getByRole('region', { name: 'Your plan' })
   const deck = page.getByRole('region', { name: 'Date ideas' })
-  await expect.poll(() => zoomOf(plan)).toBe('0.2')
+  await expect.poll(() => scaleOf(plan)).toBe('0.2')
 
   await page.evaluate(() => window.scrollTo(0, 3000))
   await expect.poll(() => page.evaluate(() => window.scrollY)).toBe(3000)
@@ -134,11 +139,31 @@ test('on a narrow screen a click under the shrunk plan puts it in use, and the d
   if (!columnBox || !planBox) throw new Error('Plan has no size')
   expect(planBox.y + planBox.height).toBeLessThan(800)
   await page.mouse.click(columnBox.x + columnBox.width / 2, 840)
-  await expect.poll(() => zoomOf(plan)).toBe('1')
+  await expect.poll(() => scaleOf(plan)).toBe('1')
 
   await page.getByRole('button', { name: 'Show the date ideas' }).click()
-  await expect.poll(() => zoomOf(deck)).toBe('1')
+  await expect.poll(() => scaleOf(deck)).toBe('1')
   await expect.poll(() => page.evaluate(() => window.scrollY)).toBe(3000)
+})
+
+/** @see docs/card-layout.md § "Narrow screens" - the whole column shrinks */
+test('on a narrow screen a shrunk deck takes up only the room it is drawn in', async ({ page }) => {
+  await page.setViewportSize({ width: 420, height: 860 })
+  await page.goto('/sample')
+  const deck = page.getByRole('region', { name: 'Date ideas' })
+  const inUse = await deck.evaluate((element) => element.getBoundingClientRect().height)
+  expect(inUse).toBeGreaterThan(3 * 860)
+
+  await page.getByRole('button', { name: 'Show your plan' }).click()
+  await expect.poll(() => deck.evaluate((element) => getComputedStyle(element).scale)).toBe('0.2')
+  await expect.poll(() => deck.evaluate((element) => element.getAnimations({ subtree: true }).length)).toBe(0)
+  const shrunk = await page.locator('.deck-column').evaluate((column) => ({
+    drawn: (column.querySelector('.deck-section') as Element).getBoundingClientRect().height,
+    column: column.getBoundingClientRect().height,
+  }))
+  expect(shrunk.drawn).toBeCloseTo(inUse / 5, 0)
+  // No taller than the window, which it's at least, or what's drawn in it.
+  expect(shrunk.column).toBeLessThanOrEqual(Math.max(860, shrunk.drawn) + 1)
 })
 
 /** @see docs/card-layout.md § "Narrow screens" - the last column used */
@@ -150,14 +175,14 @@ test('narrowing the window keeps the column used last in use', async ({ page }) 
 
   await page.getByRole('button', { name: 'Add group' }).click()
   await page.setViewportSize({ width: 420, height: 860 })
-  await expect.poll(() => zoomOf(deck)).toBe('0.2')
-  expect(await zoomOf(plan)).toBe('1')
+  await expect.poll(() => scaleOf(deck)).toBe('0.2')
+  expect(await scaleOf(plan)).toBe('1')
 
   await page.setViewportSize({ width: 1280, height: 800 })
   await page.getByRole('button', { name: 'Random', exact: true }).click()
   await page.setViewportSize({ width: 420, height: 860 })
-  await expect.poll(() => zoomOf(plan)).toBe('0.2')
-  expect(await zoomOf(deck)).toBe('1')
+  await expect.poll(() => scaleOf(plan)).toBe('0.2')
+  expect(await scaleOf(deck)).toBe('1')
 })
 
 /** @see docs/card-layout.md § "Save plan and Clear plan" - how to start: the bar keeps its height either way */
@@ -226,7 +251,7 @@ for (const size of ['wide', 'narrow'] as const) {
       // The deck in use, so the plan the card comes into is shrunk.
       await page.setViewportSize({ width: 420, height: 860 })
       await page.getByRole('button', { name: 'Show the date ideas' }).click()
-      await expect.poll(() => zoomOf(page.getByRole('region', { name: 'Your plan' }))).toBe('0.2')
+      await expect.poll(() => scaleOf(page.getByRole('region', { name: 'Your plan' }))).toBe('0.2')
     }
     await page.waitForTimeout(800)
 
@@ -337,7 +362,7 @@ async function narrowPlanOfThree(page: Page, width: number) {
   }
   // Last used the plan, so it's in use once the window is narrow.
   await page.setViewportSize({ width, height: 900 })
-  await expect.poll(() => zoomOf(page.getByRole('region', { name: 'Your plan' }))).toBe('1')
+  await expect.poll(() => scaleOf(page.getByRole('region', { name: 'Your plan' }))).toBe('1')
   await page.waitForTimeout(700)
 }
 

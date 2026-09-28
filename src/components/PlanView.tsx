@@ -49,7 +49,7 @@ export default function PlanView({ shareId, cards, groups = [], deckId, deckTags
   const reduceMotion = useReducedMotion()
   const cardEditor = useCardEditor(deckId, deckTags)
   const viewReference = useRef<HTMLDivElement>(null)
-  // Nothing zooms here, so there's never anything to hold.
+  // No column grows or shrinks here, so there's never anything to hold.
   useGridShuffle(viewReference, { disabled: Boolean(reduceMotion), holdKey: '', holdFor: 0 })
 
   function cardElement(id: string) {
