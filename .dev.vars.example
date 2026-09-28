@@ -5,5 +5,9 @@ RESEND_API_KEY=
 # For Quick Add on a deck's page (docs/quick-add.md). Get one at
 # https://openrouter.ai/keys. Leave empty and Quick Add says it isn't set up.
 OPENROUTER_API_KEY=
+# For the fb:app_id link preview tag (docs/share-previews.md
+# § "The page's metadata"). Make an app at https://developers.facebook.com/apps
+# and paste its App ID. Leave empty and the tag is left out.
+FACEBOOK_APP_ID=
 # Optional: any OpenRouter model slug, in place of the default.
 # OPENROUTER_MODEL=google/gemini-2.5-flash

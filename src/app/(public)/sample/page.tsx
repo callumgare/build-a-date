@@ -8,6 +8,7 @@ export function generateMetadata(): Metadata {
   return shareMetadata({
     title: 'Sample deck',
     description: 'Try Build-a-Date by picking some date ideas from a sample deck.',
+    url: '/sample',
     // Drawn once and kept in public/og/ (docs/share-previews.md § "The static pictures").
     image: '/og/sample.jpg',
   })

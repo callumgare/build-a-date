@@ -128,7 +128,11 @@ describe('the shared deck page', () => {
       params: Promise.resolve({ shareId: deck.shareId }),
     } as PageProps<'/d/[shareId]'>)
     expect(metadata.metadataBase).toEqual(new URL('http://localhost:3000'))
-    expect(metadata.openGraph).toMatchObject({ title: 'Weekend', description: expect.stringContaining('Weekend') })
+    expect(metadata.openGraph).toMatchObject({
+      title: 'Weekend',
+      description: expect.stringContaining('Weekend'),
+      url: `/d/${deck.shareId}`,
+    })
     expect(metadata.twitter).toMatchObject({ card: 'summary_large_image', title: 'Weekend' })
   })
 

@@ -97,7 +97,9 @@ Pictures are kept in D1, in `deck_preview` and `plan_preview`: one row per deck 
 
 ## The page's metadata
 
-`shareMetadata()` gives each of the three pages its title and description for the preview (`og:*` and `twitter:*`), its picture's address, and asks for a large picture (`summary_large_image`). Messaging apps need the address to be absolute, so `metadataBase` is the site's own address, `BETTER_AUTH_URL`.
+`shareMetadata()` gives each of the three pages its title and description for the preview (`og:*` and `twitter:*`), its own address and its picture's, and asks for a large picture (`summary_large_image`). Messaging apps need the addresses to be absolute, so `metadataBase` is the site's own address, `BETTER_AUTH_URL`.
+
+Facebook's link debugger asks for two more properties. `og:url` is the page's own address, which each page hands `shareMetadata()`. `fb:app_id` is the app the domain belongs to; an app has to be made at [developers.facebook.com](https://developers.facebook.com/apps) first, so the tag is only given when `FACEBOOK_APP_ID` is set (`wrangler secret put` for production, `.dev.vars` locally, and a stand-in id in `.dev.vars.e2e` for the tests). Without one Facebook still shows the preview, but reports the property missing.
 
 - **A deck or plan with a picture:** `/d/<shareId>/preview?v=<key>` or `/p/<planId>/preview?v=<key>`, the picture kept even if it's out of date, until a new one arrives
 - **A deck or plan without one yet:** `/og/default.jpg`

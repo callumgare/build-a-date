@@ -60,3 +60,11 @@ test('the sample deck has its picture from public/og', async ({ page, request })
   expect(address).toMatch(/\/og\/sample\.jpg$/)
   await expectJpeg(request, address)
 })
+
+/** @see docs/share-previews.md § "The page's metadata" */
+test('a shared page names its own address and the site for link previews', async ({ page }) => {
+  await page.goto('/sample')
+  await expect(page.locator('meta[property="og:url"]')).toHaveAttribute('content', 'http://localhost:3100/sample')
+  // The stand-in app id from .dev.vars.e2e, so the tag is there to find.
+  await expect(page.locator('meta[property="fb:app_id"]')).toHaveAttribute('content', '1234567890123456')
+})

@@ -16,6 +16,7 @@ export const env = {
   RESEND_API_KEY?: string
   OPENROUTER_API_KEY?: string
   OPENROUTER_MODEL?: string
+  FACEBOOK_APP_ID?: string
 }
 
 const localEnv = { ...env }

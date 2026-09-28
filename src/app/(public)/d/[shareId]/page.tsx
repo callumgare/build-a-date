@@ -25,6 +25,7 @@ export async function generateMetadata({ params }: PageProps<'/d/[shareId]'>): P
   return shareMetadata({
     title: deck.name,
     description: `Pick your favourite date ideas from ${deck.name}.`,
+    url: `/d/${deck.shareId}`,
     image: previewAddress(`/d/${deck.shareId}/preview`, stored),
   })
 }

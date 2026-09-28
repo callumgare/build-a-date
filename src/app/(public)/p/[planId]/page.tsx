@@ -27,6 +27,7 @@ export async function generateMetadata({ params }: PageProps<'/p/[planId]'>): Pr
   return shareMetadata({
     title: `A plan from ${deck.name}`,
     description: `The date ideas picked from ${deck.name}.`,
+    url: `/p/${plan.id}`,
     image: previewAddress(`/p/${plan.id}/preview`, await getPreviewKey(getDb(), 'plan', plan.id)),
   })
 }

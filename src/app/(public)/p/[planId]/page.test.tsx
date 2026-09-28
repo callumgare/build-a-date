@@ -2,7 +2,7 @@
 import { cleanup, render, screen, within } from '@testing-library/react'
 import * as decks from '@/lib/decks'
 import { savePreview } from '@/lib/previews'
-import { useTestDb } from '@/test/cloudflare'
+import { resetEnv, useTestDb } from '@/test/cloudflare'
 import { createTestDb, createUser } from '@/test/db'
 import { fakeJpeg } from '@/test/jpeg'
 import { NotFoundPage } from '@/test/next'
@@ -68,8 +68,22 @@ describe('the plan page', () => {
     const plan = await decks.savePlan(db, deck.shareId, [card.id])
     const metadata = await generateMetadata(props(plan.id))
     expect(metadata.metadataBase).toEqual(new URL('http://localhost:3000'))
-    expect(metadata.openGraph).toMatchObject({ title: 'A plan from Weekend', description: expect.any(String) })
+    expect(metadata.openGraph).toMatchObject({
+      title: 'A plan from Weekend',
+      description: expect.any(String),
+      url: `/p/${plan.id}`,
+    })
     expect(metadata.twitter).toMatchObject({ card: 'summary_large_image' })
+  })
+
+  /** @see docs/share-previews.md § "The page's metadata" - the Facebook app, when one is set */
+  it('names the site for Facebook only when an app id is set', async () => {
+    const card = await decks.saveCard(db, 'owner', deck.id, null, { title: 'Picnic' })
+    const plan = await decks.savePlan(db, deck.shareId, [card.id])
+    expect((await generateMetadata(props(plan.id))).facebook).toBeUndefined()
+    resetEnv({ FACEBOOK_APP_ID: '1234567890123456' })
+    expect(await generateMetadata(props(plan.id))).toMatchObject({ facebook: { appId: '1234567890123456' } })
+    resetEnv()
   })
 
   /** @see docs/share-previews.md § "The page's metadata" */
