@@ -118,6 +118,7 @@ describe('listDecks', () => {
 })
 
 describe('plans', () => {
+  /** @see docs/plans.md § "Editing a plan" - only cards from the deck, in the order given, without repeats */
   it('keeps only cards from the shared deck, in order, without repeats', async () => {
     const deck = await createDeck(db, owner, { name: 'Deck', template: 'empty' })
     const other = await createDeck(db, stranger, { name: 'Other', template: 'empty' })
@@ -131,6 +132,7 @@ describe('plans', () => {
     expect(await listPlans(db, deck.id)).toHaveLength(1)
   })
 
+  /** @see docs/deck-sharing.md § "Who can do what" - plans listed, newest first */
   it('lists the newest plan first', async () => {
     const deck = await createDeck(db, owner, { name: 'Deck', template: 'empty' })
     const card = await saveCard(db, owner, deck.id, null, { title: 'A' })
@@ -192,6 +194,7 @@ describe('plans', () => {
     expect((await getPlan(db, saved.id)).plan.cardIds).toEqual([a.id])
   })
 
+  /** @see docs/plans.md § "Plans" - a deleted card drops out */
   it('drops cards deleted after the plan was made', async () => {
     const deck = await createDeck(db, owner, { name: 'Deck', template: 'empty' })
     const a = await saveCard(db, owner, deck.id, null, { title: 'A' })
@@ -433,7 +436,6 @@ describe('edit access', () => {
     expect((await requestEditAccess(db, stranger, deck.shareId)).created).toBe(true)
   })
 
-  /** @see docs/deck-sharing.md § "Answering requests" */
   /** @see docs/deck-sharing.md § "Answering requests" - a request that has already been answered can't be answered again */
   it("can't answer a request twice", async () => {
     const deck = await sharedDeck()

@@ -8,8 +8,8 @@ There are two suites. `npm test` runs Vitest over `src/**/*.test.{ts,tsx}`. `npm
 | --- | --- | --- |
 | Queries in `src/lib/decks.ts`, validation, email, ordering | Beside the file, e.g. `src/lib/decks.test.ts` | Everything, including the database: `createTestDb()` in `src/test/db.ts` builds an in-memory SQLite database from the same migrations D1 gets. |
 | Server actions (`src/lib/actions/`), route handlers, server pages (`src/app/**/page.tsx`) | Beside the file, e.g. `src/app/(app)/decks/[deckId]/page.test.tsx` | The code under test, the queries, the test database, and `getSession`/`requireUser` from `src/lib/auth.ts`. Next's request-only functions, the Cloudflare context and Better Auth are stand-ins (see below). |
-| Client components (`src/components/`) | Beside the component, with a `/** @vitest-environment jsdom */` docblock | The component and its children. Server actions it calls are mocked with `vi.mock('@/lib/actions/…')`. |
-| Whole flows in a browser: passkeys, email links, forms without JavaScript, layout | `e2e/` | Everything. It uses an OpenNext build on workerd, or `next dev` with `E2E_TARGET=dev`. Emails are read from the dev outbox (`/api/dev/outbox`). `e2e/helpers.ts` has `signUp`, `createDeck`, `latestSignInLink` and `outboxCount` for the usual setup. |
+| Client components (`src/components/`) | Beside the component, with a `/** @vitest-environment jsdom */` docblock. A big one can be split by area, e.g. `PlanBuilder.picks.test.tsx` and `PlanBuilder.saving.test.tsx`, so the parts run side by side | The component and its children. Server actions it calls are mocked with `vi.mock('@/lib/actions/…')`. |
+| Whole flows in a browser: passkeys, email links, forms without JavaScript, layout, animation | `e2e/` | Everything. It uses an OpenNext build on workerd, or `next dev` with `E2E_TARGET=dev`. Emails are read from the dev outbox (`/api/dev/outbox`). `e2e/helpers.ts` has `signUp`, `createDeck`, `latestSignInLink` and `outboxCount` for the usual setup. See [End-to-end tests](#end-to-end-tests). |
 
 A page that only returns one component (like `/d/[shareId]` returning `PlanBuilder`) is tested by checking the props it hands that component. That covers who gets an edit link and who sees the access list, without rendering the whole component. A page with its own markup is rendered in jsdom, with any client components it contains stubbed where they'd get in the way.
 
@@ -32,14 +32,45 @@ vi.mock('@/lib/auth-config', () => import('@/test/session'))
 - **`src/test/jpeg.ts`** has `fakeJpeg()` and `fakeJpegBlob()`: just enough of a JPEG (its start, a JFIF header and a start-of-frame with a width and height) for the link preview checks in `src/lib/og/jpeg.ts`. jsdom can't draw, so component tests mock `@/lib/og/client` instead of drawing a real picture.
 - **`src/test/session.ts`** stands in for `createAuth`, so the real `getSession` and `requireUser` run against whoever `signInAs(user)` signed in, or nobody after `signInAs(null)`. Its `api.listPasskeys` is a `vi.fn` to set per test.
 
+Client component tests have a few of their own:
+
+- **`src/test/media.ts`** has `mediaMatching(...queries)`, a `matchMedia` where only those queries match, e.g. `vi.spyOn(window, 'matchMedia').mockImplementation(mediaMatching('(hover: hover)'))` for a mouse. Use it rather than a hand-made object: Motion listens for changes the first time it's asked, once per file, so a stand-in without `addEventListener` breaks whichever test happens to render first.
+- **`src/test/plan-builder.tsx`** has what the `PlanBuilder.*.test.tsx` files share: a small deck, `renderBuilder`, the picks kept in storage, and `resetPlanBuilder()` for `beforeEach`. The stand-ins for the actions, router, `Link` and preview drawing it talks to are in **`src/test/plan-builder-mocks.tsx`**, which each file mocks with, e.g., `vi.mock('@/lib/actions/plans', () => import('@/test/plan-builder-mocks'))`.
+
 Better Auth itself is only real in `src/lib/auth-config.test.ts` and the e2e tests. The action tests for `sendSignInLink` and `signOut` mock `getAuth` directly, to check what's passed to Better Auth and how its errors are handled.
 
 ## Gotchas
 
 - **`next build` type-checks test files too**, so a type error in a test breaks the e2e build (and a deploy). Run `npm run typecheck` before `npm run test:e2e`.
-- **`userEvent` hangs under `vi.useFakeTimers()`**, even with `advanceTimers` set. For debounced behaviour (like notes saving 0.7s after typing stops), use `fireEvent` inside `act` with fake timers, or real timers with `waitFor`.
+- **`userEvent` hangs under `vi.useFakeTimers()`**, even with `advanceTimers` set. For debounced behaviour (like notes saving 0.7s after typing stops), use `fireEvent` inside `act` with fake timers, rather than waiting out the real delay.
+- **Use `userEvent.setup({ delay: null })`.** The default waits a tick between keystrokes, which adds up over a few words and hides nothing worth testing. For long text that isn't the point of the test, click the field and `user.paste(…)`.
+- **Waiting on nothing.** Without the tick between events, a check that something *didn't* happen can run before the handler has finished, and pass whatever the code does. Wait for something that shows it has finished (a button enabled again), or for the mocked promise to settle inside `act`, before checking.
 - **A hook that returns a function gets that function called as cleanup.** Vitest treats a function returned from `beforeEach` as a teardown hook. So `beforeEach(() => mock.mockResolvedValue(x))` without braces returns the mock, which then gets called after the test. Use braces.
-- **Motion's exit animations never finish in jsdom**, so an element leaving through `AnimatePresence` stays in the DOM. Assert on the state that drives it, or check the element going away in an e2e test.
+- **Motion's animations are skipped in jsdom** (`MotionGlobalConfig.skipAnimations` in `src/test/setup.ts`), so fades, flips and flights jump to their end and an element leaving through `AnimatePresence` goes straight away. How things move is checked in e2e.
+- **Each test file gets its own modules.** The stand-ins keep state at module level (who's signed in, the test database, the outbox), so Vitest's `isolate: false` breaks tests that pass alone.
+
+## End-to-end tests
+
+- **Use the sample deck when a builder is all a test needs.** `/sample` is the same `PlanBuilder` with the same starter ideas as a new deck, and needs no one to sign up ([sample-deck.md](sample-deck.md)). Sign up and make a deck only for what the sample deck doesn't do: saving a plan or notes, the deck's plans, editing it, or sharing it.
+- **Every test stands alone**, so they all run side by side (`fullyParallel`). Each makes its own accounts (with unique emails, and its own visitor IP, see `e2e/fixtures.ts`) or uses the sample deck. The server starts from an empty database each run.
+- **It's a busy machine.** A test can take 60s before it times out, as the longest flows (sign up, share, save a plan, edit it) can take more than 30s when everything else is running too.
+
+### Waiting for the page's script
+
+A page does nothing when clicked until React has taken it over, which on a busy machine can be seconds after it loads, and the click is lost. `HydratedMark` in the root layout marks `<html data-hydrated>` once it has, and the `goto` and `reload` of every page from the fixtures in `e2e/fixtures.ts` wait for it (import `test` and `newVisitor` from there, not from `@playwright/test`). Clicking a link to another page in the app needs no wait, since React is already running.
+
+### Checking animation
+
+Tests that watch something move record it frame by frame with `requestAnimationFrame` inside the page. How many frames a busy machine draws is up to it, so:
+
+- **Press the button from inside the page**, in the same `evaluate` that starts watching, so no frame is missed.
+- **Don't ask for a number of frames.** Ask for a few part way, that an animation was running (`element.getAnimations()`), or for where it started and ended.
+- **Compare with where things are on the same frame.** Things around the moving element can move afterwards.
+- **Wait for the page to be still before measuring where something starts**, e.g. the same box on every frame for half a second. Things can still be settling after the page's script takes over.
+
+### Known bugs
+
+A test of something the docs promise that doesn't work yet is kept, marked `test.fail(…)` with why. It passes while the bug is there and fails once it's fixed, as a reminder to take the mark off.
 
 ## Timestamps in tests
 

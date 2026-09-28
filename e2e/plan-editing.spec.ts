@@ -15,6 +15,16 @@ async function editPlan(page: Page) {
   await expect(page.getByText('Editing a plan')).toBeVisible()
 }
 
+// The room between the deck's name and the words under it, and between
+// those and the buttons.
+function headerGaps(page: Page) {
+  return page.evaluate(() => {
+    const box = (selector: string) => (document.querySelector(selector) as Element).getBoundingClientRect()
+    const [title, lede, actions] = [box('.hero h1'), box('.hero .lede'), box('.plan-actions')]
+    return { underTitle: Math.round(lede.top - title.bottom), aboveButtons: Math.round(actions.top - lede.bottom) }
+  })
+}
+
 function planOrder(page: Page) {
   return page.locator('[data-card-id]').evaluateAll((cards) => cards.map((card) => card.textContent ?? ''))
 }
@@ -39,9 +49,12 @@ test('someone with the link edits a saved plan, and it keeps its link', async ({
   const partnerContext = await newVisitor(browser)
   const partner = await partnerContext.newPage()
   await partner.goto(planUrl)
+  const onPlan = await headerGaps(partner)
   await partner.getByRole('link', { name: 'Edit plan' }).click()
   await expect(partner).toHaveURL(`${planUrl}/edit`)
   await expect(partner.getByText('Editing a plan')).toBeVisible()
+  // docs/plans.md § "The plan page" - spaced just as the edit page is.
+  expect(await headerGaps(partner)).toEqual(onPlan)
   const [first, second] = await planOrder(partner)
   expect(first).toContain('Stargazing')
   expect(second).toContain('Picnic in the Park')

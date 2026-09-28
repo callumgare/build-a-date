@@ -1,11 +1,19 @@
 /** @vitest-environment jsdom */
-import { render, screen, waitFor } from '@testing-library/react'
+import { act, render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { CELEBRATE_EVENT } from './galaxy/sparkle'
 import SharePlanButton from './SharePlanButton'
 
 function setShare(share: Navigator['share'] | undefined) {
   Object.defineProperty(navigator, 'share', { value: share, configurable: true })
+}
+
+// Once the share sheet's answer has been handled: the button's handler was
+// waiting on it before anything else was.
+async function shareSettled(share: ReturnType<typeof vi.fn>) {
+  await act(async () => {
+    await Promise.allSettled(share.mock.results.map((result) => result.value))
+  })
 }
 
 beforeEach(() => {
@@ -17,7 +25,7 @@ describe('SharePlanButton', () => {
   it("uses the device's share sheet where there is one", async () => {
     const share = vi.fn().mockResolvedValue(undefined)
     setShare(share)
-    const user = userEvent.setup()
+    const user = userEvent.setup({ delay: null })
     render(<SharePlanButton title="Our date" />)
 
     await user.click(screen.getByRole('button', { name: 'Share' }))
@@ -28,17 +36,17 @@ describe('SharePlanButton', () => {
   it('does nothing more when the share sheet is closed', async () => {
     const share = vi.fn().mockRejectedValue(new DOMException('Share cancelled', 'AbortError'))
     setShare(share)
-    const user = userEvent.setup()
+    const user = userEvent.setup({ delay: null })
     render(<SharePlanButton title="Our date" />)
 
     await user.click(screen.getByRole('button', { name: 'Share' }))
-    await waitFor(() => expect(share).toHaveBeenCalled())
+    await shareSettled(share)
     expect(screen.queryByRole('button', { name: 'Copy link' })).not.toBeInTheDocument()
   })
 
   it("offers the link to copy when the share sheet doesn't work", async () => {
     setShare(vi.fn().mockRejectedValue(new DOMException('Not allowed', 'NotAllowedError')))
-    const user = userEvent.setup()
+    const user = userEvent.setup({ delay: null })
     render(<SharePlanButton title="Our date" />)
 
     await user.click(screen.getByRole('button', { name: 'Share' }))
@@ -46,7 +54,7 @@ describe('SharePlanButton', () => {
   })
 
   it('offers the link to copy without a share sheet, and copies it', async () => {
-    const user = userEvent.setup()
+    const user = userEvent.setup({ delay: null })
     render(<SharePlanButton title="Our date" />)
 
     await user.click(screen.getByRole('button', { name: 'Share' }))
@@ -70,7 +78,7 @@ describe('SharePlanButton', () => {
     })
 
     it('copies the plan link without ?share', async () => {
-      const user = userEvent.setup()
+      const user = userEvent.setup({ delay: null })
       render(<SharePlanButton title="Our date" openOnLoad />)
       window.history.replaceState(null, '', '/p/plan42?share')
 
@@ -81,7 +89,7 @@ describe('SharePlanButton', () => {
     it("offers the device's share sheet from the dialog where there is one", async () => {
       const share = vi.fn().mockResolvedValue(undefined)
       setShare(share)
-      const user = userEvent.setup()
+      const user = userEvent.setup({ delay: null })
       render(<SharePlanButton title="Our date" openOnLoad />)
 
       await user.click(screen.getByRole('button', { name: 'Share…' }))
@@ -95,7 +103,7 @@ describe('SharePlanButton', () => {
     })
 
     it.each(['View', 'Close'])('closes the dialog onto the plan with %s', async (name) => {
-      const user = userEvent.setup()
+      const user = userEvent.setup({ delay: null })
       render(<SharePlanButton title="Our date" openOnLoad />)
 
       await user.click(screen.getByRole('button', { name }))
@@ -124,14 +132,14 @@ describe('SharePlanButton', () => {
 
     it('when the plan is shared from the share sheet', async () => {
       setShare(vi.fn().mockResolvedValue(undefined))
-      const user = userEvent.setup()
+      const user = userEvent.setup({ delay: null })
       render(<SharePlanButton title="Our date" />)
       await user.click(screen.getByRole('button', { name: 'Share' }))
       await waitFor(() => expect(bursts).toHaveBeenCalledOnce())
     })
 
     it('when its link is copied', async () => {
-      const user = userEvent.setup()
+      const user = userEvent.setup({ delay: null })
       render(<SharePlanButton title="Our date" />)
       await user.click(screen.getByRole('button', { name: 'Share' }))
       expect(bursts).not.toHaveBeenCalled()
@@ -140,10 +148,12 @@ describe('SharePlanButton', () => {
     })
 
     it('not when the share sheet is closed without sharing', async () => {
-      setShare(vi.fn().mockRejectedValue(new DOMException('Share cancelled', 'AbortError')))
-      const user = userEvent.setup()
+      const share = vi.fn().mockRejectedValue(new DOMException('Share cancelled', 'AbortError'))
+      setShare(share)
+      const user = userEvent.setup({ delay: null })
       render(<SharePlanButton title="Our date" />)
       await user.click(screen.getByRole('button', { name: 'Share' }))
+      await shareSettled(share)
       expect(bursts).not.toHaveBeenCalled()
     })
 

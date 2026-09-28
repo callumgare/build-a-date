@@ -1,6 +1,7 @@
 import type { Metadata, Viewport } from 'next'
 import type { ReactNode } from 'react'
 import GalaxyBackground from '@/components/GalaxyBackground'
+import HydratedMark from '@/components/HydratedMark'
 import '../styles.css'
 
 export const metadata: Metadata = {
@@ -28,6 +29,7 @@ export default function RootLayout({ children }: { children: ReactNode }) {
       <body>
         <GalaxyBackground />
         <div className="app-root">{children}</div>
+        <HydratedMark />
       </body>
     </html>
   )

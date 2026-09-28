@@ -10,7 +10,8 @@ test.use({ browserName: 'webkit' })
 
 /** @see docs/share-previews.md § "When it's drawn" - a plan's picture is drawn as it's saved */
 test('in WebKit, a plan has its own picture as soon as it is saved', async ({ browser, request, baseURL }) => {
-  // Signing up relies on Chrome's virtual passkeys, so the deck is made there.
+  // Following the email link doesn't leave WebKit signed in against the
+  // local server (it lands back on Sign in), so the deck is made in Chromium.
   const owner = await chromium.launch()
   const ownerContext = await newVisitor(owner, { baseURL })
   const shareUrl = await createDeck(await signedUp(ownerContext, request), 'Ideas for Sam')

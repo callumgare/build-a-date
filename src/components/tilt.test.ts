@@ -73,6 +73,7 @@ describe('dragLean', () => {
   })
 })
 
+/** @see docs/card-layout.md § "Tilting on hover" - animations start from the lean the card has, read with `leanOf` */
 describe('leanOf', () => {
   it('reads the angle out of a computed transform', () => {
     const radians = (1.5 * Math.PI) / 180
@@ -93,6 +94,7 @@ describe('leanOf', () => {
   })
 })
 
+/** @see docs/card-layout.md § "Tilting on hover" - `untiltedBox` works out where the card would be if it were straight, at the size it's drawn */
 describe('untiltedBox', () => {
   // A 150 × 200 card with its centre at (175, 200), leaning `rotate` degrees.
   function leaningCard(rotate: number, scale = 1) {

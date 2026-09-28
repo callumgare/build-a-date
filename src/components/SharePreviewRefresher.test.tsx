@@ -31,12 +31,17 @@ beforeEach(() => {
 
 afterEach(() => {
   vi.useRealTimers()
+  vi.restoreAllMocks()
 })
 
 /** @see docs/share-previews.md § "When it's drawn" */
 describe('SharePreviewRefresher', () => {
   it("draws and sends the picture when there isn't one yet", async () => {
     render(<SharePreviewRefresher kind="deck" id="deck1" input={input} stored={null} />)
+    // Not until the page has settled for REFRESH_DELAY (§ "When it's drawn" - 2 s after the page settles).
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(REFRESH_DELAY - 1)
+    })
     expect(drawPreview).not.toHaveBeenCalled()
     await settle()
     expect(drawPreview).toHaveBeenCalledWith(input, expect.any(Number))

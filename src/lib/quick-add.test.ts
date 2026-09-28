@@ -53,6 +53,13 @@ describe('findUrls', () => {
   it('finds nothing in plain text', () => {
     expect(findUrls('Stargazing somewhere dark')).toEqual([])
   })
+
+  /** @see docs/quick-add.md § "Links" - only http and https links are fetched */
+  it('leaves out links that are not http or https', () => {
+    expect(findUrls('ftp://files.example.com javascript:alert(1) file:///etc/passwd https://ok.com')).toEqual([
+      'https://ok.com',
+    ])
+  })
 })
 
 describe('pageText', () => {
@@ -69,7 +76,9 @@ describe('pageText', () => {
     expect(text).not.toMatch(/hidden|color|comment|</)
   })
 
+  /** @see docs/quick-add.md § "Links" - capped at 6,000 characters */
   it('cuts long pages short', () => {
+    expect(pageText(`<p>${'a'.repeat(10_000)}</p>`)).toHaveLength(6000)
     expect(pageText(`<p>${'a'.repeat(10_000)}</p>`, 100)).toHaveLength(100)
   })
 })
@@ -202,7 +211,8 @@ describe('extractIdea', () => {
     expect(fetcher).not.toHaveBeenCalled()
   })
 
-  it('says the helper could not be reached when OpenRouter fails', async () => {
+  /** @see docs/quick-add.md § "Setting it up" - the details are logged on the server */
+  it('says the helper could not be reached when OpenRouter fails, and logs why', async () => {
     const failing = fakeFetch({}, new Response('rate limited', { status: 429 }))
     await expect(extractIdea(env, { text: 'Golf', tags: [] }, failing)).rejects.toThrow(
       'Couldn’t reach the helper just now',
@@ -218,5 +228,6 @@ describe('extractIdea', () => {
 
     const offline = vi.fn().mockRejectedValue(new Error('offline'))
     await expect(extractIdea(env, { text: 'Golf', tags: [] }, offline)).rejects.toThrow(QuickAddError)
+    expect(console.error).toHaveBeenCalledWith('Quick Add could not get an answer from OpenRouter', expect.anything())
   })
 })

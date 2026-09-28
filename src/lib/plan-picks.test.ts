@@ -27,6 +27,7 @@ describe('plan picks', () => {
     expect(pickedIds(picks)).toEqual(['a', 'b', 'c'])
   })
 
+  /** @see docs/plans.md § "Groups" - cards picked from the deck go onto the end of the first row */
   it('adds a card to the end of the first row, once', () => {
     expect(addCard(picks, 'd').cardIds).toEqual(['a', 'b', 'd'])
     expect(addCard(picks, 'c')).toBe(picks)

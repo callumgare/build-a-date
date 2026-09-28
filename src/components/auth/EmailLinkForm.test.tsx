@@ -14,7 +14,7 @@ beforeEach(() => {
 describe('EmailLinkForm', () => {
   /** @see docs/deck-sharing.md § "Returning after sign-in" - with an email link, `next` rides along */
   it('sends where they were headed along with the email', async () => {
-    const user = userEvent.setup()
+    const user = userEvent.setup({ delay: null })
     render(<EmailLinkForm submitLabel="Email me a sign-in link" next="/d/share123/request" />)
 
     await user.type(screen.getByRole('textbox', { name: 'Email' }), 'alex@example.com')
@@ -28,7 +28,7 @@ describe('EmailLinkForm', () => {
 
   it('shows why the link could not be sent, keeping what was typed', async () => {
     sendSignInLink.mockResolvedValue({ error: "Couldn't send the email.", email: 'alex@example.com', name: 'Alex' })
-    const user = userEvent.setup()
+    const user = userEvent.setup({ delay: null })
     render(<EmailLinkForm askName submitLabel="Sign up" />)
 
     await user.type(screen.getByRole('textbox', { name: 'Your name' }), 'Alex')

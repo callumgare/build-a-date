@@ -66,14 +66,14 @@ describe('pickSite', () => {
 
 /** @see docs/background.md § "Sparkle" - shooting stars */
 describe('shootingStar', () => {
-  it('starts in the window and falls along the streaks', () => {
+  it('starts in the top two thirds of the window, towards the right, and falls along the streaks', () => {
     const view = { top: 500, width: 1000, height: 800 }
     for (const roll of [0, 0.5, 0.999]) {
       const star = shootingStar(view, () => roll)
-      expect(star.x).toBeGreaterThanOrEqual(0)
+      expect(star.x).toBeGreaterThan(view.width / 3)
       expect(star.x).toBeLessThanOrEqual(view.width)
       expect(star.y).toBeGreaterThanOrEqual(view.top)
-      expect(star.y).toBeLessThanOrEqual(view.top + view.height)
+      expect(star.y).toBeLessThanOrEqual(view.top + (view.height * 2) / 3)
       expect(Math.abs(star.angle - SHOOTING_STAR_ANGLE)).toBeLessThanOrEqual(8)
     }
   })

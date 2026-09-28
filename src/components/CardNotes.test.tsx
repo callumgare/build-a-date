@@ -86,7 +86,7 @@ describe('CardNotes', () => {
     it("doesn't start a save until the one before it has finished", async () => {
       const first = deferred<typeof saved>()
       saveCardNotes.mockReturnValueOnce(first.promise)
-      const user = userEvent.setup()
+      const user = userEvent.setup({ delay: null })
       const { dialog } = renderNotes()
 
       await user.click(within(dialog).getByRole('radio', { name: '3 stars' }))
@@ -105,7 +105,7 @@ describe('CardNotes', () => {
     it('shows Saving… while a save is going, then Saved', async () => {
       const save = deferred<typeof saved>()
       saveCardNotes.mockReturnValueOnce(save.promise)
-      const user = userEvent.setup()
+      const user = userEvent.setup({ delay: null })
       const { dialog } = renderNotes()
 
       await user.click(within(dialog).getByRole('radio', { name: '2 stars' }))
@@ -118,7 +118,7 @@ describe('CardNotes', () => {
     /** @see docs/card-notes.md § "Saving" - if a save fails, it shows why */
     it("says the save didn't work when it can't reach the server", async () => {
       saveCardNotes.mockRejectedValue(new Error('Failed to fetch'))
-      const user = userEvent.setup()
+      const user = userEvent.setup({ delay: null })
       const { dialog } = renderNotes()
 
       await user.click(within(dialog).getByRole('radio', { name: '2 stars' }))

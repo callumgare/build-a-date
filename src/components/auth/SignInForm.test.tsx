@@ -1,5 +1,5 @@
 /** @vitest-environment jsdom */
-import { render, screen, waitFor } from '@testing-library/react'
+import { act, render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import SignInForm from './SignInForm'
 
@@ -32,7 +32,7 @@ describe('SignInForm', () => {
   /** @see docs/deck-sharing.md § "Returning after sign-in" - with a passkey, they go straight to `next` */
   it('goes straight to where they were after signing in with a passkey', async () => {
     passkey.mockResolvedValue({ data: { session: {} }, error: null })
-    const user = userEvent.setup()
+    const user = userEvent.setup({ delay: null })
     render(<SignInForm next="/d/share123/request" />)
 
     await user.click(screen.getByRole('button', { name: 'Sign in with a passkey' }))
@@ -42,7 +42,7 @@ describe('SignInForm', () => {
 
   it('goes to their decks after signing in with a passkey from nowhere in particular', async () => {
     passkey.mockResolvedValue({ data: { session: {} }, error: null })
-    const user = userEvent.setup()
+    const user = userEvent.setup({ delay: null })
     render(<SignInForm />)
 
     await user.click(screen.getByRole('button', { name: 'Sign in with a passkey' }))
@@ -51,7 +51,7 @@ describe('SignInForm', () => {
 
   it("shows why a passkey didn't work", async () => {
     passkey.mockResolvedValue({ data: null, error: { message: 'Unknown passkey' } })
-    const user = userEvent.setup()
+    const user = userEvent.setup({ delay: null })
     render(<SignInForm />)
 
     await user.click(screen.getByRole('button', { name: 'Sign in with a passkey' }))
@@ -60,12 +60,16 @@ describe('SignInForm', () => {
   })
 
   it('says nothing when the passkey prompt is closed', async () => {
-    passkey.mockResolvedValue({ data: null, error: { code: 'AUTH_CANCELLED', message: 'Cancelled' } })
-    const user = userEvent.setup()
+    const closed = Promise.resolve({ data: null, error: { code: 'AUTH_CANCELLED', message: 'Cancelled' } })
+    passkey.mockReturnValue(closed)
+    const user = userEvent.setup({ delay: null })
     render(<SignInForm />)
 
     await user.click(screen.getByRole('button', { name: 'Sign in with a passkey' }))
-    await waitFor(() => expect(passkey).toHaveBeenCalled())
+    // The button has no busy state to wait on, so wait for the prompt's answer
+    // to be handled before checking nothing came of it.
+    expect(passkey).toHaveBeenCalled()
+    await act(() => closed)
     expect(screen.queryByRole('alert')).not.toBeInTheDocument()
     expect(router.push).not.toHaveBeenCalled()
   })

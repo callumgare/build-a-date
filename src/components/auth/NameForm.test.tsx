@@ -19,7 +19,7 @@ describe('NameForm', () => {
 
   it('says so once the new name is saved', async () => {
     updateName.mockResolvedValue({ saved: 'Robin' })
-    const user = userEvent.setup()
+    const user = userEvent.setup({ delay: null })
     render(<NameForm name="Sam" />)
 
     await user.clear(screen.getByLabelText('Your name'))
@@ -32,7 +32,7 @@ describe('NameForm', () => {
 
   it('shows why the name was turned away and keeps what was typed', async () => {
     updateName.mockResolvedValue({ name: 'Robin', error: 'Sign in again to change your name.' })
-    const user = userEvent.setup()
+    const user = userEvent.setup({ delay: null })
     render(<NameForm name="Sam" />)
 
     await user.clear(screen.getByLabelText('Your name'))

@@ -69,10 +69,12 @@ export default async function PlanPage({ params, searchParams }: PageProps<'/p/[
       <Stars />
       <header className="hero">
         <h1>{deck.name}</h1>
+        <p className="lede">Here&apos;s the plan</p>
       </header>
 
-      <section className="plan-section" aria-label="The plan">
-        <p className="lede">Here&apos;s the plan</p>
+      {/* Laid out as the builder's bar is, so the title, the words under it
+          and the buttons are spaced the same as when editing the plan. */}
+      <div className="builder-bar plan-page-bar">
         <div className="plan-actions" data-visible="true">
           <SharePlanButton title={deck.name} openOnLoad={justSaved} />
           <Link className="text-action" href={`/p/${plan.id}/edit`}>
@@ -82,7 +84,9 @@ export default async function PlanPage({ params, searchParams }: PageProps<'/p/[
             Create new plan
           </Link>
         </div>
+      </div>
 
+      <section className="plan-section" aria-label="The plan">
         {cards.length === 0 && groups.every((group) => group.cards.length === 0) ? (
           <p className="empty-results">The ideas in this plan have since been removed from the deck.</p>
         ) : (

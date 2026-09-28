@@ -4,6 +4,16 @@ import { edgeRamp, edgeScrollSpeed, edgeZone, maxScrollSpeed } from './edgeScrol
 describe('edgeScrollSpeed', () => {
   const track = { left: 0, right: 1000 }
 
+  // The numbers the doc gives, rather than the constants, so changing them fails here.
+  /** @see docs/card-layout.md § "Reordering the plan" - within 32px of its edge, up to 900px a second */
+  it('starts scrolling 32px from the edge, and goes up to 900px a second', () => {
+    expect(edgeScrollSpeed({ left: 700, right: 1000 - 32 }, track, 50)).toBe(0)
+    expect(edgeScrollSpeed({ left: 700, right: 1000 - 31 }, track, 50)).toBeGreaterThan(0)
+    expect(edgeScrollSpeed({ left: 31, right: 331 }, track, -50)).toBeLessThan(0)
+    expect(edgeScrollSpeed({ left: 900, right: 2000 }, track, 50)).toBe(900)
+    expect(edgeScrollSpeed({ left: -1000, right: 100 }, track, -50)).toBe(-900)
+  })
+
   it("doesn't scroll while the card is well inside the track", () => {
     expect(edgeScrollSpeed({ left: 400, right: 600 }, track, 50)).toBe(0)
     expect(edgeScrollSpeed({ left: 400, right: 600 }, track, -50)).toBe(0)

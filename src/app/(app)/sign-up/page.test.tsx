@@ -36,6 +36,7 @@ describe('/sign-up', () => {
     expect(screen.getByRole('link', { name: 'Sign in' })).toHaveAttribute('href', '/sign-in')
   })
 
+  /** @see docs/sample-deck.md § "What's different" - sign-up sends someone already signed in on to /decks */
   it('sends someone already signed in on to `next`, or their decks', async () => {
     signInAs({ id: 'sam', name: 'Sam', email: 'sam@example.com' })
     await expect(open({ next: '/d/abc/request' })).rejects.toThrow('Redirected to /d/abc/request')

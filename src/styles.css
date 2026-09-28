@@ -17,7 +17,11 @@
   --line: rgba(229, 188, 129, 0.48);
   /* --line made opaque, for underlines. Safari draws a see-through underline
      well below the text when it has more than one text-shadow, as anything
-     with the halo below does. */
+     with the halo below does. (WebKit's TextDecorationPainter paints such a
+     line's shadows by drawing it pushed down out of a clip and offsetting
+     each shadow back up. It's meant to move the line back for the last one,
+     but moves only the origin it was worked out from, so the line itself is
+     drawn where it was pushed to.) */
   --underline: color-mix(in srgb, var(--accent) 48%, var(--background-color));
   --background-color: rgb(17, 31, 82);
   --defocused-background-color: color-mix(var(--background-color) 80%, transparent);
@@ -656,6 +660,12 @@ h1 {
   gap: 10px;
   min-height: 64px;
   padding: 10px 0;
+}
+
+/* The plan page's buttons, as far below the title as the builder's bar,
+   which has the builder's padding above it too. */
+.plan-page-bar {
+  margin-top: 24px;
 }
 
 /* The prompt and the buttons in the same place, so one can fade out as the

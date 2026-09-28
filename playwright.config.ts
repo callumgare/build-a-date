@@ -7,16 +7,23 @@ import { defineConfig, devices } from '@playwright/test'
 //
 // By default that server runs as the app will on Cloudflare: an OpenNext
 // build served by workerd. E2E_TARGET=dev uses `next dev` instead, for a
-// quicker loop.
+// quicker loop. Either way it starts from an empty database, so nothing a
+// past run left behind (its previews add up) is carried along.
 const port = 3100
+const freshDatabase = 'rm -rf .wrangler/e2e && npm run db:migrate:e2e'
 const command =
   process.env.E2E_TARGET === 'dev'
-    ? `npm run db:migrate:e2e && E2E=1 next dev --port ${port}`
-    : `npm run db:migrate:e2e && opennextjs-cloudflare build && opennextjs-cloudflare preview --env e2e --port ${port} --local-upstream localhost:${port} --persist-to .wrangler/e2e`
+    ? `${freshDatabase} && E2E=1 next dev --port ${port}`
+    : `${freshDatabase} && opennextjs-cloudflare build && opennextjs-cloudflare preview --env e2e --port ${port} --local-upstream localhost:${port} --persist-to .wrangler/e2e`
 
 export default defineConfig({
   testDir: 'e2e',
-  fullyParallel: false,
+  // Each test makes its own accounts and decks, or uses the sample deck,
+  // so any two can run at once.
+  fullyParallel: true,
+  // Some tests go from signing up to a saved plan and back, which on a
+  // machine busy running the rest can take longer than the default 30s.
+  timeout: 60_000,
   retries: process.env.CI ? 1 : 0,
   reporter: process.env.CI ? 'github' : 'list',
   use: {

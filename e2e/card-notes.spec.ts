@@ -89,51 +89,39 @@ test("the words of a note stay off the plan and the deck's edit page", async ({ 
 })
 
 /** @see docs/card-notes.md § "When the options show" - with a keyboard */
-test("a card's options work from the keyboard", async ({ page, browser, request }) => {
-  await signUp(page, request, 'Alex')
-  const shareUrl = await createDeck(page, 'Ideas for Sam')
-
-  const guestContext = await newVisitor(browser)
-  const guest = await guestContext.newPage()
-  await guest.goto(shareUrl)
+test("a card's options work from the keyboard", async ({ page }) => {
+  await page.goto('/sample')
   // The last control before the cards.
-  const lastSort = guest.getByRole('group', { name: 'Sort ideas' }).getByRole('button').last()
-  const focused = guest.locator(':focus')
-  const firstOptions = guest.locator('[data-deck-card-id]').first().getByRole('button').first().locator('..')
+  const lastSort = page.getByRole('group', { name: 'Sort ideas' }).getByRole('button').last()
+  const focused = page.locator(':focus')
+  const firstOptions = page.locator('[data-deck-card-id]').first().getByRole('button').first().locator('..')
   await expect(firstOptions).toHaveCSS('opacity', '0')
 
   await lastSort.focus()
-  await guest.keyboard.press('Tab')
+  await page.keyboard.press('Tab')
   await expect(focused).toHaveAttribute('aria-label', /^Add to plan: /)
   const title = ((await focused.getAttribute('aria-label')) ?? '').replace('Add to plan: ', '')
-  const card = guest.locator('[data-deck-card-id]').filter({ has: focused })
+  const card = page.locator('[data-deck-card-id]').filter({ has: focused })
   await expect(focused.locator('..')).toHaveCSS('opacity', '1')
   await expect(focused).toHaveCSS('font-weight', '700')
   await expect(card.getByRole('button', { name: `Notes on ${title}` })).toHaveCSS('font-weight', '400')
-  await guest.keyboard.press('Enter')
-  await expect(guest.getByRole('button', { name: `Discard: ${title}` })).toBeVisible()
+  await page.keyboard.press('Enter')
+  await expect(page.getByRole('button', { name: `Discard: ${title}` })).toBeVisible()
 
   await lastSort.focus()
-  await guest.keyboard.press('Tab')
-  await guest.keyboard.press('Tab')
+  await page.keyboard.press('Tab')
+  await page.keyboard.press('Tab')
   await expect(focused).toHaveAttribute('aria-label', /^Notes on /)
   const notesTitle = ((await focused.getAttribute('aria-label')) ?? '').replace('Notes on ', '')
   await expect(focused).toHaveCSS('font-weight', '700')
-  await guest.keyboard.press('Enter')
-  await expect(guest.getByRole('dialog', { name: notesTitle })).toBeVisible()
-  await guestContext.close()
+  await page.keyboard.press('Enter')
+  await expect(page.getByRole('dialog', { name: notesTitle })).toBeVisible()
 })
 
 /** @see docs/card-notes.md § "Opening a card's notes" */
 test.describe("a card's notes", () => {
-  let shareUrl: string
-  test.beforeEach(async ({ page, request }) => {
-    await signUp(page, request, 'Alex')
-    shareUrl = await createDeck(page, 'Ideas for Sam')
-  })
-
   async function openNotes(page: Page) {
-    await page.goto(shareUrl)
+    await page.goto('/sample')
     await page.locator('[data-deck-card-id]').filter({ hasText: 'Stargazing' }).hover()
     await page.getByRole('button', { name: 'Notes on Stargazing' }).click()
     const notes = page.getByRole('dialog', { name: 'Stargazing' })

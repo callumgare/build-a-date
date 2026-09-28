@@ -30,12 +30,18 @@ describe('saveDeckSort', () => {
 
   it('saves nothing, and sends no one to sign in, for someone signed out', async () => {
     signInAs(null)
-    expect(await saveDeckSort('interest')).toMatchObject({ ok: false })
+    expect(await saveDeckSort('interest')).toEqual({
+      ok: false,
+      error: 'Sign in to remember how you sort decks',
+    })
     expect(await getDeckSort(db, 'picker')).toBe('random')
   })
 
   it('turns a sort that does not exist into a message', async () => {
-    expect(await saveDeckSort('shortest' as DeckSort)).toMatchObject({ ok: false })
+    expect(await saveDeckSort('shortest' as DeckSort)).toEqual({
+      ok: false,
+      error: expect.stringContaining('random'),
+    })
     expect(await getDeckSort(db, 'picker')).toBe('random')
   })
 })

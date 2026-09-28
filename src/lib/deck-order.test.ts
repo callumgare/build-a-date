@@ -33,6 +33,7 @@ describe('shuffle', () => {
   })
 })
 
+/** @see docs/deck-sorting.md § "Sort options" - Random keeps matching card frames apart */
 describe('spreadFrames', () => {
   it('never puts matching frames side by side when there are enough frames to go round', () => {
     for (const seed of [1, 2, 3, 4, 5]) {
@@ -65,7 +66,6 @@ describe('arrangeDeck', () => {
   })
 })
 
-/** @see docs/deck-sorting.md § "Sort options" */
 /** @see docs/card-notes.md § "Editing a card" - the deck doesn't shuffle again */
 describe('keepArrangement', () => {
   const [a, b, c] = cards

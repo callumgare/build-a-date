@@ -302,11 +302,17 @@ describe('GalaxyBackground', () => {
       }
     })
 
-    it('never has more than a few glinting at once, and each goes when it has faded', () => {
+    /** @see docs/background.md § "Sparkle" - at most MAX_GLINTS (6) glint at once, never the same clump twice */
+    it('never has more than six glinting at once, and each goes when it has faded', () => {
+      const painter = fakePainter()
+      // Far more clumps in the window than may glint at once.
+      vi.mocked(painter.sites).mockImplementation((top: number) =>
+        Array.from({ length: 10 }, (_, i) => ({ x: 20 + i * 60, y: top + 100, gold: 1, radius: 1 })),
+      )
+      vi.mocked(createPainter).mockReturnValue(painter)
       render(<GalaxyBackground />)
       act(() => vi.advanceTimersByTime(60_000))
-      // Only three tiles' clumps are in the 768 px window.
-      expect(glints()).toHaveLength(3)
+      expect(glints()).toHaveLength(6)
       act(() => {
         for (const animation of animations) animation.finish()
       })

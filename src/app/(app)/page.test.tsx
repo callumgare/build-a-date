@@ -21,6 +21,7 @@ describe('the home page', () => {
     expect(screen.getByRole('link', { name: 'Sign in' })).toHaveAttribute('href', '/sign-in')
   })
 
+  /** @see docs/sample-deck.md § "Sample deck" - someone signed in never sees the home page */
   it('sends someone signed in to their decks', async () => {
     signInAs({ id: 'sam', name: 'Sam', email: 'sam@example.com' })
     await expect(Home()).rejects.toThrow(/^Redirected to \/decks$/)

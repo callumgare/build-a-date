@@ -1,6 +1,7 @@
 /** @vitest-environment jsdom */
 import { render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
+import { mediaMatching } from '@/test/media'
 import InstallHint from './InstallHint'
 
 const iPhone = 'Mozilla/5.0 (iPhone; CPU iPhone OS 18_0 like Mac OS X) AppleWebKit/605.1.15 Mobile/15E148'
@@ -57,16 +58,14 @@ describe('InstallHint', () => {
 
   it('stays hidden when running standalone by display mode', () => {
     device(iPhone)
-    vi.spyOn(window, 'matchMedia').mockImplementation(
-      (query) => ({ matches: query === '(display-mode: standalone)', media: query }) as MediaQueryList,
-    )
+    vi.spyOn(window, 'matchMedia').mockImplementation(mediaMatching('(display-mode: standalone)'))
     render(<InstallHint />)
     expect(hint()).not.toBeInTheDocument()
   })
 
   it('goes away when dismissed, and stays away next time', async () => {
     device(iPhone)
-    const user = userEvent.setup()
+    const user = userEvent.setup({ delay: null })
     const { unmount } = render(<InstallHint />)
 
     await user.click(screen.getByRole('button', { name: 'Dismiss' }))
@@ -85,7 +84,7 @@ describe('InstallHint', () => {
     vi.spyOn(Storage.prototype, 'setItem').mockImplementation(() => {
       throw new DOMException('Blocked', 'SecurityError')
     })
-    const user = userEvent.setup()
+    const user = userEvent.setup({ delay: null })
     render(<InstallHint />)
 
     expect(hint()).toBeInTheDocument()

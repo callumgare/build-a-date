@@ -25,7 +25,8 @@
 | [docs/historical-plans/2026-09-28-browser-drawn-previews.md](docs/historical-plans/2026-09-28-browser-drawn-previews.md) | Wondering why link previews are drawn in the browser and kept in D1 (frozen plan) |
 | [docs/sample-deck.md](docs/sample-deck.md) | Touching the home page's buttons for someone signed out, the sample deck at `/sample` (`src/data/sample-deck.ts`), or the `sample` prop on `PlanBuilder` (no saving a plan or notes) |
 | [docs/account-settings.md](docs/account-settings.md) | Touching `/settings`: changing your name (`NameForm`, `updateName`), the passkey list (`AccountSettings`) or signing out |
-| [docs/testing.md](docs/testing.md) | Writing or fixing a test: where it goes, what's real, and the `src/test/` stand-ins for Next, Cloudflare and Better Auth |
+| [docs/testing.md](docs/testing.md) | Writing or fixing a test: where it goes, what's real, the `src/test/` stand-ins for Next, Cloudflare and Better Auth, and writing e2e tests that hold up when run in parallel (waiting for the page's script, checking animation) |
+| [docs/historical-plans/2026-09-28-test-refactor.md](docs/historical-plans/2026-09-28-test-refactor.md) | Wondering why the tests were reorganised for speed and to stop flaky e2e runs (frozen plan) |
 | [docs/historical-plans/2026-09-25-test-coverage.md](docs/historical-plans/2026-09-25-test-coverage.md) | Wondering why the test suite is laid out the way it is (frozen plan) |
 
 ### Citing the documentation
@@ -66,6 +67,8 @@ Make sure you only cite a stated requirement. A test for something the docs do n
 ## Testing
 
 Tests sit beside the file they test. Server code (actions, route handlers, pages) is tested against the real queries and an in-memory SQLite database. Only the request-bound edges are replaced: Next's `redirect`/`notFound`/`headers`/`cache`, the Cloudflare context and `getDb`, and Better Auth's `createAuth`. Use the stand-ins in `src/test/` for those, rather than mocking `src/lib/decks.ts` or `requireUser`. See [docs/testing.md](docs/testing.md) § "Stand-ins for server-only code".
+
+End-to-end tests import `test` and `newVisitor` from `e2e/fixtures.ts`, which wait for the page's script before a test can click anything, and use the sample deck (`/sample`) when a builder is all they need. Tests that watch animation must not depend on how many frames a busy machine draws. See [docs/testing.md](docs/testing.md) § "End-to-end tests".
 
 ## Creating Plans/Making Major Changes
 

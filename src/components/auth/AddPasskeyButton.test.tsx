@@ -29,7 +29,7 @@ describe('AddPasskeyButton', () => {
     const added = deferred<{ data: object; error: null }>()
     addPasskey.mockReturnValue(added.promise)
     const onAdded = vi.fn()
-    const user = userEvent.setup()
+    const user = userEvent.setup({ delay: null })
     render(<AddPasskeyButton onAdded={onAdded} />)
 
     await user.click(screen.getByRole('button', { name: 'Create a passkey' }))
@@ -46,7 +46,7 @@ describe('AddPasskeyButton', () => {
     addPasskey.mockResolvedValue({ data: null, error: { code: 'AUTH_CANCELLED', message: 'Cancelled' } })
     wasCancelled.mockReturnValue(true)
     const onAdded = vi.fn()
-    const user = userEvent.setup()
+    const user = userEvent.setup({ delay: null })
     render(<AddPasskeyButton label="Add a passkey" onAdded={onAdded} />)
 
     await user.click(screen.getByRole('button', { name: 'Add a passkey' }))
@@ -58,7 +58,7 @@ describe('AddPasskeyButton', () => {
   it('shows why a passkey could not be created', async () => {
     addPasskey.mockResolvedValue({ data: null, error: { message: 'This device already has a passkey' } })
     const onAdded = vi.fn()
-    const user = userEvent.setup()
+    const user = userEvent.setup({ delay: null })
     render(<AddPasskeyButton onAdded={onAdded} />)
 
     await user.click(screen.getByRole('button', { name: 'Create a passkey' }))

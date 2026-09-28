@@ -57,6 +57,12 @@ describe('the edit plan page', () => {
     expect(await generateMetadata(props(plan.id))).toMatchObject({ title: 'Edit a plan from Weekend' })
   })
 
+  /** @see docs/share-previews.md § "The page's metadata" - the edit pages have no preview picture */
+  it('has no link preview of its own', async () => {
+    const plan = await decks.savePlan(db, deck.shareId, [hike.id])
+    expect((await generateMetadata(props(plan.id))).openGraph).toBeUndefined()
+  })
+
   it('leaves out cards deleted since the plan was saved', async () => {
     const plan = await decks.savePlan(db, deck.shareId, [hike.id, picnic.id])
     await decks.deleteCard(db, 'owner', deck.id, hike.id)
@@ -81,15 +87,24 @@ describe('the edit plan page', () => {
     })
   })
 
-  /** @see docs/card-notes.md § "Editing a card" */
-  it('lets the owner change the cards from there too', async () => {
+  /**
+   * @see docs/card-notes.md § "Editing a card"
+   * @see docs/deck-sharing.md § "Who can do what" - editors can do what the owner can
+   */
+  it.each(['owner', 'editor'] as const)('lets the %s change the cards from there too', async (who) => {
     const plan = await decks.savePlan(db, deck.shareId, [hike.id])
-    signInAs({ id: 'owner', name: 'owner', email: 'owner@example.com' })
+    if (who === 'editor') {
+      await createUser(db, 'helper')
+      await decks.requestEditAccess(db, 'helper', deck.shareId)
+      await decks.respondToAccessRequest(db, 'owner', deck.id, 'helper', true)
+    }
+    const id = who === 'owner' ? 'owner' : 'helper'
+    signInAs({ id, name: id, email: `${id}@example.com` })
 
     expect(await open(plan.id)).toMatchObject({
       deckId: deck.id,
       editHref: `/decks/${deck.id}`,
-      access: 'owner',
+      access: who,
       plans: [{ id: plan.id, cards: 1 }],
     })
   })

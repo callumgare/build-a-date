@@ -37,7 +37,7 @@ describe('savePlan', () => {
   })
 
   it('turns an empty plan, an unknown deck or cards from elsewhere into a message', async () => {
-    expect(await savePlan(deck.shareId, [])).toMatchObject({ ok: false })
+    expect(await savePlan(deck.shareId, [])).toEqual({ ok: false, error: 'Pick at least one idea for the plan' })
     expect(await savePlan('nope', [cardId])).toEqual({ ok: false, error: 'Deck not found' })
     expect(await savePlan(deck.shareId, ['made-up'])).toEqual({
       ok: false,
@@ -63,7 +63,10 @@ describe('updatePlan', () => {
   it('turns an empty plan or an unknown plan into a message', async () => {
     const saved = await savePlan(deck.shareId, [cardId])
     if (!saved.ok) throw new Error(saved.error)
-    expect(await updatePlan(saved.data.planId, [])).toMatchObject({ ok: false })
+    expect(await updatePlan(saved.data.planId, [])).toEqual({
+      ok: false,
+      error: 'Pick at least one idea for the plan',
+    })
     expect(await updatePlan('nope', [cardId])).toEqual({ ok: false, error: 'Plan not found' })
   })
 })
@@ -135,7 +138,10 @@ describe('saveCardNotes', () => {
 
   /** @see docs/card-notes.md § "Rating and notes" - 1–5 stars, notes up to 2000 characters */
   it('turns a bad rating, over-long notes or an unknown card into a message', async () => {
-    expect(await saveCardNotes(deck.shareId, cardId, { interest: 6, notes: '' })).toMatchObject({ ok: false })
+    expect(await saveCardNotes(deck.shareId, cardId, { interest: 6, notes: '' })).toEqual({
+      ok: false,
+      error: expect.stringContaining('5'),
+    })
     expect(await saveCardNotes(deck.shareId, cardId, { interest: null, notes: 'x'.repeat(2001) })).toEqual({
       ok: false,
       error: 'Notes can be up to 2000 characters',

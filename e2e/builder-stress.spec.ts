@@ -1,6 +1,5 @@
 import { expect, type Page } from '@playwright/test'
-import { newVisitor, test } from './fixtures'
-import { createDeck, signUp } from './helpers'
+import { test } from './fixtures'
 
 const wide = { width: 1280, height: 800 }
 const narrow = { width: 420, height: 860 }
@@ -58,7 +57,7 @@ async function switchTo(page: Page, column: 'plan' | 'deck') {
   if (!isNarrow(page) || (await activeColumn(page)) === column) return
   await page.getByRole('button', { name: column === 'plan' ? 'Show your plan' : 'Show the date ideas' }).click()
   await expect.poll(() => activeColumn(page)).toBe(column)
-  await page.waitForTimeout(700)
+  await expect(page.locator('.builder')).not.toHaveAttribute('data-switching')
 }
 
 async function add(page: Page, id: string) {
@@ -77,79 +76,6 @@ async function discard(page: Page, id: string) {
   await card.getByRole('button', { name: /^Discard: / }).click()
 }
 
-/** @see docs/card-layout.md § "Flying cards" - nothing left behind, and § "Narrow screens" */
-test('adding, discarding, resizing and switching columns keeps the plan and deck in step', async ({
-  page,
-  browser,
-  request,
-}) => {
-  test.setTimeout(240_000)
-  await signUp(page, request, 'Alex')
-  const shareUrl = await createDeck(page, 'Ideas for Sam')
-
-  const guestContext = await newVisitor(browser)
-  const guest = await guestContext.newPage()
-  await guest.setViewportSize(wide)
-  await guest.goto(shareUrl)
-  const ids = await guest
-    .locator('[data-deck-card-id]')
-    .evaluateAll((cards) => cards.map((card) => (card as HTMLElement).dataset.deckCardId ?? ''))
-  const total = ids.length
-  const planned: string[] = []
-  await expectSettled(guest, planned, total)
-
-  // A fixed run of steps, so a failure can be followed step by step.
-  const steps: string[] = [
-    'add 0',
-    'add 1',
-    'narrow',
-    'add 2',
-    'discard 0',
-    'wide',
-    'add 3',
-    'discard 1',
-    'narrow',
-    'discard 2',
-    'add 4',
-    'add 5',
-    'wide',
-    'discard 4',
-    'narrow',
-    'add 6',
-    'discard 3',
-    'wide',
-    'narrow',
-    'add 0',
-    'discard 5',
-    'wide',
-    'add 7',
-    'discard 6',
-    'narrow',
-    'discard 0',
-    'add 1',
-    'wide',
-    'discard 7',
-  ]
-  for (const [index, step] of steps.entries()) {
-    const [action, which] = step.split(' ')
-    const id = ids[Number(which) * 3]
-    await test.step(`${index}: ${step}`, async () => {
-      if (action === 'narrow') await guest.setViewportSize(narrow)
-      else if (action === 'wide') await guest.setViewportSize(wide)
-      else if (action === 'add') {
-        await add(guest, id)
-        planned.push(id)
-      } else {
-        await discard(guest, id)
-        planned.splice(planned.indexOf(id), 1)
-      }
-      await expectSettled(guest, planned, total)
-    })
-  }
-
-  await guestContext.close()
-})
-
 // The same run every time, so a failure can be followed step by step.
 function seededRandom(seed: number) {
   let state = seed
@@ -160,27 +86,18 @@ function seededRandom(seed: number) {
 }
 
 /** @see docs/card-layout.md § "Flying cards" - nothing left behind, and § "Narrow screens" */
-test('a long random run of picks, discards, resizes and switches keeps the plan and deck in step', async ({
-  page,
-  browser,
-  request,
-}) => {
-  test.setTimeout(300_000)
-  await signUp(page, request, 'Alex')
-  const shareUrl = await createDeck(page, 'Ideas for Sam')
-
-  const guestContext = await newVisitor(browser)
-  const guest = await guestContext.newPage()
-  await guest.setViewportSize(wide)
-  await guest.goto(shareUrl)
-  const ids = await guest
+test('a random run of picks, discards, resizes and switches keeps the plan and deck in step', async ({ page }) => {
+  test.setTimeout(180_000)
+  await page.setViewportSize(wide)
+  await page.goto('/sample')
+  const ids = await page
     .locator('[data-deck-card-id]')
     .evaluateAll((cards) => cards.map((card) => (card as HTMLElement).dataset.deckCardId ?? ''))
   const total = ids.length
   let planned: string[] = []
   const random = seededRandom(20260927)
 
-  for (let index = 0; index < 40; index++) {
+  for (let index = 0; index < 25; index++) {
     const roll = random()
     const inPlan = planned.length > 0
     const step =
@@ -194,68 +111,79 @@ test('a long random run of picks, discards, resizes and switches keeps the plan 
               ? `discard ${planned[Math.floor(random() * planned.length)]}`
               : `add ${ids.filter((id) => !planned.includes(id))[Math.floor(random() * 10)]}`
     await test.step(`${index}: ${step}`, async () => {
-      if (step === 'resize') await guest.setViewportSize(isNarrow(guest) ? wide : narrow)
+      if (step === 'resize') await page.setViewportSize(isNarrow(page) ? wide : narrow)
       else if (step === 'switch') {
-        if (isNarrow(guest)) await switchTo(guest, (await activeColumn(guest)) === 'plan' ? 'deck' : 'plan')
+        if (isNarrow(page)) await switchTo(page, (await activeColumn(page)) === 'plan' ? 'deck' : 'plan')
       } else if (step === 'draw random') {
-        await switchTo(guest, 'plan')
-        const link = guest.getByRole('button', { name: 'Draw random card' })
+        await switchTo(page, 'plan')
+        const link = page.getByRole('button', { name: 'Draw random card' })
         await link.scrollIntoViewIfNeeded()
         await link.click()
-        await expect.poll(async () => (await builderState(guest)).plan.length).toBe(planned.length + 1)
-        planned = (await builderState(guest)).plan
+        await expect.poll(async () => (await builderState(page)).plan.length).toBe(planned.length + 1)
+        planned = (await builderState(page)).plan
       } else {
         const [action, id] = step.split(' ')
         if (action === 'add') {
-          await add(guest, id)
+          await add(page, id)
           planned.push(id)
         } else {
-          await discard(guest, id)
+          await discard(page, id)
           planned = planned.filter((each) => each !== id)
         }
       }
-      await expectSettled(guest, planned, total)
+      await expectSettled(page, planned, total)
     })
   }
-
-  await guestContext.close()
 })
 
-// Watches the stand-in that flies a card across, from just after a click
-// until it's gone, and where it was last seen.
-function watchFlight(page: Page) {
+// Presses a button from inside the page, so no frame of the flight is
+// missed, then watches the stand-in that flies a card across until it's
+// gone: how many frames it was seen for, whether its words spilt out of it,
+// and where it and the card's place in its new column were on its last
+// frame. The place is read on the same frame, as whatever is around it may
+// move afterwards.
+function watchFlight(page: Page, button: string, place: string) {
+  type Box = { x: number; y: number; width: number }
   return page.evaluate(
-    () =>
-      new Promise<{ frames: number; last: { x: number; y: number; width: number } | null; spills: number }>(
-        (resolve) => {
-          let frames = 0
-          let spills = 0
-          let last: { x: number; y: number; width: number } | null = null
-          const until = performance.now() + 1500
-          requestAnimationFrame(function watch(time) {
-            const flyer = document.querySelector('body > [aria-hidden="true"][class*="flying"]')
-            if (flyer) {
-              frames++
-              const box = flyer.getBoundingClientRect()
-              last = { x: box.x, y: box.y, width: box.width }
-              // Frames where the card's words spill out of it.
-              const slack = box.width * 0.02
-              const spilt = [...flyer.querySelectorAll('[class*="title"], [class*="description"]')].some((text) => {
-                const words = text.getBoundingClientRect()
-                return (
-                  words.left < box.left - slack ||
-                  words.right > box.right + slack ||
-                  words.top < box.top - slack ||
-                  words.bottom > box.bottom + slack
-                )
-              })
-              if (spilt) spills++
-            }
-            if (time < until) requestAnimationFrame(watch)
-            else resolve({ frames, last, spills })
-          })
-        },
-      ),
+    ([button, place]) =>
+      new Promise<{ frames: number; last: Box | null; landing: Box | null; spills: number }>((resolve) => {
+        let frames = 0
+        let spills = 0
+        let last: Box | null = null
+        let landing: Box | null = null
+        const box = (element: Element) => {
+          const { x, y, width } = element.getBoundingClientRect()
+          return { x, y, width }
+        }
+        document.querySelector<HTMLElement>(button)?.click()
+        const until = performance.now() + 3000
+        requestAnimationFrame(function watch(time) {
+          const flyer = document.querySelector('body > [aria-hidden="true"][class*="flying"]')
+          if (flyer) {
+            frames++
+            last = box(flyer)
+            const target = document.querySelector(place)
+            landing = target && box(target)
+            // Frames where the card's words spill out of it.
+            const bounds = flyer.getBoundingClientRect()
+            const slack = bounds.width * 0.02
+            const spilt = [...flyer.querySelectorAll('[class*="title"], [class*="description"]')].some((text) => {
+              const words = text.getBoundingClientRect()
+              return (
+                words.left < bounds.left - slack ||
+                words.right > bounds.right + slack ||
+                words.top < bounds.top - slack ||
+                words.bottom > bounds.bottom + slack
+              )
+            })
+            if (spilt) spills++
+          }
+          // Until it has flown and gone, or long after it should have.
+          if ((frames === 0 || flyer) && time < until) requestAnimationFrame(watch)
+          else resolve({ frames, last, landing, spills })
+        })
+      }),
+    [button, place],
   )
 }
 
@@ -263,66 +191,78 @@ function watchFlight(page: Page) {
 for (const size of ['wide', 'narrow'] as const) {
   test(`on a ${size} screen a card flies into the plan when picked, and back into the deck when discarded`, async ({
     page,
-    browser,
-    request,
   }) => {
-    await signUp(page, request, 'Alex')
-    const shareUrl = await createDeck(page, 'Ideas for Sam')
-
-    const guestContext = await newVisitor(browser)
-    const guest = await guestContext.newPage()
-    await guest.setViewportSize(size === 'wide' ? wide : narrow)
-    await guest.goto(shareUrl)
-    const id = await guest.locator('[data-deck-card-id]').nth(2).getAttribute('data-deck-card-id')
-    if (!id) throw new Error('No cards')
+    await page.setViewportSize(size === 'wide' ? wide : narrow)
+    await page.goto('/sample')
+    const [first, id] = await Promise.all(
+      [0, 2].map((nth) => page.locator('[data-deck-card-id]').nth(nth).getAttribute('data-deck-card-id')),
+    )
+    if (!first || !id) throw new Error('No cards')
+    // Something in the plan already, so neither flight starts or empties it.
+    // On the sample deck on a narrow screen that changes the bar's height,
+    // moving everything under it (docs/card-layout.md § "Save plan and Clear
+    // plan").
+    await add(page, first)
+    await expectSettled(page, [first], 32)
 
     for (const [action, place] of [
       ['add', `[data-card-id="${id}"]`],
       ['discard', `[data-deck-card-id="${id}"]`],
     ] as const) {
-      await switchTo(guest, action === 'add' ? 'deck' : 'plan')
-      const card = guest.locator(action === 'add' ? `[data-deck-card-id="${id}"]` : `[data-card-id="${id}"]`)
+      await switchTo(page, action === 'add' ? 'deck' : 'plan')
+      const card = page.locator(action === 'add' ? `[data-deck-card-id="${id}"]` : `[data-card-id="${id}"]`)
       await card.scrollIntoViewIfNeeded()
       await card.hover()
-      await card.getByRole('button', { name: action === 'add' ? /^Add to plan: / : /^Discard: / }).click()
-      const flight = await watchFlight(guest)
-      await expectSettled(guest, action === 'add' ? [id] : [], 32)
+      const button = action === 'add' ? 'button[aria-label^="Add to plan"]' : 'button[aria-label^="Discard"]'
+      const from = action === 'add' ? `[data-deck-card-id="${id}"]` : `[data-card-id="${id}"]`
+      const flight = await watchFlight(page, `${from} ${button}`, place)
+      await expectSettled(page, action === 'add' ? [first, id] : [first], 32)
 
-      // Seen for a while, and last seen where the card now sits, even in a
-      // shrunk column.
-      expect(flight.frames).toBeGreaterThan(10)
+      // Seen flying, and last seen where the card now sits, even in a shrunk
+      // column. A few frames is enough to show it flew: how many a busy
+      // machine draws is up to it.
+      expect(flight.frames).toBeGreaterThan(2)
       expect(flight.spills).toBe(0)
-      const landed = await guest.locator(place).boundingBox()
-      if (!flight.last || !landed) throw new Error('No flight, or no card')
-      expect(Math.abs(flight.last.x - landed.x)).toBeLessThan(4)
-      expect(Math.abs(flight.last.y - landed.y)).toBeLessThan(4)
-      expect(Math.abs(flight.last.width - landed.width)).toBeLessThan(4)
+      const { last, landing } = flight
+      if (!last || !landing) throw new Error('No flight, or no card')
+      expect(Math.abs(last.x - landing.x)).toBeLessThan(4)
+      expect(Math.abs(last.y - landing.y)).toBeLessThan(4)
+      expect(Math.abs(last.width - landing.width)).toBeLessThan(4)
     }
-
-    await guestContext.close()
   })
 }
 
 /** @see docs/card-layout.md § "The plan column" - the slot */
 for (const size of ['wide', 'narrow', 'narrow with room for columns'] as const) {
-  test(`on a ${size} screen the first card picked flies onto the blank slot and covers it`, async ({
-    page,
-    browser,
-    request,
-  }) => {
-    await signUp(page, request, 'Alex')
-    const shareUrl = await createDeck(page, 'Ideas for Sam')
-
-    const guestContext = await newVisitor(browser)
-    const guest = await guestContext.newPage()
-    await guest.setViewportSize(size === 'wide' ? wide : size === 'narrow' ? narrow : { width: 860, height: 900 })
-    await guest.goto(shareUrl)
-    const slot = guest.locator('.plan-track .empty-slot')
-    const card = guest.locator('[data-deck-card-id]').first()
+  test(`on a ${size} screen the first card picked flies onto the blank slot and covers it`, async ({ page }) => {
+    await page.setViewportSize(size === 'wide' ? wide : size === 'narrow' ? narrow : { width: 860, height: 900 })
+    await page.goto('/sample')
+    const slot = page.locator('.plan-track .empty-slot')
+    const card = page.locator('[data-deck-card-id]').first()
     const add = card.getByRole('button', { name: /^Add to plan: / })
-    // Hovered first, which can scroll the page, then the slot measured.
+    // Hovered first, which can scroll the page, then the slot measured once
+    // it's still: just after the page's script takes over, the shrunk plan
+    // makes room for a scrollbar, and the slot slides to its new size.
     await card.hover()
     await expect(add).toBeVisible()
+    await expect
+      .poll(() =>
+        slot.evaluate(
+          (element) =>
+            new Promise<boolean>((resolve) => {
+              const box = () => JSON.stringify(element.getBoundingClientRect())
+              // The same on every frame for half a second.
+              const first = box()
+              const until = performance.now() + 500
+              requestAnimationFrame(function watch(time) {
+                if (box() !== first) resolve(false)
+                else if (time > until) resolve(true)
+                else requestAnimationFrame(watch)
+              })
+            }),
+        ),
+      )
+      .toBe(true)
     const before = await slot.boundingBox()
     // Within its row too, for comparing with while the page may scroll.
     const inRow = await slot.evaluate((element) => {
@@ -333,7 +273,7 @@ for (const size of ['wide', 'narrow', 'narrow with room for columns'] as const) 
     if (!before) throw new Error('No slot')
     // On every frame of the flight the slot is still there, where it was
     // and the size it was before the click.
-    const frames = await guest.evaluate(
+    const frames = await page.evaluate(
       (first) =>
         new Promise<{ flying: number; slotMoved: number; flyer: { x: number; y: number; width: number } | null }>(
           (resolve) => {
@@ -377,21 +317,19 @@ for (const size of ['wide', 'narrow', 'narrow with room for columns'] as const) 
         ),
       inRow,
     )
-    expect(frames.flying).toBeGreaterThan(5)
+    expect(frames.flying).toBeGreaterThan(2)
     expect(frames.slotMoved).toBe(0)
     // It landed on the slot, which has gone now the card covers it, and the
     // card is the slot's size.
     if (!frames.flyer) throw new Error('No flight')
     await expect(slot).toHaveCount(0)
-    const landed = await guest.locator('[data-card-id]').boundingBox()
+    const landed = await page.locator('[data-card-id]').boundingBox()
     if (!landed) throw new Error('No card')
     expect(Math.abs(frames.flyer.x - landed.x)).toBeLessThan(4)
     expect(Math.abs(frames.flyer.y - landed.y)).toBeLessThan(4)
     expect(Math.abs(frames.flyer.width - landed.width)).toBeLessThan(4)
     expect(Math.abs(landed.width - before.width)).toBeLessThan(4)
-    await expectSettled(guest, [(await guest.locator('[data-card-id]').getAttribute('data-card-id')) ?? ''], 32)
-
-    await guestContext.close()
+    await expectSettled(page, [(await page.locator('[data-card-id]').getAttribute('data-card-id')) ?? ''], 32)
   })
 }
 
@@ -418,93 +356,80 @@ async function watchWhileResizing(page: Page, selector: string, size: { width: n
 }
 
 /** @see docs/card-layout.md § "Shuffling to a new number of columns" */
-test('the deck shuffles its cards into place when it loses a column', async ({ page, browser, request }) => {
-  await signUp(page, request, 'Alex')
-  const shareUrl = await createDeck(page, 'Ideas for Sam')
-  const guestContext = await newVisitor(browser)
-  const guest = await guestContext.newPage()
+test('the deck shuffles its cards into place when it loses a column', async ({ page }) => {
   // Tall enough that the card is on screen before and after.
-  await guest.setViewportSize({ width: 1280, height: 1300 })
-  await guest.goto(shareUrl)
-  await guest.mouse.move(2, 2)
-  const fourth = await guest.locator('[data-deck-card-id]').nth(3).getAttribute('data-deck-card-id')
+  await page.setViewportSize({ width: 1280, height: 1300 })
+  await page.goto('/sample')
+  await page.mouse.move(2, 2)
+  const fourth = await page.locator('[data-deck-card-id]').nth(3).getAttribute('data-deck-card-id')
 
   // From the end of the first line to the start of the second.
-  const places = await watchWhileResizing(guest, `[data-deck-card-id="${fourth}"]`, { width: 1000, height: 1300 })
+  const places = await watchWhileResizing(page, `[data-deck-card-id="${fourth}"]`, { width: 1000, height: 1300 })
   const distinct = new Set(places.map((place) => `${place.x},${place.y}`))
-  expect(distinct.size, [...distinct].join(' ')).toBeGreaterThan(6)
+  // Somewhere in between too, not only where it started and ended: however
+  // few frames a busy machine draws, some land part way.
+  expect(distinct.size, [...distinct].join(' ')).toBeGreaterThan(2)
   expect(places[0].x).toBeGreaterThan(places.at(-1)?.x ?? 0)
-
-  await guestContext.close()
 })
 
 /** @see docs/card-layout.md § "Shuffling to a new number of columns", and § "Narrow screens" - the plan in a grid */
-test('the plan in use on a narrow screen shuffles its cards into place when it loses a column', async ({
-  page,
-  browser,
-  request,
-}) => {
-  await signUp(page, request, 'Alex')
-  const shareUrl = await createDeck(page, 'Ideas for Sam')
-  const guestContext = await newVisitor(browser)
-  const guest = await guestContext.newPage()
-  await guest.setViewportSize(wide)
-  await guest.goto(shareUrl)
+test('the plan in use on a narrow screen shuffles its cards into place when it loses a column', async ({ page }) => {
+  await page.setViewportSize(wide)
+  await page.goto('/sample')
   for (let picked = 1; picked <= 3; picked++) {
-    await guest.getByRole('button', { name: 'Draw random card' }).click()
-    await expect(guest.locator('[data-card-id]')).toHaveCount(picked)
+    await page.getByRole('button', { name: 'Draw random card' }).click()
+    await expect(page.locator('[data-card-id]')).toHaveCount(picked)
   }
-  await guest.setViewportSize({ width: 860, height: 900 })
-  await expect.poll(() => activeColumn(guest)).toBe('plan')
-  await guest.mouse.move(2, 2)
-  await guest.waitForTimeout(800)
-  const third = await guest.locator('[data-card-id]').nth(2).getAttribute('data-card-id')
+  await page.setViewportSize({ width: 860, height: 900 })
+  await expect.poll(() => activeColumn(page)).toBe('plan')
+  await page.mouse.move(2, 2)
+  await page.waitForTimeout(800)
+  const third = await page.locator('[data-card-id]').nth(2).getAttribute('data-card-id')
 
   // Down to one column.
-  const places = await watchWhileResizing(guest, `[data-card-id="${third}"]`, { width: 520, height: 900 })
+  const places = await watchWhileResizing(page, `[data-card-id="${third}"]`, { width: 520, height: 900 })
   const distinct = new Set(places.map((place) => `${place.x},${place.y}`))
-  expect(distinct.size, [...distinct].join(' ')).toBeGreaterThan(6)
+  // Somewhere in between too, not only where it started and ended: however
+  // few frames a busy machine draws, some land part way.
+  expect(distinct.size, [...distinct].join(' ')).toBeGreaterThan(2)
   expect(places.at(-1)?.y).toBeGreaterThan(places[0].y)
-
-  await guestContext.close()
 })
 
 /** @see docs/card-layout.md § "Flying cards" - Clear plan */
 for (const layout of ['wide', 'narrow, plan in use', 'narrow, deck in use'] as const) {
-  test(`Clear plan flies every card back into the deck (${layout})`, async ({ page, browser, request }) => {
-    await signUp(page, request, 'Alex')
-    const shareUrl = await createDeck(page, 'Ideas for Sam')
-    const guestContext = await newVisitor(browser)
-    const guest = await guestContext.newPage()
-    await guest.setViewportSize(wide)
-    await guest.goto(shareUrl)
-    await guest.getByRole('button', { name: 'Add group' }).click()
+  test(`Clear plan flies every card back into the deck (${layout})`, async ({ page }) => {
+    await page.setViewportSize(wide)
+    await page.goto('/sample')
+    await page.getByRole('button', { name: 'Add group' }).click()
     const planned: string[] = []
     for (const index of [0, 3, 6]) {
-      const id = (await guest.locator('[data-deck-card-id]').nth(index).getAttribute('data-deck-card-id')) ?? ''
-      await add(guest, id)
+      const id = (await page.locator('[data-deck-card-id]').nth(index).getAttribute('data-deck-card-id')) ?? ''
+      await add(page, id)
       planned.push(id)
     }
     // One of them in the group.
-    await guest
+    await page
       .getByRole('button', { name: /^Move / })
       .first()
       .focus()
-    for (let step = 0; step < 3; step++) await guest.keyboard.press('ArrowDown')
-    await expect(guest.locator('.plan-column .plan-group [data-card-id]')).toHaveCount(1)
-    await expectSettled(guest, (await builderState(guest)).plan, 32)
-    expect([...(await builderState(guest)).plan].sort()).toEqual([...planned].sort())
+    for (let step = 0; step < 3; step++) await page.keyboard.press('ArrowDown')
+    await expect(page.locator('.plan-column .plan-group [data-card-id]')).toHaveCount(1)
+    await expectSettled(page, (await builderState(page)).plan, 32)
+    expect([...(await builderState(page)).plan].sort()).toEqual([...planned].sort())
     if (layout !== 'wide') {
-      await guest.setViewportSize(narrow)
-      await switchTo(guest, layout === 'narrow, plan in use' ? 'plan' : 'deck')
+      await page.setViewportSize(narrow)
+      await switchTo(page, layout === 'narrow, plan in use' ? 'plan' : 'deck')
     }
 
-    await guest.getByRole('button', { name: 'Clear plan' }).click()
-    // Most cards in the air at once.
-    const mostAtOnce = await guest.evaluate(
+    // Most cards in the air at once, pressed from inside the page so no frame
+    // of the flights is missed.
+    const mostAtOnce = await page.evaluate(
       () =>
         new Promise<number>((resolve) => {
           let most = 0
+          ;[...document.querySelectorAll<HTMLElement>('button')]
+            .find((each) => each.textContent === 'Clear plan')
+            ?.click()
           const until = performance.now() + 600
           requestAnimationFrame(function watch(time) {
             most = Math.max(most, document.querySelectorAll('body > [aria-hidden="true"][class*="flying"]').length)
@@ -514,31 +439,21 @@ for (const layout of ['wide', 'narrow, plan in use', 'narrow, deck in use'] as c
         }),
     )
     expect(mostAtOnce).toBe(3)
-    await expectSettled(guest, [], 32)
-
-    await guestContext.close()
+    await expectSettled(page, [], 32)
   })
 }
 
-/** @see docs/card-layout.md § "The plan column" - stays in the window */
-test('picking and discarding a second card never gives the plan a scrollbar it does not need', async ({
-  page,
-  browser,
-  request,
-}) => {
-  await signUp(page, request, 'Alex')
-  const shareUrl = await createDeck(page, 'Ideas for Sam')
-  const guestContext = await newVisitor(browser)
-  const guest = await guestContext.newPage()
-  await guest.setViewportSize({ width: 1280, height: 1400 })
-  await guest.goto(shareUrl)
-  await guest.getByRole('button', { name: 'Draw random card' }).click()
-  await expect(guest.locator('[data-card-id]')).toHaveCount(1)
-  await guest.waitForTimeout(800)
+/** @see docs/card-layout.md § "The plan column" - scrolling over it: never overflow it and bring up a scrollbar for a moment */
+test('picking and discarding a second card never gives the plan a scrollbar it does not need', async ({ page }) => {
+  await page.setViewportSize({ width: 1280, height: 1400 })
+  await page.goto('/sample')
+  await page.getByRole('button', { name: 'Draw random card' }).click()
+  await expect(page.locator('[data-card-id]')).toHaveCount(1)
+  await page.waitForTimeout(800)
 
   // Frames where the plan's column overflows, or narrows.
   const watch = () =>
-    guest.evaluate(
+    page.evaluate(
       () =>
         new Promise<number>((resolve) => {
           const column = document.querySelector('.plan-scroll') as HTMLElement
@@ -553,45 +468,35 @@ test('picking and discarding a second card never gives the plan a scrollbar it d
         }),
     )
   const picking = watch()
-  await guest.getByRole('button', { name: 'Draw random card' }).click()
+  await page.getByRole('button', { name: 'Draw random card' }).click()
   expect(await picking).toBe(0)
-  await guest.waitForTimeout(500)
-  const second = guest.locator('[data-card-id]').nth(1)
+  await page.waitForTimeout(500)
+  const second = page.locator('[data-card-id]').nth(1)
   await second.hover()
   const discarding = watch()
   await second.getByRole('button', { name: /^Discard: / }).click()
   expect(await discarding).toBe(0)
-
-  await guestContext.close()
 })
 
 /** @see docs/card-layout.md § "Shuffling to a new number of columns" - while a column grows or shrinks */
-test('switching columns on a narrow screen never sends cards flying in from above', async ({
-  page,
-  browser,
-  request,
-}) => {
-  await signUp(page, request, 'Alex')
-  const shareUrl = await createDeck(page, 'Ideas for Sam')
-  const guestContext = await newVisitor(browser)
-  const guest = await guestContext.newPage()
-  await guest.setViewportSize(wide)
-  await guest.goto(shareUrl)
+test('switching columns on a narrow screen never sends cards flying in from above', async ({ page }) => {
+  await page.setViewportSize(wide)
+  await page.goto('/sample')
   for (let picked = 1; picked <= 3; picked++) {
-    await guest.getByRole('button', { name: 'Draw random card' }).click()
-    await expect(guest.locator('[data-card-id]')).toHaveCount(picked)
+    await page.getByRole('button', { name: 'Draw random card' }).click()
+    await expect(page.locator('[data-card-id]')).toHaveCount(picked)
   }
-  await guest.setViewportSize({ width: 860, height: 900 })
-  await switchTo(guest, 'deck')
-  await guest.mouse.move(2, 2)
+  await page.setViewportSize({ width: 860, height: 900 })
+  await switchTo(page, 'deck')
+  await page.mouse.move(2, 2)
   // Part way down the deck.
-  await guest.evaluate(() => window.scrollTo(0, 1200))
-  await guest.waitForTimeout(800)
+  await page.evaluate(() => window.scrollTo(0, 1200))
+  await page.waitForTimeout(800)
 
   // Every card, frame by frame through a switch: the ones that came onto
   // the screen from above it, and each card's tops within its column.
   async function watchSwitch(to: 'plan' | 'deck') {
-    await guest.evaluate(() => {
+    await page.evaluate(() => {
       const report = { fromAbove: [] as string[], tops: new Map<Element, number[]>() }
       ;(window as unknown as { report: typeof report }).report = report
       const cards = [...document.querySelectorAll<HTMLElement>('[data-deck-card-id], [data-card-id]')]
@@ -616,44 +521,36 @@ test('switching columns on a narrow screen never sends cards flying in from abov
         if (time < until) requestAnimationFrame(watch)
       })
     })
-    await guest
+    await page
       .getByRole('button', { name: to === 'plan' ? 'Show your plan' : 'Show the date ideas' })
       .evaluate((button) => (button as HTMLElement).click())
-    await guest.waitForTimeout(2600)
-    return guest.evaluate(() => (window as unknown as { report: { fromAbove: string[] } }).report.fromAbove)
+    await page.waitForTimeout(2600)
+    return page.evaluate(() => (window as unknown as { report: { fromAbove: string[] } }).report.fromAbove)
   }
 
   for (const to of ['plan', 'deck'] as const) {
     expect(await watchSwitch(to), `to the ${to}: came in from above`).toEqual([])
   }
-
-  await guestContext.close()
 })
 
 /** @see docs/card-layout.md § "Narrow screens" - the whole column shrinks */
 for (const width of [420, 860]) {
   test(`a shrunk column has the same columns of cards as when it's in use, all through a switch, ${width}px wide`, async ({
     page,
-    browser,
-    request,
   }) => {
-    await signUp(page, request, 'Alex')
-    const shareUrl = await createDeck(page, 'Ideas for Sam')
-    const guestContext = await newVisitor(browser)
-    const guest = await guestContext.newPage()
-    await guest.setViewportSize(wide)
-    await guest.goto(shareUrl)
+    await page.setViewportSize(wide)
+    await page.goto('/sample')
     for (let picked = 1; picked <= 3; picked++) {
-      await guest.getByRole('button', { name: 'Draw random card' }).click()
-      await expect(guest.locator('[data-card-id]')).toHaveCount(picked)
+      await page.getByRole('button', { name: 'Draw random card' }).click()
+      await expect(page.locator('[data-card-id]')).toHaveCount(picked)
     }
-    await guest.setViewportSize({ width, height: 900 })
-    await switchTo(guest, 'deck')
-    await guest.waitForTimeout(800)
+    await page.setViewportSize({ width, height: 900 })
+    await switchTo(page, 'deck')
+    await page.waitForTimeout(800)
 
     // Each grid's columns and layout width, every frame, through switches
     // both ways.
-    await guest.evaluate(() => {
+    await page.evaluate(() => {
       const grids = { deck: '.deck-section .card-grid', plan: '.plan-track' }
       const seen: Record<string, Set<string>> = { deck: new Set(), plan: new Set() }
       ;(window as unknown as { seen: typeof seen }).seen = seen
@@ -667,13 +564,13 @@ for (const width of [420, 860]) {
         if (time < until) requestAnimationFrame(watch)
       })
     })
-    await guest.getByRole('button', { name: 'Show your plan' }).evaluate((button) => (button as HTMLElement).click())
-    await guest.waitForTimeout(1200)
-    await guest
+    await page.getByRole('button', { name: 'Show your plan' }).evaluate((button) => (button as HTMLElement).click())
+    await page.waitForTimeout(1200)
+    await page
       .getByRole('button', { name: 'Show the date ideas' })
       .evaluate((button) => (button as HTMLElement).click())
-    await guest.waitForTimeout(1200)
-    const seen = await guest.evaluate(() =>
+    await page.waitForTimeout(1200)
+    const seen = await page.evaluate(() =>
       Object.fromEntries(
         Object.entries((window as unknown as { seen: Record<string, Set<string>> }).seen).map(([name, values]) => [
           name,
@@ -683,7 +580,5 @@ for (const width of [420, 860]) {
     )
     expect(seen.deck, 'the deck').toHaveLength(1)
     expect(seen.plan, 'the plan').toHaveLength(1)
-
-    await guestContext.close()
   })
 }

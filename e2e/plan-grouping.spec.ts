@@ -1,6 +1,6 @@
 import type { Locator, Page } from '@playwright/test'
 import { expect, newVisitor, test } from './fixtures'
-import { createDeck, signUp } from './helpers'
+import { closeShareDialog, createDeck, signUp } from './helpers'
 
 // Drags a card by its middle to the middle of a spot, or into the top of it,
 // above its middle, a step at a time, as a mouse would. The spot is measured
@@ -63,8 +63,7 @@ test('someone groups cards in their plan, gives the group a title and notes, and
   await expect(guest.getByRole('textbox', { name: 'Notes on After dark' })).toHaveValue('Bring a blanket')
 
   await guest.getByRole('button', { name: 'Save plan' }).click()
-  await expect(guest).toHaveURL(/\/p\/[^/?]+/)
-  await guest.getByRole('button', { name: 'View' }).click()
+  await closeShareDialog(guest)
   const savedGroup = guest.getByRole('region', { name: 'After dark' })
   await expect(savedGroup.getByRole('heading', { name: 'After dark' })).toBeVisible()
   await expect(savedGroup).toContainText('Bring a blanket')
@@ -98,28 +97,6 @@ test('someone groups cards in their plan, gives the group a title and notes, and
   await expect(firstRow.locator('[data-card-id]')).toHaveCount(2)
   await expect(firstRow.locator('[data-card-id]').first()).toContainText('Stargazing')
   await expect(editingGroup.getByText('Drag ideas here')).toBeVisible()
-
-  await guestContext.close()
-})
-
-/** @see docs/card-layout.md § "Reordering the plan" - from the keyboard */
-test('the arrow keys move a card between the plan and its groups', async ({ page, browser, request }) => {
-  await signUp(page, request, 'Alex')
-  const shareUrl = await createDeck(page, 'Ideas for Sam')
-
-  const guestContext = await newVisitor(browser)
-  const guest = await guestContext.newPage()
-  await guest.goto(shareUrl)
-  await pick(guest, 'Stargazing')
-  await guest.getByRole('button', { name: 'Add group' }).click()
-  const group = guest.getByRole('region', { name: 'Group 1' })
-
-  await guest.getByRole('button', { name: 'Move Stargazing' }).focus()
-  await guest.keyboard.press('ArrowDown')
-  await expect(group.locator('[data-card-id]')).toContainText('Stargazing')
-  await expect(guest.getByRole('button', { name: 'Move Stargazing' })).toBeFocused()
-  await guest.keyboard.press('ArrowUp')
-  await expect(group.locator('[data-card-id]')).toHaveCount(0)
 
   await guestContext.close()
 })

@@ -16,6 +16,11 @@ describe('deckGrid', () => {
     expect(deckGrid(100).every((place) => place.y < IMAGE.height)).toBe(true)
   })
 
+  it('puts a deck of 5 or fewer in a single row', () => {
+    for (const count of [1, 3, 5]) expect(new Set(deckGrid(count).map((place) => place.y)).size).toBe(1)
+    expect(new Set(deckGrid(6).map((place) => place.y)).size).toBe(2)
+  })
+
   it('centres the rows', () => {
     for (const count of [1, 3, 5, 10]) {
       const places = deckGrid(count)

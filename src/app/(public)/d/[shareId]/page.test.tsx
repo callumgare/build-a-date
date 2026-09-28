@@ -49,6 +49,7 @@ describe('the shared deck page', () => {
     expect(props.cards.map((card) => card.title)).toEqual(['Picnic'])
   })
 
+  /** @see docs/deck-sorting.md § "Sort options" - Random is a new shuffle on every visit */
   it('shuffles it differently on each visit', async () => {
     const seeds = new Set<number>()
     for (let visit = 0; visit < 5; visit++) seeds.add((await open()).seed)

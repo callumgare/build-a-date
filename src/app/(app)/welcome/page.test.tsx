@@ -31,6 +31,9 @@ describe('Welcome', () => {
   })
 
   it('goes on to their decks without a `next`, or with one that leads off the site', async () => {
+    const { unmount } = render(await open())
+    expect(screen.getByText('Then on to /decks')).toBeInTheDocument()
+    unmount()
     render(await open('//evil.example'))
     expect(screen.getByText('Then on to /decks')).toBeInTheDocument()
   })

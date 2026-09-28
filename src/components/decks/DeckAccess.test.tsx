@@ -49,7 +49,7 @@ describe('AccessRequests', () => {
 
   /** @see docs/deck-sharing.md § "Answering requests" - the owner sees Accept and Decline */
   it('accepts a request', async () => {
-    const user = userEvent.setup()
+    const user = userEvent.setup({ delay: null })
     render(<AccessRequests deckId="deck1" people={people} />)
 
     await user.click(screen.getByRole('button', { name: 'Accept Alex' }))
@@ -58,7 +58,7 @@ describe('AccessRequests', () => {
 
   /** @see docs/deck-sharing.md § "Answering requests" - the owner sees Accept and Decline */
   it('declines a request', async () => {
-    const user = userEvent.setup()
+    const user = userEvent.setup({ delay: null })
     render(<AccessRequests deckId="deck1" people={people} />)
 
     await user.click(screen.getByRole('button', { name: 'Decline jo@example.com' }))
@@ -67,7 +67,7 @@ describe('AccessRequests', () => {
 
   it('shows why a request could not be answered', async () => {
     respondToAccessRequest.mockResolvedValue({ ok: false, error: 'That request has already been answered' })
-    const user = userEvent.setup()
+    const user = userEvent.setup({ delay: null })
     render(<AccessRequests deckId="deck1" people={people} />)
 
     await user.click(screen.getByRole('button', { name: 'Accept Alex' }))
@@ -94,7 +94,7 @@ describe('Editors', () => {
 
   it('asks before removing an editor, and keeps them if the answer is no', async () => {
     const confirm = vi.spyOn(window, 'confirm').mockReturnValue(false)
-    const user = userEvent.setup()
+    const user = userEvent.setup({ delay: null })
     render(<Editors deckId="deck1" people={people} />)
 
     await user.click(screen.getByRole('button', { name: 'Remove kim@example.com' }))
@@ -105,7 +105,7 @@ describe('Editors', () => {
   /** @see docs/deck-sharing.md § "Removing and leaving" - the owner's deck page lists editors, each with Remove */
   it('removes an editor once confirmed', async () => {
     vi.spyOn(window, 'confirm').mockReturnValue(true)
-    const user = userEvent.setup()
+    const user = userEvent.setup({ delay: null })
     render(<Editors deckId="deck1" people={people} />)
 
     await user.click(screen.getByRole('button', { name: 'Remove Sam' }))
@@ -115,7 +115,7 @@ describe('Editors', () => {
   it('shows why an editor could not be removed', async () => {
     vi.spyOn(window, 'confirm').mockReturnValue(true)
     removeEditor.mockResolvedValue({ ok: false, error: 'Deck not found' })
-    const user = userEvent.setup()
+    const user = userEvent.setup({ delay: null })
     render(<Editors deckId="deck1" people={people} />)
 
     await user.click(screen.getByRole('button', { name: 'Remove Sam' }))

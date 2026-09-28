@@ -38,6 +38,8 @@ The server can't see local storage, so the page first renders with no picks (or 
 
 `/p/[planId]` shows the plan's cards in order, then its groups (see [Groups](#groups)), with **Share**, **Edit plan** and **Create new plan** (which goes to the deck's builder).
 
+**Here's the plan** is under the deck's name, with the buttons under that. They're spaced just as **Editing a plan** and the buttons are on the edit page (the builder's bar, `.builder-bar`), so going from one to the other, the top of the page stays put.
+
 Each row, the first and each group's, is the same grid of cards as the deck's, wrapping onto as many lines as it needs ([card-layout.md](card-layout.md) § "The plan page's grids").
 
 - Each card has only **Notes** in its options band, not **Discard** (see [card-notes.md](card-notes.md) § "Card actions"). A click anywhere on the card opens its notes, the same flip-over view as on the shared deck.

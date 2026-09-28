@@ -24,6 +24,12 @@ function field(name: RegExp) {
   return screen.getByRole('textbox', { name })
 }
 
+// Pastes rather than types, as the keystrokes themselves don't matter here.
+async function fillIn(user: ReturnType<typeof userEvent.setup>, name: RegExp, text: string) {
+  await user.click(field(name))
+  await user.paste(text)
+}
+
 beforeEach(() => {
   saveCard.mockReset()
   deleteCard.mockReset()
@@ -46,9 +52,11 @@ describe('CardEditor', () => {
     expect(screen.queryByRole('button', { name: 'Delete' })).not.toBeInTheDocument()
   })
 
-  it("opens with an existing card's values", () => {
+  /** @see docs/card-notes.md § "Editing a card" - the Edit idea form, with Save, Delete and Cancel */
+  it("opens with an existing card's values, and Save, Delete and Cancel", () => {
     renderEditor(picnic)
     expect(screen.getByRole('heading', { name: 'Edit idea' })).toBeInTheDocument()
+    for (const name of ['Save', 'Delete', 'Cancel']) expect(screen.getByRole('button', { name })).toBeInTheDocument()
     expect(field(/^Title/)).toHaveValue('Picnic')
     expect(field(/^Description/)).toHaveValue('In the park')
     expect(field(/^When/)).toHaveValue('Weekends')
@@ -56,13 +64,13 @@ describe('CardEditor', () => {
   })
 
   it('saves the card with its tags tidied up, then closes', async () => {
-    const user = userEvent.setup()
+    const user = userEvent.setup({ delay: null })
     const { onClose } = renderEditor(null)
 
-    await user.type(field(/^Title/), 'Museum')
-    await user.type(field(/^Description/), 'See the gallery')
-    await user.type(field(/^When/), 'Sundays')
-    await user.type(field(/^Tags/), ' Culture, , Indoors ,')
+    await fillIn(user, /^Title/, 'Museum')
+    await fillIn(user, /^Description/, 'See the gallery')
+    await fillIn(user, /^When/, 'Sundays')
+    await fillIn(user, /^Tags/, ' Culture, , Indoors ,')
     await user.click(screen.getByRole('button', { name: 'Save' }))
 
     expect(saveCard).toHaveBeenCalledWith('deck1', null, {
@@ -75,11 +83,11 @@ describe('CardEditor', () => {
   })
 
   it('saves changes to an existing card under its id', async () => {
-    const user = userEvent.setup()
+    const user = userEvent.setup({ delay: null })
     renderEditor(picnic)
 
     await user.clear(field(/^Title/))
-    await user.type(field(/^Title/), 'Beach picnic')
+    await fillIn(user, /^Title/, 'Beach picnic')
     await user.click(screen.getByRole('button', { name: 'Save' }))
     expect(saveCard).toHaveBeenCalledWith('deck1', 'picnic', {
       title: 'Beach picnic',
@@ -91,7 +99,7 @@ describe('CardEditor', () => {
 
   it('shows why a card could not be saved and stays open', async () => {
     saveCard.mockResolvedValue({ ok: false, error: 'Title is too long' })
-    const user = userEvent.setup()
+    const user = userEvent.setup({ delay: null })
     const { onClose } = renderEditor(picnic)
 
     await user.click(screen.getByRole('button', { name: 'Save' }))
@@ -101,7 +109,7 @@ describe('CardEditor', () => {
   })
 
   it('adds and removes deck tags from the picker', async () => {
-    const user = userEvent.setup()
+    const user = userEvent.setup({ delay: null })
     renderEditor(picnic)
     const picker = screen.getByRole('group', { name: 'Tags used in this deck' })
 
@@ -118,7 +126,7 @@ describe('CardEditor', () => {
   describe('deleting', () => {
     it('asks first, and keeps the card if the answer is no', async () => {
       const confirm = vi.spyOn(window, 'confirm').mockReturnValue(false)
-      const user = userEvent.setup()
+      const user = userEvent.setup({ delay: null })
       const { onClose } = renderEditor(picnic)
 
       await user.click(screen.getByRole('button', { name: 'Delete' }))
@@ -129,7 +137,7 @@ describe('CardEditor', () => {
 
     it('deletes the card and closes once confirmed', async () => {
       vi.spyOn(window, 'confirm').mockReturnValue(true)
-      const user = userEvent.setup()
+      const user = userEvent.setup({ delay: null })
       const { onClose } = renderEditor(picnic)
 
       await user.click(screen.getByRole('button', { name: 'Delete' }))
@@ -139,10 +147,10 @@ describe('CardEditor', () => {
   })
 
   it('closes without saving on Cancel', async () => {
-    const user = userEvent.setup()
+    const user = userEvent.setup({ delay: null })
     const { onClose } = renderEditor(picnic)
 
-    await user.type(field(/^Title/), ' by the lake')
+    await user.type(field(/^Title/), '!')
     await user.click(screen.getByRole('button', { name: 'Cancel' }))
     expect(onClose).toHaveBeenCalled()
     expect(saveCard).not.toHaveBeenCalled()

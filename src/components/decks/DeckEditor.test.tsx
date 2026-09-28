@@ -65,19 +65,21 @@ describe('DeckEditor', () => {
       expect(screen.queryByRole('button', { name: 'Delete deck' })).not.toBeInTheDocument()
       expect(screen.queryByRole('region', { name: 'Edit requests' })).not.toBeInTheDocument()
       expect(screen.queryByRole('region', { name: 'Editors' })).not.toBeInTheDocument()
+      expect(screen.getByRole('heading', { name: /^Plans/ })).toBeInTheDocument()
     })
   })
 
+  /** @see docs/deck-sharing.md § "Who can do what" - only the owner renames the deck */
   describe('renaming', () => {
     it('saves the new name and closes the form', async () => {
-      const user = userEvent.setup()
+      const user = userEvent.setup({ delay: null })
       renderEditor()
 
       await user.click(screen.getByRole('button', { name: 'Rename' }))
       const name = screen.getByRole('textbox', { name: 'Deck name' })
       expect(name).toHaveValue('Date nights')
       await user.clear(name)
-      await user.type(name, 'Weekend plans')
+      await user.paste('Weekend plans')
       await user.click(screen.getByRole('button', { name: 'Save' }))
 
       expect(actions.renameDeck).toHaveBeenCalledWith('deck1', 'Weekend plans')
@@ -86,7 +88,7 @@ describe('DeckEditor', () => {
 
     it('shows why the deck could not be renamed', async () => {
       actions.renameDeck.mockResolvedValue({ ok: false, error: 'Name is too long' })
-      const user = userEvent.setup()
+      const user = userEvent.setup({ delay: null })
       renderEditor()
 
       await user.click(screen.getByRole('button', { name: 'Rename' }))
@@ -95,7 +97,7 @@ describe('DeckEditor', () => {
     })
 
     it('puts the name back on Cancel', async () => {
-      const user = userEvent.setup()
+      const user = userEvent.setup({ delay: null })
       renderEditor()
 
       await user.click(screen.getByRole('button', { name: 'Rename' }))
@@ -106,10 +108,11 @@ describe('DeckEditor', () => {
     })
   })
 
+  /** @see docs/deck-sharing.md § "Who can do what" - only the owner deletes the deck */
   describe('deleting the deck', () => {
     it('asks first, and keeps the deck if the answer is no', async () => {
       const confirm = vi.spyOn(window, 'confirm').mockReturnValue(false)
-      const user = userEvent.setup()
+      const user = userEvent.setup({ delay: null })
       renderEditor()
 
       await user.click(screen.getByRole('button', { name: 'Delete deck' }))
@@ -119,7 +122,7 @@ describe('DeckEditor', () => {
 
     it('deletes the deck once confirmed', async () => {
       vi.spyOn(window, 'confirm').mockReturnValue(true)
-      const user = userEvent.setup()
+      const user = userEvent.setup({ delay: null })
       renderEditor()
 
       await user.click(screen.getByRole('button', { name: 'Delete deck' }))
@@ -129,7 +132,7 @@ describe('DeckEditor', () => {
     it('shows why the deck could not be deleted', async () => {
       vi.spyOn(window, 'confirm').mockReturnValue(true)
       actions.deleteDeck.mockResolvedValue({ ok: false, error: 'Deck not found' })
-      const user = userEvent.setup()
+      const user = userEvent.setup({ delay: null })
       renderEditor()
 
       await user.click(screen.getByRole('button', { name: 'Delete deck' }))
@@ -141,7 +144,7 @@ describe('DeckEditor', () => {
   describe('leaving the deck', () => {
     it('asks first, and stays if the answer is no', async () => {
       const confirm = vi.spyOn(window, 'confirm').mockReturnValue(false)
-      const user = userEvent.setup()
+      const user = userEvent.setup({ delay: null })
       renderEditor({ role: 'editor' })
 
       await user.click(screen.getByRole('button', { name: 'Leave deck' }))
@@ -151,7 +154,7 @@ describe('DeckEditor', () => {
 
     it('leaves once confirmed', async () => {
       vi.spyOn(window, 'confirm').mockReturnValue(true)
-      const user = userEvent.setup()
+      const user = userEvent.setup({ delay: null })
       renderEditor({ role: 'editor' })
 
       await user.click(screen.getByRole('button', { name: 'Leave deck' }))
@@ -161,7 +164,7 @@ describe('DeckEditor', () => {
   })
 
   it('copies the share link', async () => {
-    const user = userEvent.setup()
+    const user = userEvent.setup({ delay: null })
     renderEditor()
 
     await user.click(screen.getByRole('button', { name: 'Copy' }))
@@ -178,7 +181,7 @@ describe('DeckEditor', () => {
 
   describe('opening a card from the keyboard', () => {
     it.each(['{Enter}', ' '])('opens a card in the editor with %j', async (key) => {
-      const user = userEvent.setup()
+      const user = userEvent.setup({ delay: null })
       renderEditor()
 
       screen.getByRole('button', { name: 'Edit Picnic' }).focus()
@@ -188,7 +191,7 @@ describe('DeckEditor', () => {
     })
 
     it("leaves Enter on a link in a card's description to the link", async () => {
-      const user = userEvent.setup()
+      const user = userEvent.setup({ delay: null })
       renderEditor()
 
       screen.getByRole('link', { name: 'the gallery' }).focus()
@@ -200,7 +203,7 @@ describe('DeckEditor', () => {
   /** @see docs/quick-add.md § "Adding an idea" */
   describe('adding an idea', () => {
     it('opens an empty form from Add an idea', async () => {
-      const user = userEvent.setup()
+      const user = userEvent.setup({ delay: null })
       renderEditor()
 
       await user.click(screen.getByRole('button', { name: 'Add an idea' }))
@@ -208,8 +211,9 @@ describe('DeckEditor', () => {
       expect(screen.getByRole('textbox', { name: /^Title/ })).toHaveValue('')
     })
 
+    /** @see docs/quick-add.md § "What comes back" - the draft only fills in the form */
     it('fills in the form from what was typed into Quick Add', async () => {
-      const user = userEvent.setup()
+      const user = userEvent.setup({ delay: null })
       actions.quickAddCard.mockResolvedValue({
         ok: true,
         data: {
@@ -223,10 +227,8 @@ describe('DeckEditor', () => {
 
       await user.click(screen.getByRole('button', { name: 'Quick Add' }))
       const dialog = await screen.findByRole('dialog', { name: 'Quick Add' })
-      await user.type(
-        within(dialog).getByRole('textbox', { name: /^Describe the idea/ }),
-        'Boat Hire at Fairfield Boathouse, open on wednesdays https://link.com',
-      )
+      await user.click(within(dialog).getByRole('textbox', { name: /^Describe the idea/ }))
+      await user.paste('Boat Hire at Fairfield Boathouse, open on wednesdays https://link.com')
       await user.click(within(dialog).getByRole('button', { name: 'Fill in the details' }))
 
       expect(actions.quickAddCard).toHaveBeenCalledWith(
@@ -251,8 +253,9 @@ describe('DeckEditor', () => {
       })
     })
 
+    /** @see docs/quick-add.md § "What comes back" - the next Add an idea starts empty again */
     it('starts the next Add an idea empty again', async () => {
-      const user = userEvent.setup()
+      const user = userEvent.setup({ delay: null })
       actions.quickAddCard.mockResolvedValue({
         ok: true,
         data: { title: 'Golf', description: '', tags: [], date: '' },
@@ -268,8 +271,26 @@ describe('DeckEditor', () => {
       expect(await screen.findByRole('textbox', { name: /^Title/ })).toHaveValue('')
     })
 
+    it('says Filling in… while it works', async () => {
+      let answer!: (result: unknown) => void
+      actions.quickAddCard.mockReturnValue(new Promise((resolve) => (answer = resolve)))
+      const user = userEvent.setup({ delay: null })
+      renderEditor()
+
+      await user.click(screen.getByRole('button', { name: 'Quick Add' }))
+      await user.type(screen.getByRole('textbox', { name: /^Describe the idea/ }), 'Golf')
+      await user.click(screen.getByRole('button', { name: 'Fill in the details' }))
+
+      expect(await screen.findByRole('button', { name: 'Filling in…' })).toBeDisabled()
+      expect(screen.getByRole('textbox', { name: /^Describe the idea/ })).toBeDisabled()
+      expect(screen.queryByRole('heading', { name: 'New idea' })).not.toBeInTheDocument()
+
+      answer({ ok: true, data: { title: 'Golf', description: '', tags: [], date: '' } })
+      expect(await screen.findByRole('heading', { name: 'New idea' })).toBeInTheDocument()
+    })
+
     it('shows why Quick Add could not fill in the details, and keeps what was typed', async () => {
-      const user = userEvent.setup()
+      const user = userEvent.setup({ delay: null })
       actions.quickAddCard.mockResolvedValue({ ok: false, error: 'Quick Add isn’t set up on this server yet.' })
       renderEditor()
 
@@ -284,7 +305,7 @@ describe('DeckEditor', () => {
     })
 
     it('closes Quick Add on Cancel without asking for anything', async () => {
-      const user = userEvent.setup()
+      const user = userEvent.setup({ delay: null })
       renderEditor()
 
       await user.click(screen.getByRole('button', { name: 'Quick Add' }))

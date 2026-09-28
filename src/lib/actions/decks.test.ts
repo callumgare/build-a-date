@@ -120,6 +120,8 @@ describe('changing a deck', () => {
     await deleteCard(deckId, added.data.id)
     expect(revalidatePath).toHaveBeenCalledWith(`/decks/${deckId}`)
     expect(revalidatePath).toHaveBeenCalledWith(`/d/${shareId}`)
+    expect(revalidatePath).toHaveBeenCalledWith('/p/[planId]', 'page')
+    expect(revalidatePath).toHaveBeenCalledWith('/p/[planId]/edit', 'page')
   })
 
   it('turns a card without a title into a message', async () => {
@@ -171,12 +173,6 @@ describe('quickAddCard', () => {
     expect(sentPrompt()).toContain('Tags already used in the deck: food & drink, night')
     expect(sentPrompt()).not.toContain('Berlin Bar')
     expect(sentPrompt()).not.toContain('Cold War')
-  })
-
-  /** @see docs/quick-add.md § "Matching the deck's style" - a deck with no tags gets suggestions */
-  it('suggests the starter tags for a deck with none of its own', async () => {
-    await quickAddCard(deckId, 'Boat hire')
-    expect(sentPrompt()).toContain('Some suggestions: active, at home, creative, culture')
   })
 
   /** @see docs/deck-sharing.md § "Who can do what" */

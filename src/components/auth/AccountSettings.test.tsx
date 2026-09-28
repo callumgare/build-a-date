@@ -34,9 +34,10 @@ describe('AccountSettings', () => {
     expect(screen.queryByRole('button', { name: 'Remove' })).not.toBeInTheDocument()
   })
 
+  /** @see docs/account-settings.md § "Passkeys and signing out" - warns when it's the last one */
   it('warns before removing the only passkey', async () => {
     const confirm = vi.spyOn(window, 'confirm').mockReturnValue(false)
-    const user = userEvent.setup()
+    const user = userEvent.setup({ delay: null })
     render(<AccountSettings passkeys={[laptop]} />)
 
     await user.click(screen.getByRole('button', { name: 'Remove' }))
@@ -44,9 +45,10 @@ describe('AccountSettings', () => {
     expect(deletePasskey).not.toHaveBeenCalled()
   })
 
+  /** @see docs/account-settings.md § "Passkeys and signing out" - asks before removing one */
   it('asks before removing one of several passkeys, and keeps it if the answer is no', async () => {
     const confirm = vi.spyOn(window, 'confirm').mockReturnValue(false)
-    const user = userEvent.setup()
+    const user = userEvent.setup({ delay: null })
     render(<AccountSettings passkeys={[laptop, phone]} />)
 
     await user.click(screen.getAllByRole('button', { name: 'Remove' })[1])
@@ -56,7 +58,7 @@ describe('AccountSettings', () => {
 
   it('removes a passkey once confirmed and refreshes the list', async () => {
     vi.spyOn(window, 'confirm').mockReturnValue(true)
-    const user = userEvent.setup()
+    const user = userEvent.setup({ delay: null })
     render(<AccountSettings passkeys={[laptop, phone]} />)
 
     await user.click(screen.getAllByRole('button', { name: 'Remove' })[0])
@@ -67,7 +69,7 @@ describe('AccountSettings', () => {
   it('shows why a passkey could not be removed', async () => {
     vi.spyOn(window, 'confirm').mockReturnValue(true)
     deletePasskey.mockResolvedValue({ data: null, error: { message: 'Passkey not found' } })
-    const user = userEvent.setup()
+    const user = userEvent.setup({ delay: null })
     render(<AccountSettings passkeys={[laptop, phone]} />)
 
     await user.click(screen.getAllByRole('button', { name: 'Remove' })[0])

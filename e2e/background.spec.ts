@@ -264,12 +264,26 @@ test.describe('sparkle', () => {
     await expect.poll(() => page.locator('.galaxy-glint').count()).toBeGreaterThan(3)
   })
 
+  /** @see docs/background.md § "Sparkle" */
   test('holds still for someone who asks for reduced motion', async ({ page }) => {
     await page.emulateMedia({ reducedMotion: 'reduce' })
     await page.goto('/')
     await covered(page)
-    await page.evaluate(() => window.dispatchEvent(new Event('galaxy:celebrate')))
+    // Every glint or shooting star that ever appears, from before the burst:
+    // one only there for a moment would be gone again by the time it's
+    // looked for.
+    await page.evaluate(() => {
+      const seen: string[] = []
+      ;(window as unknown as { sparkles: string[] }).sparkles = seen
+      new MutationObserver((changes) => {
+        for (const change of changes)
+          for (const node of change.addedNodes)
+            if (node instanceof Element && node.matches('.galaxy-glint, .galaxy-shooting-star'))
+              seen.push(node.className)
+      }).observe(document.body, { childList: true, subtree: true })
+      window.dispatchEvent(new Event('galaxy:celebrate'))
+    })
     await page.waitForTimeout(3000)
-    await expect(page.locator('.galaxy-glint, .galaxy-shooting-star')).toHaveCount(0)
+    expect(await page.evaluate(() => (window as unknown as { sparkles: string[] }).sparkles)).toEqual([])
   })
 })
