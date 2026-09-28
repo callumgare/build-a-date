@@ -196,24 +196,30 @@
   box-shadow: 0 22px 44px rgba(4, 23, 31, 0.32);
 }
 
-/* The grip at the bottom of a card in the plan (docs/card-layout.md
+/* The grip at the top of a card in the plan (docs/card-layout.md
    § "Reordering the plan"). A mouse can drag the card from anywhere, but a
    touch only from here, so a swipe across the card still scrolls the plan.
-   Its dots sit in a half circle of shade rising from the card's bottom edge,
-   the same shade as the options at the top, spreading a little further
-   and fading out slowly. It shows whenever those options do. */
+   Its dots sit in a half circle hanging from the card's top edge, in the
+   shade behind the options, and the white line between the options starts
+   just below it (see .actions::before below). It shows whenever those
+   options do. */
+.card:has(> .grip) {
+  --grip-width: clamp(40px, 26cqw, 64px);
+}
+
 .grip {
   position: absolute;
-  bottom: 0;
+  top: 0;
   left: 50%;
   z-index: 1;
   display: grid;
-  place-items: end center;
-  width: clamp(60px, 38cqw, 92px);
+  place-items: center;
+  width: var(--grip-width);
   aspect-ratio: 2;
-  padding: 0 0 4cqw;
+  /* Lifts the dots towards the wide top of the half circle. */
+  padding: 0 0 calc(var(--grip-width) * 0.08);
   border: 0;
-  border-radius: 999px 999px 0 0;
+  border-radius: 0 0 999px 999px;
   color: #fff;
   background: none;
   translate: -50%;
@@ -225,30 +231,19 @@
   pointer-events: none;
 }
 
-/* The shade reaches well past the grip and fades out slowly, but doesn't
-   take clicks, so the card around the grip still does its options. */
-.grip::before {
-  content: '';
-  position: absolute;
-  bottom: 0;
-  left: 50%;
-  z-index: -1;
-  width: 160%;
-  aspect-ratio: 2;
-  background: radial-gradient(
-    farthest-side at 50% 100%,
-    rgba(4, 23, 31, 0.66),
-    rgba(4, 23, 31, 0.56) 22%,
-    rgba(4, 23, 31, 0.36) 45%,
-    rgba(4, 23, 31, 0.16) 72%,
-    transparent
-  );
-  translate: -50%;
-  pointer-events: none;
+/* The options move down to clear the grip, and the line between them starts
+   from the bottom of its half circle. */
+.card:has(> .grip) .actions {
+  padding-top: calc(var(--grip-width) / 2 + 1.5cqw);
+}
+
+.card:has(> .grip) .actions::before {
+  top: calc(var(--grip-width) / 2);
+  height: calc(110% - var(--grip-width) / 2);
 }
 
 .grip svg {
-  width: 32%;
+  width: 40%;
   fill: currentColor;
   filter: drop-shadow(0 1px 2px rgba(4, 23, 31, 0.6));
 }
@@ -259,7 +254,7 @@
 
 .grip:focus-visible {
   outline: 2px solid #fff;
-  outline-offset: -2px;
+  outline-offset: 2px;
 }
 
 @media (hover: hover) {
@@ -306,11 +301,11 @@
 
 /* The star labels the number, so it sits tight against it, and the notes
    stand apart (docs/card-notes.md § "Rating and notes on the card"). */
-.scrawl svg[data-mark='rating'] {
+.scrawl svg[data-mark="rating"] {
   margin-left: -1.2cqw;
 }
 
-.scrawl svg[data-mark='notes'] {
+.scrawl svg[data-mark="notes"] {
   margin-left: 2.5cqw;
 }
 
@@ -411,7 +406,7 @@
   max-width: calc(100% + 10 * var(--u));
   margin: 0 calc(-5 * var(--u)) 0.5em;
   color: #173d4c;
-  font-family: 'Tan Pearl', Georgia, serif;
+  font-family: "Tan Pearl", Georgia, serif;
   font-size: calc(clamp(0.8rem, 7.3cqw, 1.45rem) * var(--title-fit, 1));
   line-height: 1.5;
   /* Words never break; a word too long for the line shrinks the whole title

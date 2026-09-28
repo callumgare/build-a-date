@@ -4,7 +4,7 @@ On a shared deck (`/d/…`), each idea can be given a star rating for how keen s
 
 ## Card actions
 
-Each card shows two options in white text over a dark shade at its top. A white line runs down between them and fades out with the shade:
+Each card shows two options in white text over a dark shade at its top. A white line runs down between them and fades out with the shade. On a card in the plan the options sit a little lower, and the line starts just below the grip at the top ([card-layout.md](card-layout.md) § "Reordering the plan"):
 
 | Where the card is | Left | Right |
 | --- | --- | --- |
@@ -64,7 +64,7 @@ On `/d/…` and on saved plans (`/p/…`), a card that's been rated or has notes
 - A rating is a hand-drawn star outline with the number of stars written close beside it, so the star reads as a label for the number.
 - Notes are three wavy lines of squiggle, one above the other, with the middle one shorter, after the rating if there is one, with a wider gap than between the star and the number. Only the fact that there are notes shows, not the notes themselves. Notes that are only spaces don't count.
 
-A card with neither has nothing in its corner. The marks follow changes made on this visit straight away, including while the card is flipping over and back. Screen readers hear them as "Rated 3 out of 5. Has notes." The bottom left corner stays free for the edit button (see [Editing a card](#editing-a-card)), and the middle of the bottom edge for the grip on cards in the plan ([card-layout.md](card-layout.md) § "Reordering the plan").
+A card with neither has nothing in its corner. The marks follow changes made on this visit straight away, including while the card is flipping over and back. Screen readers hear them as "Rated 3 out of 5. Has notes." The bottom left corner stays free for the edit button (see [Editing a card](#editing-a-card)).
 
 ## Who can change them
 
