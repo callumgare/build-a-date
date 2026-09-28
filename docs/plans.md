@@ -11,7 +11,7 @@ A plan lists card ids, not copies: the `plan` table's `card_ids` for its first r
 Cards in a plan can be put in groups, each with a title and notes, such as "Dinner" with "Book for 7pm", or two ideas to choose between on the day.
 
 - **Rows of their own.** The plan's first row holds the cards not in a group. Each group is a row of its own under it. Cards picked from the deck go onto the end of the first row. In the builder, each row runs down the plan's column ([card-layout.md](card-layout.md) § "The plan column").
-- **Title and notes.** A group's title and notes are above its cards, both in the builder, with **Remove group** under them, and on the plan page. On the plan page they're centred, and there's more room between them and the cards above than between them and the group's own cards, so they read as belonging to the cards under them.
+- **Title and notes.** A group's title and notes are centred above its cards, both in the builder, with **Remove group** under them, and on the plan page. On the plan page there's more room between them and the cards above than between them and the group's own cards, so they read as belonging to the cards under them.
 - **Add group** under the last row adds an empty group at the bottom and puts the cursor in its title. Until it has a title it's called **Group 1**, **Group 2** and so on, by its place.
 - **Moving cards between them.** A card is dragged from one row to another the same way it's dragged along a row, or moved with the arrow keys on its grip ([card-layout.md](card-layout.md) § "Reordering the plan"). An empty group says **Drag ideas here**.
 - **Remove group** takes the group out of the plan. Its cards aren't discarded; they go back onto the end of the first row. Its title and notes are gone.

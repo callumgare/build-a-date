@@ -148,6 +148,13 @@ header {
   justify-content: center;
 }
 
+/* The page's title, with anything under it (like Editing a plan) centred
+   below it rather than beside it. */
+header.hero {
+  flex-direction: column;
+  align-items: center;
+}
+
 button {
   color: inherit;
   font: inherit;
@@ -249,11 +256,11 @@ h1 {
   overflow-wrap: anywhere;
 }
 
-/* The builder on /d/…: the plan in a thin column on the left, running down,
-   and the deck on the right (docs/card-layout.md § "The plan column"). */
+/* The builder on /d/…: the deck on the left, and the plan in a thin column
+   on the right, running down (docs/card-layout.md § "The plan column"). */
 .builder {
   display: grid;
-  grid-template-columns: clamp(200px, 22vw, 270px) minmax(0, 1fr);
+  grid-template-columns: minmax(0, 1fr) clamp(200px, 22vw, 270px);
   gap: 0 clamp(20px, 3vw, 40px);
   align-items: start;
   padding-top: 24px;
@@ -613,8 +620,8 @@ h1 {
 
 /* On the plan page: the title and notes centred over the group's cards, and
    further from the cards above than from their own, so they read as the
-   group's (docs/plans.md § "Groups"). The builder's column keeps them on the
-   left. */
+   group's (docs/plans.md § "Groups"). The builder's column centres them too,
+   but keeps them closer. */
 .plan-group:not(.plan-column *) {
   margin-top: 48px;
 }
@@ -775,12 +782,22 @@ h1 {
   margin-top: 28px;
 }
 
-/* A group's title and notes go above its cards, with Remove group under
-   them, as the column is too thin to put anything beside them. */
+/* A group's title and notes go above its cards, centred over them, with
+   Remove group under them, as the column is too thin to put anything beside
+   them. */
+.plan-column .plan-group-info {
+  grid-template-columns: minmax(0, 1fr);
+}
+
+.plan-column .plan-group-info,
+.plan-column .plan-group-info > :is(.plan-group-title, .plan-group-notes) {
+  text-align: center;
+}
+
 .plan-column .plan-group-info > .plan-group-remove {
   grid-row: auto;
   grid-column: 1 / -1;
-  justify-self: start;
+  justify-self: center;
   margin-top: 6px;
 }
 
@@ -799,13 +816,13 @@ h1 {
      part way. switchDuration in PlanBuilder.tsx is a little longer. */
   .builder {
     --switch: 0.5s cubic-bezier(0.3, 0.7, 0.2, 1);
-    grid-template-columns: calc((100% - 12px) / 6) calc((100% - 12px) * 5 / 6);
+    grid-template-columns: calc((100% - 12px) * 5 / 6) calc((100% - 12px) / 6);
     gap: 0 12px;
     transition: grid-template-columns var(--switch);
   }
 
   .builder[data-active='plan'] {
-    grid-template-columns: calc((100% - 12px) * 5 / 6) calc((100% - 12px) / 6);
+    grid-template-columns: calc((100% - 12px) / 6) calc((100% - 12px) * 5 / 6);
   }
 
   .plan-heading,

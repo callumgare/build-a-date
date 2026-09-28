@@ -28,7 +28,7 @@ async function zoomAnimatesAfterClick(page: Page, section: Locator, x: number, y
 }
 
 /** @see docs/card-layout.md § "The plan column" */
-test('the plan is a column beside the deck, and stays in the window as the deck scrolls', async ({
+test('the plan is a column to the right of the deck, and stays in the window as the deck scrolls', async ({
   page,
   browser,
   request,
@@ -45,7 +45,7 @@ test('the plan is a column beside the deck, and stays in the window as the deck 
   const planBox = await plan.boundingBox()
   const deckBox = await deck.boundingBox()
   if (!planBox || !deckBox) throw new Error('Builder has no size')
-  expect(planBox.x + planBox.width).toBeLessThanOrEqual(deckBox.x)
+  expect(deckBox.x + deckBox.width).toBeLessThanOrEqual(planBox.x)
   expect(planBox.width).toBeLessThan(deckBox.width / 2)
 
   // Part way down the deck, not so far that the builder's end comes up.
@@ -56,6 +56,36 @@ test('the plan is a column beside the deck, and stays in the window as the deck 
   expect((await guest.locator('.builder-bar').boundingBox())?.y).toBeLessThan(-100)
 
   await guestContext.close()
+})
+
+/** @see docs/card-layout.md § "The plan column" - the page's title */
+test('the title and what is under it are centred, one above the other, and so is a group in the plan', async ({
+  page,
+}) => {
+  await page.setViewportSize({ width: 1280, height: 800 })
+  await page.goto('/sample')
+  const middle = (box: { x: number; width: number } | null) => (box ? box.x + box.width / 2 : Number.NaN)
+  const title = await page.locator('.hero h1').boundingBox()
+  const lede = await page.locator('.hero .lede').boundingBox()
+  const pageBox = await page.locator('main').boundingBox()
+  if (!title || !lede || !pageBox) throw new Error('Hero has no size')
+  expect(lede.y).toBeGreaterThanOrEqual(title.y + title.height - 1)
+  expect(Math.abs(middle(title) - middle(pageBox))).toBeLessThan(2)
+  expect(Math.abs(middle(lede) - middle(pageBox))).toBeLessThan(2)
+
+  // docs/plans.md § "Groups" - the title and notes centred above its cards.
+  await page.getByRole('button', { name: 'Add group' }).click()
+  const group = page.getByRole('region', { name: 'Group 1' })
+  const track = await group.locator('.plan-group-track').boundingBox()
+  for (const part of [
+    group.getByRole('textbox', { name: 'Title of Group 1' }),
+    group.getByRole('button', { name: 'Remove Group 1' }),
+  ]) {
+    expect(Math.abs(middle(await part.boundingBox()) - middle(track))).toBeLessThan(2)
+  }
+  for (const field of ['.plan-group-title', '.plan-group-notes']) {
+    expect(await group.locator(field).evaluate((element) => getComputedStyle(element).textAlign)).toBe('center')
+  }
 })
 
 /** @see docs/card-layout.md § "Narrow screens" */

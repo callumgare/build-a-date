@@ -17,9 +17,9 @@ The plan's column has extra padding so a hovered card's edges and corners aren't
 
 ## The plan column
 
-On `/d/…`, and when editing a plan, the plan is a thin column on the left of the page, and the deck takes up the rest of the width on its right. The page's title, and the bar with **Save plan** (see [Save plan and Clear plan](#save-plan-and-clear-plan)), go across the top of both.
+On `/d/…`, and when editing a plan, the deck takes up most of the width of the page, and the plan is a thin column on its right. The deck comes first in the page too, so the keyboard and screen readers reach it before the plan. The page's title, with anything under it (like **Editing a plan**) centred below it, and the bar with **Save plan** (see [Save plan and Clear plan](#save-plan-and-clear-plan)), go across the top of both.
 
-- **Running down.** Each row of the plan (its first row, and each group) runs down the column, one card under the next, so the plan reads from top to bottom. A group's title and notes sit above its cards, with **Remove group** under them ([plans.md](plans.md) § "Groups").
+- **Running down.** Each row of the plan (its first row, and each group) runs down the column, one card under the next, so the plan reads from top to bottom. A group's title and notes sit above its cards, centred over them, with **Remove group** centred under them ([plans.md](plans.md) § "Groups").
 - **Thin.** The column is between 200px and 270px wide on a wide screen, and its cards are never wider than 250px.
 - **Stays in the window.** The column sticks to the top of the window as the deck scrolls past it. When the plan is taller than the window, the column scrolls on its own.
 - **The title.** **The Plan** is at the top of the column, above the plan, and stays there while the plan scrolls under it. The cards are in the middle under it: room for a scrollbar is kept on both sides of the plan (`scrollbar-gutter: stable both-edges`), not just the right, so a scrollbar doesn't push them off centre. On a narrow screen it shrinks with the rest of the plan.

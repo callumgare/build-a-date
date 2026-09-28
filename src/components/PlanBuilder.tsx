@@ -606,8 +606,8 @@ export default function PlanBuilder({
       {/* A new group for kept picks, so the cards that were in the deck have
           nothing to fly in from. */}
       <LayoutGroup id={`date-builder-${layoutGeneration}`} key={layoutGeneration}>
-        {/* The plan in a column on the left, running down, and the deck on the
-            right (docs/card-layout.md § "The plan column"). */}
+        {/* The deck on the left, and the plan in a column on the right, running
+            down (docs/card-layout.md § "The plan column"). */}
         <div className="builder" data-active={active} ref={builderReference}>
           {/* Above both columns (docs/card-layout.md § "Save plan and Clear
               plan"). Always laid out, so the first pick doesn't push the page down.
@@ -680,6 +680,117 @@ export default function PlanBuilder({
               </p>
             )}
           </div>
+          <div
+            className="builder-column deck-column"
+            data-shrunk={deckShrunk}
+            ref={deckReference}
+            onPointerDownCapture={() => used('deck')}
+            onFocusCapture={() => used('deck')}
+          >
+            <section className="deck-section" aria-label="Date ideas" inert={deckShrunk}>
+              <fieldset className="filters" aria-label="Filter ideas by tag">
+                <span className="filter-label">Show</span>
+                <button
+                  className="filter-button"
+                  data-active={activeTags.size === 0}
+                  type="button"
+                  onClick={() => setActiveTags(new Set())}
+                >
+                  All
+                </button>
+                {tags.map((tag) => (
+                  <button
+                    className="filter-button"
+                    data-active={activeTags.has(tag)}
+                    type="button"
+                    key={tag}
+                    onClick={() => toggleTag(tag)}
+                    aria-pressed={activeTags.has(tag)}
+                  >
+                    {tag}
+                  </button>
+                ))}
+              </fieldset>
+
+              <fieldset className="filters sort-options" aria-label="Sort ideas">
+                <span className="filter-label">Sort by</span>
+                {deckSorts.map((option) => (
+                  <button
+                    className="filter-button"
+                    data-active={sort === option.value}
+                    type="button"
+                    key={option.value}
+                    onClick={() => chooseSort(option.value)}
+                    aria-pressed={sort === option.value}
+                  >
+                    {option.label}
+                  </button>
+                ))}
+              </fieldset>
+
+              <motion.div className="card-grid" layout {...deckMotion}>
+                <AnimatePresence initial={false} mode="popLayout">
+                  {availableCards.map((card) => {
+                    const actions: SideActions = {
+                      primary: () => {
+                        const deckCard = deckCardElement(card.id)
+                        if (deckCard) selectCard(card.id, cardBox(deckCard))
+                      },
+                      notes: () => openNotes(card.id),
+                    }
+
+                    // Hovering (or a tap, without hover) shows what can be done
+                    // with the card (docs/card-notes.md § "Card actions").
+                    return (
+                      <motion.div
+                        className={`${cardStyles.card} ${flyingIds.has(card.id) || notesOpen?.id === card.id ? cardStyles.inFlight : ''}`}
+                        key={card.id}
+                        data-deck-card-id={card.id}
+                        data-revealed={revealedId === card.id}
+                        layout
+                        onPointerEnter={tiltCard}
+                        initial={reduceMotion ? false : { opacity: 0, scale: 0.96 }}
+                        animate={{ opacity: 1, scale: 1 }}
+                        // Only a fade: the hover's spring back animates scale
+                        // too, and would stop a shrink from ever finishing
+                        // (docs/card-layout.md § "Flying cards").
+                        exit={reduceMotion ? undefined : { opacity: 0 }}
+                        {...deckMotion}
+                        onClick={(event) => clickCard(card.id, event, actions)}
+                        onPointerMove={showHoveredSide}
+                        onPointerLeave={leaveCard}
+                      >
+                        <Card
+                          card={card}
+                          frame={frameFor(card.id)}
+                          actions={<CardActions title={card.title} primary="Add to plan" actions={actions} />}
+                          scrawl={notesById.get(card.id)}
+                        />
+                        {deckId && <EditButton title={card.title} onClick={() => editCard(card)} />}
+                      </motion.div>
+                    )
+                  })}
+                </AnimatePresence>
+                {deckId && (
+                  // The last spot in the deck, moving along with the cards.
+                  <motion.div layout {...deckMotion}>
+                    <AddCardControls onAdd={cardEditor.addCard} onQuickAdd={cardEditor.quickAdd} />
+                  </motion.div>
+                )}
+              </motion.div>
+
+              {availableCards.length === 0 && (
+                <div className="empty-results">
+                  <p>No ideas match every selected tag.</p>
+                  <button className="text-action" type="button" onClick={() => setActiveTags(new Set())}>
+                    Show all ideas
+                  </button>
+                </div>
+              )}
+            </section>
+            {deckShrunk && <ColumnSwitch label="Show the date ideas" onClick={() => activate('deck')} />}
+          </div>
+
           <div
             className="builder-column plan-column"
             data-shrunk={planShrunk}
@@ -795,117 +906,6 @@ export default function PlanBuilder({
               </section>
             </div>
             {planShrunk && <ColumnSwitch label="Show your plan" onClick={() => activate('plan')} />}
-          </div>
-
-          <div
-            className="builder-column deck-column"
-            data-shrunk={deckShrunk}
-            ref={deckReference}
-            onPointerDownCapture={() => used('deck')}
-            onFocusCapture={() => used('deck')}
-          >
-            <section className="deck-section" aria-label="Date ideas" inert={deckShrunk}>
-              <fieldset className="filters" aria-label="Filter ideas by tag">
-                <span className="filter-label">Show</span>
-                <button
-                  className="filter-button"
-                  data-active={activeTags.size === 0}
-                  type="button"
-                  onClick={() => setActiveTags(new Set())}
-                >
-                  All
-                </button>
-                {tags.map((tag) => (
-                  <button
-                    className="filter-button"
-                    data-active={activeTags.has(tag)}
-                    type="button"
-                    key={tag}
-                    onClick={() => toggleTag(tag)}
-                    aria-pressed={activeTags.has(tag)}
-                  >
-                    {tag}
-                  </button>
-                ))}
-              </fieldset>
-
-              <fieldset className="filters sort-options" aria-label="Sort ideas">
-                <span className="filter-label">Sort by</span>
-                {deckSorts.map((option) => (
-                  <button
-                    className="filter-button"
-                    data-active={sort === option.value}
-                    type="button"
-                    key={option.value}
-                    onClick={() => chooseSort(option.value)}
-                    aria-pressed={sort === option.value}
-                  >
-                    {option.label}
-                  </button>
-                ))}
-              </fieldset>
-
-              <motion.div className="card-grid" layout {...deckMotion}>
-                <AnimatePresence initial={false} mode="popLayout">
-                  {availableCards.map((card) => {
-                    const actions: SideActions = {
-                      primary: () => {
-                        const deckCard = deckCardElement(card.id)
-                        if (deckCard) selectCard(card.id, cardBox(deckCard))
-                      },
-                      notes: () => openNotes(card.id),
-                    }
-
-                    // Hovering (or a tap, without hover) shows what can be done
-                    // with the card (docs/card-notes.md § "Card actions").
-                    return (
-                      <motion.div
-                        className={`${cardStyles.card} ${flyingIds.has(card.id) || notesOpen?.id === card.id ? cardStyles.inFlight : ''}`}
-                        key={card.id}
-                        data-deck-card-id={card.id}
-                        data-revealed={revealedId === card.id}
-                        layout
-                        onPointerEnter={tiltCard}
-                        initial={reduceMotion ? false : { opacity: 0, scale: 0.96 }}
-                        animate={{ opacity: 1, scale: 1 }}
-                        // Only a fade: the hover's spring back animates scale
-                        // too, and would stop a shrink from ever finishing
-                        // (docs/card-layout.md § "Flying cards").
-                        exit={reduceMotion ? undefined : { opacity: 0 }}
-                        {...deckMotion}
-                        onClick={(event) => clickCard(card.id, event, actions)}
-                        onPointerMove={showHoveredSide}
-                        onPointerLeave={leaveCard}
-                      >
-                        <Card
-                          card={card}
-                          frame={frameFor(card.id)}
-                          actions={<CardActions title={card.title} primary="Add to plan" actions={actions} />}
-                          scrawl={notesById.get(card.id)}
-                        />
-                        {deckId && <EditButton title={card.title} onClick={() => editCard(card)} />}
-                      </motion.div>
-                    )
-                  })}
-                </AnimatePresence>
-                {deckId && (
-                  // The last spot in the deck, moving along with the cards.
-                  <motion.div layout {...deckMotion}>
-                    <AddCardControls onAdd={cardEditor.addCard} onQuickAdd={cardEditor.quickAdd} />
-                  </motion.div>
-                )}
-              </motion.div>
-
-              {availableCards.length === 0 && (
-                <div className="empty-results">
-                  <p>No ideas match every selected tag.</p>
-                  <button className="text-action" type="button" onClick={() => setActiveTags(new Set())}>
-                    Show all ideas
-                  </button>
-                </div>
-              )}
-            </section>
-            {deckShrunk && <ColumnSwitch label="Show the date ideas" onClick={() => activate('deck')} />}
           </div>
         </div>
       </LayoutGroup>

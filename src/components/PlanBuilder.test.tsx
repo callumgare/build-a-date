@@ -1049,12 +1049,12 @@ describe('PlanBuilder', () => {
   /** @see docs/sample-deck.md § "What's different" */
   describe('the plan column', () => {
     /** @see docs/card-layout.md § "The plan column" */
-    it('puts the plan before the deck, and both are in use on a wide screen', async () => {
+    it('puts the deck before the plan, and both are in use on a wide screen', async () => {
       keepPicks(['museum'])
       renderBuilder()
       const plan = screen.getByRole('region', { name: 'Your plan' })
       const deck = screen.getByRole('region', { name: 'Date ideas' })
-      expect(plan.compareDocumentPosition(deck) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
+      expect(deck.compareDocumentPosition(plan) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
       expect(plan).not.toHaveAttribute('inert')
       expect(deck).not.toHaveAttribute('inert')
       expect(screen.queryByRole('button', { name: 'Show your plan' })).not.toBeInTheDocument()
