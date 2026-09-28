@@ -67,11 +67,17 @@ export function PlanCard({ title, lifted, onPress, onMove, className, children, 
         aria-description="Drag, or use the up and down arrow keys, to move it up or down the plan, into or out of a group"
         onKeyDown={moveFromKeyboard}
       >
-        <svg viewBox="0 0 24 12" aria-hidden="true">
-          {[4, 10, 16].flatMap((x) => [2, 8].map((y) => <circle key={`${x}-${y}`} cx={x + 2} cy={y + 1} r="1.6" />))}
-        </svg>
+        <GripDots />
       </button>
     </motion.div>
+  )
+}
+
+function GripDots() {
+  return (
+    <svg viewBox="0 0 24 12" aria-hidden="true">
+      {[4, 10, 16].flatMap((x) => [2, 8].map((y) => <circle key={`${x}-${y}`} cx={x + 2} cy={y + 1} r="1.6" />))}
+    </svg>
   )
 }
 
@@ -79,6 +85,7 @@ type Press = {
   id: string
   card: HTMLElement
   pointerId: number
+  pointerType: string
   startX: number
   startY: number
   pointerX: number
@@ -152,32 +159,55 @@ export function usePlanDrag({ container, onMove, reduceMotion }: PlanDragOptions
     return { left, right: left + state.box.width, top, bottom: top + state.box.height }
   }
 
-  // Goes by the stand-in's middle against the other cards' middles, measured
-  // from their offsets, which layout animations don't move, so cards sliding
-  // out of the way don't change the answer. Down the row when it's one
-  // column; in reading order when it's a grid of several, as on a narrow
-  // screen (docs/card-layout.md § "Reordering the plan" - by dragging it).
+  // Goes by the pointer, against the other cards' boxes measured from their
+  // offsets, which layout animations don't move, so cards sliding out of the
+  // way don't change the answer. Over another card, it takes that card's
+  // place, and that card moves up or down one to make room. Anywhere else
+  // (its own place, a gap, an empty row), the pointer against the other
+  // cards' middles: down the row when it's one column, in reading order when
+  // it's a grid of several, as on a narrow screen (docs/card-layout.md
+  // § "Reordering the plan" - by dragging it). Once it's taken a card's
+  // place, the pointer is over its own place, so it stays put until the
+  // pointer moves onto another card.
   function findPlace(state: Press) {
     const row = rowAt(state.pointerY)
     if (!row) return
-    const standIn = standInBox(state)
-    const middleX = (standIn.left + standIn.right) / 2
-    const middleY = (standIn.top + standIn.bottom) / 2
+    const { pointerX, pointerY } = state
     const rowRect = row.getBoundingClientRect()
     const left = rowRect.left + row.clientLeft - row.scrollLeft
     const top = rowRect.top + row.clientTop - row.scrollTop
-    const others = [...row.querySelectorAll<HTMLElement>(':scope > [data-card-id]')].filter(
-      (card) => card.dataset.cardId !== state.id,
+    const cards = [...row.querySelectorAll<HTMLElement>(':scope > [data-card-id]')]
+    const own = cards.findIndex((card) => card.dataset.cardId === state.id)
+    const others = cards.filter((card) => card.dataset.cardId !== state.id)
+    const boxes = others.map((card) => ({
+      left: left + card.offsetLeft,
+      top: top + card.offsetTop,
+      width: card.offsetWidth,
+      height: card.offsetHeight,
+    }))
+    const over = boxes.findIndex(
+      (box) =>
+        pointerX >= box.left &&
+        pointerX < box.left + box.width &&
+        pointerY >= box.top &&
+        pointerY < box.top + box.height,
     )
     const grid = columnCount(row) > 1
-    const index = others.filter((card) => {
-      const cardX = left + card.offsetLeft + card.offsetWidth / 2
-      const cardY = top + card.offsetTop + card.offsetHeight / 2
-      if (!grid) return cardY < middleY
-      // An earlier line of the grid, or further along the same one.
-      const halfHeight = card.offsetHeight / 2
-      return cardY < middleY - halfHeight || (Math.abs(cardY - middleY) <= halfHeight && cardX < middleX)
-    }).length
+    const index =
+      over !== -1
+        ? // After the card when it's further along the row than this one
+          // already is, before it otherwise (or when coming from another row).
+          own !== -1 && over >= own
+          ? over + 1
+          : over
+        : boxes.filter((box) => {
+            const middleX = box.left + box.width / 2
+            const middleY = box.top + box.height / 2
+            if (!grid) return middleY < pointerY
+            // An earlier line of the grid, or further along the same one.
+            const halfHeight = box.height / 2
+            return middleY < pointerY - halfHeight || (Math.abs(middleY - pointerY) <= halfHeight && middleX < pointerX)
+          }).length
     const place = { row: row.dataset.planRow ?? '', index }
     if (state.place?.row === place.row && state.place.index === place.index) return
     state.place = place
@@ -222,6 +252,7 @@ export function usePlanDrag({ container, onMove, reduceMotion }: PlanDragOptions
   }
 
   function lift(state: Press) {
+    delete state.card.dataset.held
     const box = cardBox(state.card)
     const width = state.card.offsetWidth
     const height = state.card.offsetHeight
@@ -257,6 +288,34 @@ export function usePlanDrag({ container, onMove, reduceMotion }: PlanDragOptions
     setTimeout(() => window.removeEventListener('click', swallow, { capture: true }), 0)
   }
 
+  // Let go with the mouse still over the card's new place, the card keeps
+  // showing its options, as the stand-in did, until the mouse leaves it. The
+  // browser doesn't count the card as hovered until the mouse next moves, so
+  // it would otherwise lose them and get them back (docs/card-layout.md
+  // § "Reordering the plan" - by dragging it).
+  function holdOptions(state: Press) {
+    if (state.pointerType === 'touch') return
+    const card = container.current?.querySelector<HTMLElement>(`[data-card-id="${CSS.escape(state.id)}"]`)
+    if (!card) return
+    const box = card.getBoundingClientRect()
+    const over =
+      state.pointerX >= box.left &&
+      state.pointerX < box.right &&
+      state.pointerY >= box.top &&
+      state.pointerY < box.bottom
+    if (!over) return
+    const held = card
+    held.dataset.held = 'true'
+    // Checked on every move rather than on pointerleave, which a card moved
+    // into another row, and so put in the page afresh, may never get.
+    function release(moveEvent: PointerEvent) {
+      if (held.isConnected && moveEvent.target instanceof Node && held.contains(moveEvent.target)) return
+      delete held.dataset.held
+      window.removeEventListener('pointermove', release)
+    }
+    window.addEventListener('pointermove', release)
+  }
+
   function finish(drop: boolean) {
     const state = press.current
     if (!state) return
@@ -269,8 +328,18 @@ export function usePlanDrag({ container, onMove, reduceMotion }: PlanDragOptions
     if (drop) findPlace(state)
     swallowClick()
 
+    // Where the mouse is once the stand-in has settled, for holdOptions.
+    const dropped = state
+    function follow(moveEvent: PointerEvent) {
+      dropped.pointerX = moveEvent.clientX
+      dropped.pointerY = moveEvent.clientY
+    }
+    window.addEventListener('pointermove', follow)
+
     function end() {
+      window.removeEventListener('pointermove', follow)
       press.current = null
+      holdOptions(dropped)
       setLifted(null)
     }
 
@@ -337,6 +406,7 @@ export function usePlanDrag({ container, onMove, reduceMotion }: PlanDragOptions
       id,
       card: event.currentTarget,
       pointerId,
+      pointerType: event.pointerType,
       startX: event.clientX,
       startY: event.clientY,
       pointerX: event.clientX,
@@ -384,14 +454,21 @@ type StandInProps = {
 
 // The card following the pointer while it's dragged, above the page, so the
 // plan's rows don't clip it.
+// The card following the pointer, which keeps showing its options and grip
+// as it did when it was picked up, though nothing on it can be pressed
+// (docs/card-layout.md § "Reordering the plan" - by dragging it).
 export function DragStandIn({ lifted, motionValues, children }: StandInProps) {
   return createPortal(
     <motion.div
       className={`${cardStyles.card} ${cardStyles.flying} ${cardStyles.dragging}`}
       style={{ left: lifted.left, top: lifted.top, width: lifted.width, height: lifted.height, ...motionValues }}
       aria-hidden="true"
+      inert
     >
       {children}
+      <span className={cardStyles.grip}>
+        <GripDots />
+      </span>
     </motion.div>,
     document.body,
   )

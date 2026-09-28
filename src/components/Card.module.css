@@ -301,11 +301,11 @@
 
 /* The star labels the number, so it sits tight against it, and the notes
    stand apart (docs/card-notes.md § "Rating and notes on the card"). */
-.scrawl svg[data-mark="rating"] {
+.scrawl svg[data-mark='rating'] {
   margin-left: -1.2cqw;
 }
 
-.scrawl svg[data-mark="notes"] {
+.scrawl svg[data-mark='notes'] {
   margin-left: 2.5cqw;
 }
 
@@ -319,6 +319,54 @@
   stroke: #2c4057;
   stroke-width: 1.6;
   opacity: 0.88;
+}
+
+/* The card following the pointer keeps its options, grip and edit button, as
+   they were when it was picked up, and the faded card marking where it will
+   land never shows them, whether or not the pointer is over it. They come
+   after the rules above so they win at the same specificity. */
+.card.dragging .actions,
+.card.dragging .grip,
+.card.dragging .edit {
+  opacity: 1;
+}
+
+.card.lifted .actions,
+.card.lifted .grip,
+.card.lifted .edit {
+  opacity: 0;
+  pointer-events: none;
+}
+
+.card.lifted .action {
+  pointer-events: none;
+}
+
+/* Nor do the other cards in the plan while a card is dragged over them, as
+   they're behind it. */
+[data-dragging] .card .actions,
+[data-dragging] .card .grip,
+[data-dragging] .card .edit {
+  opacity: 0;
+  pointer-events: none;
+}
+
+[data-dragging] .card .action {
+  pointer-events: none;
+}
+
+/* A card let go with the mouse over it keeps showing its options, straight
+   from the stand-in, until the mouse leaves it (holdOptions in PlanCard). */
+.card[data-held] .actions,
+.card[data-held] .grip,
+.card[data-held] .edit {
+  opacity: 1;
+  pointer-events: auto;
+  transition: none;
+}
+
+.card[data-held] .action {
+  pointer-events: auto;
 }
 
 @media (prefers-reduced-motion: reduce) {
@@ -406,7 +454,7 @@
   max-width: calc(100% + 10 * var(--u));
   margin: 0 calc(-5 * var(--u)) 0.5em;
   color: #173d4c;
-  font-family: "Tan Pearl", Georgia, serif;
+  font-family: 'Tan Pearl', Georgia, serif;
   font-size: calc(clamp(0.8rem, 7.3cqw, 1.45rem) * var(--title-fit, 1));
   line-height: 1.5;
   /* Words never break; a word too long for the line shrinks the whole title

@@ -689,7 +689,7 @@ export default function PlanBuilder({
             {/* Above the plan, not scrolling with it (docs/card-layout.md
                 § "The plan column" - the title). */}
             <h2 className="plan-heading">The Plan</h2>
-            <div className="plan-scroll" ref={planReference}>
+            <div className="plan-scroll" ref={planReference} data-dragging={drag.lifted ? true : undefined}>
               <section className="plan-section" aria-label="Your plan" inert={planShrunk}>
                 {/* Cards in the plan are dragged to reorder it, or onto another
               row (docs/card-layout.md § "Reordering the plan"). */}
@@ -937,7 +937,19 @@ export default function PlanBuilder({
 
       {drag.lifted && liftedCard && (
         <DragStandIn lifted={drag.lifted} motionValues={drag.standIn}>
-          <Card card={liftedCard} frame={frameFor(liftedCard.id)} scrawl={notesById.get(liftedCard.id)} />
+          <Card
+            card={liftedCard}
+            frame={frameFor(liftedCard.id)}
+            actions={
+              <CardActions
+                title={liftedCard.title}
+                primary="Discard"
+                actions={{ primary: () => removeCard(liftedCard.id), notes: () => openNotes(liftedCard.id) }}
+              />
+            }
+            scrawl={notesById.get(liftedCard.id)}
+          />
+          {deckId && <EditButton title={liftedCard.title} onClick={() => editCard(liftedCard)} />}
         </DragStandIn>
       )}
 

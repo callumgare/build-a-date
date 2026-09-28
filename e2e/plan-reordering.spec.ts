@@ -52,6 +52,220 @@ test('someone drags a card from anywhere on it to a new place in the plan', asyn
 })
 
 /** @see docs/card-layout.md § "Reordering the plan" - by dragging it */
+test('a card dragged over another card takes its place, from any part of it', async ({ page, browser, request }) => {
+  await signUp(page, request, 'Alex')
+  const shareUrl = await createDeck(page, 'Ideas for Sam')
+
+  const guestContext = await newVisitor(browser)
+  const guest = await guestContext.newPage()
+  await guest.setViewportSize({ width: 1280, height: 1600 })
+  await guest.goto(shareUrl)
+  const labels = await guest
+    .locator('[data-deck-card-id]')
+    .evaluateAll((cards) => cards.slice(0, 3).map((card) => card.querySelector('button')?.ariaLabel ?? ''))
+  const titles = labels.map((label) => label.replace(/^Add to plan: /, ''))
+  for (const title of titles) {
+    await guest.locator('[data-deck-card-id]').filter({ hasText: title }).hover()
+    await guest.getByRole('button', { name: `Add to plan: ${title}` }).click()
+    await expect(guest.getByRole('button', { name: `Discard: ${title}` })).toBeAttached()
+  }
+  const [a, b, c] = titles
+  const titleOrder = async () => {
+    const order = await planOrder(guest)
+    return order.map((text) => titles.find((title) => text.includes(title)))
+  }
+  expect(await titleOrder()).toEqual([a, b, c])
+
+  // Picked up by its middle and let go just inside the card's far edge, where
+  // the dragged card's own middle hasn't reached the other card's middle.
+  async function drag(title: string, onto: string, fraction: number) {
+    const card = guest.locator('[data-card-id]').filter({ hasText: title })
+    const other = guest.locator('[data-card-id]').filter({ hasText: onto })
+    await card.hover()
+    const box = await card.boundingBox()
+    const otherBox = await other.boundingBox()
+    if (!box || !otherBox) throw new Error('Cards have no size')
+    const x = box.x + box.width * 0.25
+    await guest.mouse.move(x, box.y + box.height * 0.5)
+    await guest.mouse.down()
+    await guest.mouse.move(x, otherBox.y + otherBox.height * fraction, { steps: 20 })
+    await guest.mouse.up()
+    // Settled into its place, after which the next drag can start.
+    await expect(guest.locator('[data-card-id][class*="lifted"]')).toHaveCount(0)
+  }
+
+  // Up, onto the bottom of the card above.
+  await drag(c, b, 0.85)
+  await expect.poll(titleOrder).toEqual([a, c, b])
+  // Down, onto the top of the card below.
+  await drag(a, c, 0.15)
+  await expect.poll(titleOrder).toEqual([c, a, b])
+
+  await guestContext.close()
+})
+
+/** @see docs/card-layout.md § "Reordering the plan" - by dragging it */
+test("the dragged card keeps its options, and the faded card where it'll land never shows them", async ({
+  page,
+  browser,
+  request,
+}) => {
+  await signUp(page, request, 'Alex')
+  const shareUrl = await createDeck(page, 'Ideas for Sam')
+
+  const guestContext = await newVisitor(browser)
+  const guest = await guestContext.newPage()
+  await guest.goto(shareUrl)
+  for (const title of ['Stargazing', 'Picnic in the Park']) {
+    await guest.locator('[data-deck-card-id]').filter({ hasText: title }).hover()
+    await guest.getByRole('button', { name: `Add to plan: ${title}` }).click()
+    await expect(guest.getByRole('button', { name: `Discard: ${title}` })).toBeAttached()
+  }
+
+  const card = guest.locator('[data-card-id]').filter({ hasText: 'Stargazing' })
+  await card.hover()
+  await expect(guest.getByRole('button', { name: 'Move Stargazing' })).toBeVisible()
+  const box = await card.boundingBox()
+  if (!box) throw new Error('Card has no size')
+  // Moved only a little, so the pointer is still over the faded card.
+  const x = box.x + box.width * 0.25
+  await guest.mouse.move(x, box.y + box.height * 0.5)
+  await guest.mouse.down()
+  await guest.mouse.move(x + 10, box.y + box.height * 0.5 + 10, { steps: 5 })
+
+  const opacities = (selector: string) =>
+    guest
+      .locator(selector)
+      .evaluateAll((elements) =>
+        elements.flatMap((element) =>
+          [...element.querySelectorAll('[class*="actions"], [class*="grip"]')].map(
+            (part) => getComputedStyle(part).opacity,
+          ),
+        ),
+      )
+  await expect.poll(() => opacities('[data-card-id][class*="lifted"]')).toEqual(['0', '0'])
+  await expect.poll(() => opacities('[class*="dragging"]')).toEqual(['1', '1'])
+  await expect(guest.locator('[class*="dragging"]').getByText('Discard')).toBeVisible()
+
+  await guest.mouse.up()
+  await guestContext.close()
+})
+
+// Records, every frame until stopped, the highest opacity of the options on
+// the cards the selector picks out.
+async function watchOptions(page: Page, selector: string) {
+  await page.evaluate((selector) => {
+    const record = window as unknown as { optionOpacities: number[]; stopWatching: boolean }
+    record.optionOpacities = []
+    record.stopWatching = false
+    function tick() {
+      const opacities = [...document.querySelectorAll(selector)].map((element) =>
+        Number(getComputedStyle(element).opacity),
+      )
+      record.optionOpacities.push(Math.max(0, ...opacities))
+      if (!record.stopWatching) requestAnimationFrame(tick)
+    }
+    tick()
+  }, selector)
+  return () =>
+    page.evaluate(() => {
+      const record = window as unknown as { optionOpacities: number[]; stopWatching: boolean }
+      record.stopWatching = true
+      return record.optionOpacities
+    })
+}
+
+async function pickTwo(page: Page) {
+  for (const title of ['Stargazing', 'Picnic in the Park']) {
+    await page.locator('[data-deck-card-id]').filter({ hasText: title }).hover()
+    await page.getByRole('button', { name: `Add to plan: ${title}` }).click()
+    await expect(page.getByRole('button', { name: `Discard: ${title}` })).toBeAttached()
+  }
+}
+
+/** @see docs/card-layout.md § "Reordering the plan" - by dragging it */
+test("the other cards don't show their options while a card is dragged over them", async ({
+  page,
+  browser,
+  request,
+}) => {
+  await signUp(page, request, 'Alex')
+  const shareUrl = await createDeck(page, 'Ideas for Sam')
+
+  const guestContext = await newVisitor(browser)
+  const guest = await guestContext.newPage()
+  await guest.goto(shareUrl)
+  await pickTwo(guest)
+
+  const card = guest.locator('[data-card-id]').filter({ hasText: 'Picnic in the Park' })
+  const other = guest.locator('[data-card-id]').filter({ hasText: 'Stargazing' })
+  await card.hover()
+  const box = await card.boundingBox()
+  const otherBox = await other.boundingBox()
+  if (!box || !otherBox) throw new Error('Cards have no size')
+  const x = box.x + box.width * 0.25
+  await guest.mouse.move(x, box.y + box.height * 0.5)
+  await guest.mouse.down()
+  await guest.mouse.move(x, box.y + box.height * 0.4, { steps: 3 })
+  // Up over the other card, which slides down under the pointer, and on up
+  // to its top.
+  const stop = await watchOptions(guest, '[data-card-id]:not([class*="lifted"]) [class*="actions"]')
+  await guest.mouse.move(x, otherBox.y + 5, { steps: 40 })
+  await guest.waitForTimeout(500)
+  expect(Math.max(...(await stop()))).toBe(0)
+  await guest.mouse.up()
+
+  await guestContext.close()
+})
+
+/** @see docs/card-layout.md § "Reordering the plan" - by dragging it */
+test('a card let go with the mouse over it keeps showing its options throughout', async ({
+  page,
+  browser,
+  request,
+}) => {
+  await signUp(page, request, 'Alex')
+  const shareUrl = await createDeck(page, 'Ideas for Sam')
+
+  const guestContext = await newVisitor(browser)
+  const guest = await guestContext.newPage()
+  await guest.goto(shareUrl)
+  await pickTwo(guest)
+
+  const card = guest.locator('[data-card-id]').filter({ hasText: 'Picnic in the Park' })
+  const other = guest.locator('[data-card-id]').filter({ hasText: 'Stargazing' })
+  await card.hover()
+  const id = await card.getAttribute('data-card-id')
+  const box = await card.boundingBox()
+  const otherBox = await other.boundingBox()
+  if (!box || !otherBox) throw new Error('Cards have no size')
+  const x = box.x + box.width * 0.25
+  await guest.mouse.move(x, box.y + box.height * 0.5)
+  await guest.mouse.down()
+  await guest.mouse.move(x, otherBox.y + otherBox.height * 0.5, { steps: 20 })
+  await expect.poll(async () => (await planOrder(guest))[0]).toContain('Picnic in the Park')
+
+  // On the stand-in, then on the card once it has settled, without a frame
+  // between where neither shows them.
+  const stop = await watchOptions(
+    guest,
+    `[class*="dragging"] [class*="actions"], [data-card-id="${id}"] [class*="actions"]`,
+  )
+  await guest.mouse.up()
+  await expect(guest.locator('[data-card-id][class*="lifted"]')).toHaveCount(0)
+  await guest.waitForTimeout(300)
+  expect(Math.min(...(await stop()))).toBe(1)
+
+  // Until the mouse leaves it.
+  await guest.mouse.move(5, 5)
+  await expect
+    .poll(() => card.locator('[class*="actions"]').evaluate((element) => getComputedStyle(element).opacity))
+    .toBe('0')
+
+  await guestContext.close()
+})
+
+/** @see docs/card-layout.md § "Reordering the plan" - by dragging it */
 test('a press on a card in the plan that does not move still discards it', async ({ page, browser, request }) => {
   await signUp(page, request, 'Alex')
   const shareUrl = await createDeck(page, 'Ideas for Sam')
