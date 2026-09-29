@@ -1,6 +1,6 @@
 import type { Locator, Page } from '@playwright/test'
 import { expect, newVisitor, test } from './fixtures'
-import { closeShareDialog, createDeck, signUp } from './helpers'
+import { closeShareDialog, createDeck, pressOption, signUp } from './helpers'
 
 // Drags a card by its middle to the middle of a spot, or into the top of it,
 // above its middle, a step at a time, as a mouse would. The spot is measured
@@ -18,8 +18,7 @@ async function dragCard(page: Page, card: Locator, spot: Locator, { before = fal
 }
 
 async function pick(page: Page, title: string) {
-  await page.locator('[data-deck-card-id]').filter({ hasText: title }).hover()
-  await page.getByRole('button', { name: `Add to plan: ${title}` }).click()
+  await pressOption(page.getByRole('button', { name: `Add to plan: ${title}` }))
   await expect(page.getByRole('button', { name: `Discard: ${title}` })).toBeAttached()
 }
 
@@ -92,7 +91,7 @@ test('someone groups cards in their plan, gives the group a title and notes, and
     await dragCard(guest, editingGroup.locator('[data-card-id]').first(), firstRow.locator('[data-card-id]').first(), {
       before: true,
     })
-    await expect(firstRow.locator('[data-card-id]')).toHaveCount(2, { timeout: 1000 })
+    await expect(firstRow.locator('[data-card-id]')).toHaveCount(2, { timeout: 3000 })
   }).toPass()
   await expect(firstRow.locator('[data-card-id]')).toHaveCount(2)
   await expect(firstRow.locator('[data-card-id]').first()).toContainText('Stargazing')

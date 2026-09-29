@@ -1,6 +1,6 @@
 import type { APIRequestContext, Page } from '@playwright/test'
 import { expect } from './fixtures'
-import { closeShareDialog } from './helpers'
+import { closeShareDialog, pressOption } from './helpers'
 
 // Shared by the link preview specs (docs/share-previews.md).
 
@@ -23,8 +23,7 @@ export async function expectJpeg(request: APIRequestContext, address: string) {
 }
 
 async function pick(page: Page, title: string) {
-  await page.locator('[data-deck-card-id]').filter({ hasText: title }).hover()
-  await page.getByRole('button', { name: `Add to plan: ${title}` }).click()
+  await pressOption(page.getByRole('button', { name: `Add to plan: ${title}` }))
 }
 
 // A guest saves a plan from the deck, and its page is the one that's shared.

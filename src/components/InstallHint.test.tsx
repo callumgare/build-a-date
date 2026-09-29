@@ -25,6 +25,7 @@ afterEach(() => {
   vi.restoreAllMocks()
 })
 
+/** @see docs/install-hint.md § "Who sees it" */
 describe('InstallHint', () => {
   it('shows on an iPhone', () => {
     device(iPhone)

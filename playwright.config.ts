@@ -24,6 +24,10 @@ export default defineConfig({
   // Some tests go from signing up to a saved plan and back, which on a
   // machine busy running the rest can take longer than the default 30s.
   timeout: 60_000,
+  // And a check that's slow to come true on a busy machine (a page drawing
+  // few frames, a plan's preview drawn before it's saved) is given longer
+  // than the default 5s. A check that passes still returns straight away.
+  expect: { timeout: 15_000 },
   retries: process.env.CI ? 1 : 0,
   reporter: process.env.CI ? 'github' : 'list',
   use: {

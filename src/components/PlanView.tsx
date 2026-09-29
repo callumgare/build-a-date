@@ -50,7 +50,7 @@ export default function PlanView({ shareId, cards, groups = [], deckId, deckTags
   const cardEditor = useCardEditor(deckId, deckTags)
   const viewReference = useRef<HTMLDivElement>(null)
   // No column grows or shrinks here, so there's never anything to hold.
-  useGridShuffle(viewReference, { disabled: Boolean(reduceMotion), holdKey: '', holdFor: 0 })
+  useGridShuffle(viewReference, { disabled: Boolean(reduceMotion), holdKey: '' })
 
   function cardElement(id: string) {
     return document.querySelector(`[data-card-id="${CSS.escape(id)}"]`)

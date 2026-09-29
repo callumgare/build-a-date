@@ -1,5 +1,5 @@
 import { expect, newVisitor, test } from './fixtures'
-import { closeShareDialog, createDeck, signUp } from './helpers'
+import { closeShareDialog, createDeck, pressOption, signUp } from './helpers'
 
 /** @see docs/card-layout.md § "The grid of cards" - each card is between
  * 200px and 250px wide, on a window too narrow for a 200px card as much as
@@ -73,8 +73,7 @@ test('the owner renames a deck, changes its ideas and deletes it', async ({ page
   const guest = await guestContext.newPage()
   await guest.goto(shareUrl)
   await expect(guest.getByRole('heading', { name: 'Ideas for Jo' })).toBeVisible()
-  await guest.locator('[data-deck-card-id]').filter({ hasText: 'Stargazing' }).hover()
-  await guest.getByRole('button', { name: 'Add to plan: Stargazing' }).click()
+  await pressOption(guest.getByRole('button', { name: 'Add to plan: Stargazing' }))
   await guest.getByRole('button', { name: 'Save plan' }).click()
   await closeShareDialog(guest)
   await expect(guest).toHaveURL(/\/p\/[a-z0-9]+$/)

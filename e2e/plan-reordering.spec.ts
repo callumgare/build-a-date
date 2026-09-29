@@ -1,5 +1,6 @@
 import type { Page } from '@playwright/test'
 import { expect, test } from './fixtures'
+import { pressOption } from './helpers'
 
 function planOrder(page: Page) {
   return page.locator('[data-card-id]').evaluateAll((cards) => cards.map((card) => card.textContent ?? ''))
@@ -9,8 +10,7 @@ function planOrder(page: Page) {
 test('someone drags a card from anywhere on it to a new place in the plan', async ({ page }) => {
   await page.goto('/sample')
   for (const title of ['Stargazing', 'Picnic in the Park']) {
-    await page.locator('[data-deck-card-id]').filter({ hasText: title }).hover()
-    await page.getByRole('button', { name: `Add to plan: ${title}` }).click()
+    await pressOption(page.getByRole('button', { name: `Add to plan: ${title}` }))
     await expect(page.getByRole('button', { name: `Discard: ${title}` })).toBeAttached()
   }
   const [first, second] = await planOrder(page)
@@ -52,8 +52,7 @@ test('a card dragged over another card takes its place, from any part of it', as
     .evaluateAll((cards) => cards.slice(0, 3).map((card) => card.querySelector('button')?.ariaLabel ?? ''))
   const titles = labels.map((label) => label.replace(/^Add to plan: /, ''))
   for (const title of titles) {
-    await page.locator('[data-deck-card-id]').filter({ hasText: title }).hover()
-    await page.getByRole('button', { name: `Add to plan: ${title}` }).click()
+    await pressOption(page.getByRole('button', { name: `Add to plan: ${title}` }))
     await expect(page.getByRole('button', { name: `Discard: ${title}` })).toBeAttached()
   }
   const [a, b, c] = titles
@@ -93,8 +92,7 @@ test('a card dragged over another card takes its place, from any part of it', as
 test("the dragged card keeps its options, and the faded card where it'll land never shows them", async ({ page }) => {
   await page.goto('/sample')
   for (const title of ['Stargazing', 'Picnic in the Park']) {
-    await page.locator('[data-deck-card-id]').filter({ hasText: title }).hover()
-    await page.getByRole('button', { name: `Add to plan: ${title}` }).click()
+    await pressOption(page.getByRole('button', { name: `Add to plan: ${title}` }))
     await expect(page.getByRole('button', { name: `Discard: ${title}` })).toBeAttached()
   }
 
@@ -152,8 +150,7 @@ async function watchOptions(page: Page, selector: string) {
 
 async function pickTwo(page: Page) {
   for (const title of ['Stargazing', 'Picnic in the Park']) {
-    await page.locator('[data-deck-card-id]').filter({ hasText: title }).hover()
-    await page.getByRole('button', { name: `Add to plan: ${title}` }).click()
+    await pressOption(page.getByRole('button', { name: `Add to plan: ${title}` }))
     await expect(page.getByRole('button', { name: `Discard: ${title}` })).toBeAttached()
   }
 }
@@ -221,8 +218,7 @@ test('a card let go with the mouse over it keeps showing its options throughout'
 /** @see docs/card-layout.md § "Reordering the plan" - by dragging it */
 test('a press on a card in the plan that does not move still discards it', async ({ page }) => {
   await page.goto('/sample')
-  await page.locator('[data-deck-card-id]').filter({ hasText: 'Stargazing' }).hover()
-  await page.getByRole('button', { name: 'Add to plan: Stargazing' }).click()
+  await pressOption(page.getByRole('button', { name: 'Add to plan: Stargazing' }))
   const card = page.locator('[data-card-id]').filter({ hasText: 'Stargazing' })
   const box = await card.boundingBox()
   if (!box) throw new Error('Card has no size')
@@ -234,8 +230,7 @@ test('a press on a card in the plan that does not move still discards it', async
 test("letting go of a drag doesn't do the option on that side of the card", async ({ page }) => {
   await page.goto('/sample')
   for (const title of ['Stargazing', 'Picnic in the Park']) {
-    await page.locator('[data-deck-card-id]').filter({ hasText: title }).hover()
-    await page.getByRole('button', { name: `Add to plan: ${title}` }).click()
+    await pressOption(page.getByRole('button', { name: `Add to plan: ${title}` }))
     await expect(page.getByRole('button', { name: `Discard: ${title}` })).toBeAttached()
   }
 
@@ -272,8 +267,7 @@ for (const end of ['bottom', 'top'] as const) {
       .evaluateAll((cards) => cards.slice(0, 4).map((card) => card.querySelector('button')?.ariaLabel ?? ''))
     for (const label of titles) {
       const title = label.replace(/^Add to plan: /, '')
-      await page.locator('[data-deck-card-id]').filter({ hasText: title }).hover()
-      await page.getByRole('button', { name: label }).click()
+      await pressOption(page.getByRole('button', { name: label }))
       await expect(page.getByRole('button', { name: `Discard: ${title}` })).toBeAttached()
     }
 
@@ -307,3 +301,29 @@ for (const end of ['bottom', 'top'] as const) {
     await page.mouse.up()
   })
 }
+
+/** @see docs/card-layout.md § "Reordering the plan" - scrolls with the drag: while that end of the column is out of the window, the page scrolls instead */
+test("dragging a card down while the plan's bottom is below the window scrolls the page", async ({ page }) => {
+  await page.setViewportSize({ width: 1280, height: 800 })
+  await page.goto('/sample')
+  await pickTwo(page)
+
+  // At the top of the page, where the column hasn't stuck to the top of the
+  // window yet, so it runs on below the window.
+  await page.evaluate(() => window.scrollTo(0, 0))
+  const columnBox = await page.locator('.plan-column').boundingBox()
+  if (!columnBox) throw new Error('Plan has no size')
+  expect(columnBox.y + columnBox.height).toBeGreaterThan(800)
+
+  const card = page.locator('[data-card-id]').first()
+  await card.hover()
+  const box = await card.boundingBox()
+  if (!box) throw new Error('Card has no size')
+  const x = box.x + box.width * 0.5
+  await page.mouse.move(x, box.y + box.height * 0.5)
+  await page.mouse.down()
+  // Down to the bottom of the window, and held there.
+  await page.mouse.move(x, 795, { steps: 20 })
+  await expect.poll(() => page.evaluate(() => window.scrollY)).toBeGreaterThan(100)
+  await page.mouse.up()
+})

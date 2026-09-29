@@ -29,6 +29,7 @@ beforeEach(resetPlanBuilder)
 afterEach(() => vi.restoreAllMocks())
 
 describe('PlanBuilder', () => {
+  /** @see docs/deck-filters.md § "All and the tags" */
   describe('filtering by several tags', () => {
     function filterButton(name: string) {
       return within(screen.getByRole('group', { name: 'Filter ideas' })).getByRole('button', { name })
@@ -45,6 +46,7 @@ describe('PlanBuilder', () => {
       expect(screen.queryByRole('button', { name: 'Add to plan: Museum' })).not.toBeInTheDocument()
     })
 
+    /** @see docs/deck-filters.md § "Not in plan" - an empty deck says No ideas match the filters, with Show all ideas */
     it('says when no idea has every tag, and can show them all again', async () => {
       const user = userEvent.setup({ delay: null })
       renderBuilder()

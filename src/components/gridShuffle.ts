@@ -80,15 +80,19 @@ function itemsOf(grid: HTMLElement) {
 }
 
 // Each time `holdKey` changes, each grid keeps the number of columns it had
-// for `holdFor` milliseconds, however its width changes, and then shuffles to
-// its new number. For a column growing or shrinking on a narrow screen:
-// shuffling part way through, while the column scales, sends cards a long way
-// across a column that's itself moving, so it's done once it's finished.
-// Letting go is on a timer rather than a render, so Motion doesn't see the
+// until `holdUntil` says the change is over, however its width changes, and
+// then shuffles to its new number. For a column growing or shrinking on a
+// narrow screen: shuffling part way through, while the column scales, sends
+// cards a long way across a column that's itself moving, so it's done once
+// it's finished. Letting go is outside a render, so Motion doesn't see the
 // grid change and animate it as well.
 export function useGridShuffle(
   root: RefObject<HTMLElement | null>,
-  { disabled, holdKey, holdFor }: { disabled: boolean; holdKey: string; holdFor: number },
+  {
+    disabled,
+    holdKey,
+    holdUntil,
+  }: { disabled: boolean; holdKey: string; holdUntil?: (root: HTMLElement) => Promise<void> },
 ) {
   const tracked = useRef(new Map<HTMLElement, Tracked>())
   const observer = useRef<ResizeObserver | null>(null)
@@ -148,11 +152,17 @@ export function useGridShuffle(
       heldBefore.current = true
       for (const [grid, state] of tracked.current) hold(grid, state)
     }
-    const timer = setTimeout(() => {
+    const element = root.current
+    let current = true
+    const over = element && holdUntil ? holdUntil(element) : Promise.resolve()
+    over.then(() => {
+      if (!current) return
       heldBefore.current = false
       for (const [grid, state] of tracked.current) letGo(grid, state)
-    }, holdFor)
-    return () => clearTimeout(timer)
+    })
+    return () => {
+      current = false
+    }
   }, [holdKey])
 
   function resized(entries: ResizeObserverEntry[]) {

@@ -1,5 +1,6 @@
 'use client'
 
+import { useRouter } from 'next/navigation'
 import { useEffect, useId, useRef, useState } from 'react'
 import { celebrate } from './galaxy/sparkle'
 
@@ -22,6 +23,7 @@ export default function SharePlanButton({ title, openOnLoad = false }: SharePlan
   const [canShare, setCanShare] = useState(false)
   const headingId = useId()
 
+  const router = useRouter()
   useEffect(() => {
     setCanShare(typeof navigator.share === 'function')
     if (!openOnLoad) return
@@ -29,8 +31,12 @@ export default function SharePlanButton({ title, openOnLoad = false }: SharePlan
     // Just saved (docs/background.md § "Bursts").
     celebrate()
     // So a reload, or the address bar copied by hand, doesn't open it again.
-    window.history.replaceState(window.history.state, '', window.location.pathname)
-  }, [openOnLoad])
+    // Through Next's router rather than the browser's history: on a slow
+    // device this page can show before Next has finished going to it, and
+    // Next then sets the address it went to, ?share and all. Its router does
+    // one navigation after another, so this one comes after that.
+    router.replace(window.location.pathname, { scroll: false })
+  }, [openOnLoad, router])
 
   // The device's share sheet, where there is one, and the dialog otherwise
   // or if the sheet fails. The sheet only opens from a press, so it's a

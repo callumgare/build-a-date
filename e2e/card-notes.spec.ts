@@ -1,6 +1,6 @@
 import type { Locator, Page } from '@playwright/test'
 import { expect, newVisitor, test } from './fixtures'
-import { closeShareDialog, createDeck, signUp } from './helpers'
+import { closeShareDialog, createDeck, pressOption, signUp } from './helpers'
 
 /** @see docs/card-notes.md § "Who can change them" */
 test('someone with the link rates an idea and leaves notes the owner can see', async ({ page, browser, request }) => {
@@ -33,8 +33,7 @@ test('someone with the link rates an idea and leaves notes the owner can see', a
   // Still there after a reload, and for the owner.
   for (const viewer of [guest, page]) {
     await viewer.goto(shareUrl)
-    await viewer.locator('[data-deck-card-id]').filter({ hasText: 'Stargazing' }).hover()
-    await viewer.getByRole('button', { name: 'Notes on Stargazing' }).click()
+    await pressOption(viewer.getByRole('button', { name: 'Notes on Stargazing' }))
     const reopened = viewer.getByRole('dialog', { name: 'Stargazing' })
     await expect(reopened.getByRole('radio', { name: '4 stars' })).toBeChecked()
     await expect(reopened.getByRole('textbox', { name: 'Notes' })).toHaveValue('Somewhere away from the city lights')
@@ -59,15 +58,12 @@ test("the words of a note stay off the plan and the deck's edit page", async ({ 
   const guestContext = await newVisitor(browser)
   const guest = await guestContext.newPage()
   await guest.goto(shareUrl)
-  const card = guest.locator('[data-deck-card-id]').filter({ hasText: 'Stargazing' })
-  await card.hover()
-  await guest.getByRole('button', { name: 'Notes on Stargazing' }).click()
+  await pressOption(guest.getByRole('button', { name: 'Notes on Stargazing' }))
   const notes = guest.getByRole('dialog', { name: 'Stargazing' })
   await notes.getByRole('textbox', { name: 'Notes' }).fill(note)
   await notes.getByRole('button', { name: 'Done' }).click()
   await expect(notes).toBeHidden()
-  await card.hover()
-  await guest.getByRole('button', { name: 'Add to plan: Stargazing' }).click()
+  await pressOption(guest.getByRole('button', { name: 'Add to plan: Stargazing' }))
   await guest.getByRole('button', { name: 'Save plan' }).click()
   await closeShareDialog(guest)
   await expect(guest).toHaveURL(/\/p\/[a-z0-9]+$/)
@@ -78,8 +74,7 @@ test("the words of a note stay off the plan and the deck's edit page", async ({ 
 
   // The note was saved; it just isn't shown in those places.
   await guest.goto(shareUrl)
-  await guest.locator('[data-deck-card-id]').filter({ hasText: 'Stargazing' }).hover()
-  await guest.getByRole('button', { name: 'Notes on Stargazing' }).click()
+  await pressOption(guest.getByRole('button', { name: 'Notes on Stargazing' }))
   await expect(guest.getByRole('textbox', { name: 'Notes' })).toHaveValue(note)
   await guestContext.close()
 
@@ -122,8 +117,7 @@ test("a card's options work from the keyboard", async ({ page }) => {
 test.describe("a card's notes", () => {
   async function openNotes(page: Page) {
     await page.goto('/sample')
-    await page.locator('[data-deck-card-id]').filter({ hasText: 'Stargazing' }).hover()
-    await page.getByRole('button', { name: 'Notes on Stargazing' }).click()
+    await pressOption(page.getByRole('button', { name: 'Notes on Stargazing' }))
     const notes = page.getByRole('dialog', { name: 'Stargazing' })
     await expect(notes).toBeVisible()
     return notes

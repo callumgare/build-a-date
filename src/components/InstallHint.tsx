@@ -29,7 +29,7 @@ function wasDismissed() {
 }
 
 // iOS has no install prompt of its own, so point Safari users at the manual
-// route, until they save it or wave the hint away.
+// route, until they save it or wave the hint away (docs/install-hint.md).
 export default function InstallHint() {
   // Decided after the first render, since the server can't see the device.
   const [visible, setVisible] = useState(false)

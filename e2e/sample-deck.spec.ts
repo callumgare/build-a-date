@@ -1,4 +1,5 @@
 import { expect, test } from './fixtures'
+import { pressOption } from './helpers'
 
 /** @see docs/sample-deck.md § "What's different" */
 test('someone signed out tries the sample deck, then goes to make their own', async ({ page }) => {
@@ -7,9 +8,7 @@ test('someone signed out tries the sample deck, then goes to make their own', as
   await expect(page).toHaveURL(/\/sample$/)
   await expect(page.getByRole('heading', { name: 'Sample Deck' })).toBeVisible()
 
-  const card = page.locator('[data-deck-card-id]').filter({ hasText: 'Stargazing' })
-  await card.hover()
-  await page.getByRole('button', { name: 'Add to plan: Stargazing' }).click()
+  await pressOption(page.getByRole('button', { name: 'Add to plan: Stargazing' }))
   const plan = page.getByRole('region', { name: 'Your plan' })
   await expect(plan.locator('[data-card-id]').filter({ hasText: 'Stargazing' })).toBeVisible()
   await expect(page.getByRole('button', { name: 'Save plan' })).toHaveCount(0)

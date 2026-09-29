@@ -1,4 +1,4 @@
-import { type APIRequestContext, expect, type Page } from '@playwright/test'
+import { type APIRequestContext, expect, type Locator, type Page } from '@playwright/test'
 
 // Gives the page a platform authenticator that says yes to every passkey
 // prompt, like a user touching their fingerprint reader. Passkeys it makes
@@ -38,7 +38,7 @@ export async function latestSignInLink(request: APIRequestContext, email: string
     link = emails.at(-1)?.text.match(/https?:\/\/\S+/)?.[0]
     expect(link).toBeTruthy()
     emailsRead.set(email, emails.length)
-  }).toPass({ timeout: 10_000 })
+  }).toPass({ timeout: 30_000 })
   return link as string
 }
 
@@ -86,4 +86,54 @@ export async function closeShareDialog(page: Page) {
   await expect(page).toHaveURL(/\/p\/[a-z0-9]+$/)
   await dialog.getByRole('button', { name: 'View' }).click()
   await expect(dialog).toBeHidden()
+}
+
+// Presses one of a card's options (Add to plan, Discard, Notes, Edit) from the
+// keyboard, as someone tabbing to it would; the card shows its options while
+// one has focus (docs/card-notes.md § "When the options show"). A mouse click
+// would hover the card first, which tilts it, and Playwright waits for the
+// card to hold still. On a busy machine that can take longer than the test
+// has, as each frame moves Motion's spring only a little way, and each retry
+// nudges the card again (docs/testing.md § "End-to-end tests").
+export async function pressOption(option: Locator) {
+  await option.press('Enter')
+}
+
+// Waits until nothing in the builder is moving: no switch between columns
+// under way, no CSS transition or animation running in it or on a card flying
+// over the page, and every card in the same place for several frames (Motion
+// runs its springs and slides itself, so they're only seen by where things
+// are). Rather than sleeping for as long as that usually takes, which on a
+// busy machine is sometimes not long enough (docs/testing.md § "Checking
+// animation").
+export async function expectStill(page: Page) {
+  await expect(page.locator('.builder')).not.toHaveAttribute('data-switching')
+  await expect
+    .poll(() =>
+      page.evaluate(
+        () =>
+          new Promise<boolean>((resolve) => {
+            const running = document.getAnimations().some((animation) => {
+              const target = (animation.effect as KeyframeEffect | null)?.target
+              return target instanceof Element && Boolean(target.closest('.builder, body > [aria-hidden="true"]'))
+            })
+            if (running) return resolve(false)
+            const places = () =>
+              [...document.querySelectorAll('[data-card-id], [data-deck-card-id], body > [aria-hidden="true"]')]
+                .map((element) => {
+                  const box = element.getBoundingClientRect()
+                  return `${Math.round(box.x)},${Math.round(box.y)},${Math.round(box.width)}`
+                })
+                .join(' ')
+            const first = places()
+            let frames = 0
+            requestAnimationFrame(function check() {
+              if (places() !== first) return resolve(false)
+              if (++frames < 5) requestAnimationFrame(check)
+              else resolve(true)
+            })
+          }),
+      ),
+    )
+    .toBe(true)
 }

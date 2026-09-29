@@ -125,6 +125,35 @@ describe('PlanBuilder', () => {
     })
   })
 
+  /** @see docs/card-layout.md § "Flying cards" - anywhere: a discarded card the filters hide doesn't fly */
+  describe('flying cards', () => {
+    // The stand-ins flying between the deck and the plan, drawn over the page.
+    function flyingCards() {
+      return document.body.querySelectorAll(':scope > [aria-hidden="true"]')
+    }
+
+    it("doesn't fly a discarded card back to the deck when the filters hide it there", async () => {
+      // jsdom lays nothing out, so a flight would have nowhere to land.
+      vi.spyOn(HTMLElement.prototype, 'offsetParent', 'get').mockImplementation(function (this: HTMLElement) {
+        return this.parentElement
+      })
+      keepPicks(['picnic', 'museum'])
+      const user = userEvent.setup({ delay: null })
+      const { container } = renderBuilder()
+      await user.click(
+        within(screen.getByRole('group', { name: 'Filter ideas' })).getByRole('button', { name: 'culture' }),
+      )
+
+      fireEvent.click(screen.getByRole('button', { name: 'Discard: Picnic' }))
+      expect(flyingCards()).toHaveLength(0)
+      expect(container.querySelector('[data-card-id="picnic"]')).not.toBeInTheDocument()
+
+      // One the filters show still flies.
+      fireEvent.click(screen.getByRole('button', { name: 'Discard: Museum' }))
+      expect(flyingCards()).toHaveLength(1)
+    })
+  })
+
   /** @see docs/card-layout.md § "Narrow screens" - the last column used */
   describe('narrowing the screen', () => {
     // A screen that starts wide, and can be made narrow.

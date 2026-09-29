@@ -1,6 +1,9 @@
 import type { Browser, Page } from '@playwright/test'
 import { expect, newVisitor, test } from './fixtures'
 
+// The background itself, so drawn with WebGL, which the other tests turn off.
+test.use({ galaxy: true })
+
 type Tile = {
   id: string
   /** Where it sits on the page, and where it is on screen now, in CSS pixels. */
@@ -159,6 +162,7 @@ test.describe('drawn past the window', () => {
   // page, so it gets a context of its own.
   async function smallWindow(browser: Browser) {
     const context = await newVisitor(browser, {
+      galaxy: true,
       viewport: { width: 1000, height: 700 },
       screen: { width: 1920, height: 1080 },
     })
@@ -221,7 +225,7 @@ test.describe('sparkle', () => {
     await page.goto('/')
     await covered(page)
     const glint = page.locator('.galaxy-glint').first()
-    await expect(glint).toBeAttached({ timeout: 10_000 })
+    await expect(glint).toBeAttached()
     const onGold = await glint.evaluate((element) => {
       const x = Number.parseFloat(element.style.left) + Number.parseFloat(element.style.width) / 2
       const y = Number.parseFloat(element.style.top) + Number.parseFloat(element.style.height) / 2

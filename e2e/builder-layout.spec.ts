@@ -1,5 +1,6 @@
 import type { Locator, Page } from '@playwright/test'
 import { expect, test } from './fixtures'
+import { expectStill, pressOption } from './helpers'
 
 // How much a section is drawn smaller than it's laid out: '1' in use, '0.2'
 // shrunk.
@@ -91,8 +92,7 @@ test('on a narrow screen one column is in use, and a click on the other puts it 
   expect(await scaleOf(deck)).toBe('1')
 
   // Picked from the deck, into the shrunk plan.
-  await page.locator('[data-deck-card-id]').filter({ hasText: 'Stargazing' }).hover()
-  await page.getByRole('button', { name: 'Add to plan: Stargazing' }).click()
+  await pressOption(page.getByRole('button', { name: 'Add to plan: Stargazing' }))
   await expect(page.locator('[data-card-id]')).toContainText('Stargazing')
 
   // A click right on the card in the shrunk plan puts the plan in use,
@@ -110,7 +110,7 @@ test('on a narrow screen one column is in use, and a click on the other puts it 
 
   // And back, from a click on the shrunk deck, once the switch is over and
   // the page has stopped keeping the deck's place.
-  await page.waitForTimeout(700)
+  await expectStill(page)
   const deckBox = await page.locator('.deck-column').boundingBox()
   if (!deckBox) throw new Error('Deck has no size')
   expect(await shrinkAnimatesAfterClick(page, plan, deckBox.x + deckBox.width / 2, Math.max(deckBox.y, 0) + 40)).toBe(
@@ -192,8 +192,7 @@ test("the bar keeps its height when the buttons come in, so the page doesn't mov
   const bar = page.locator('.builder-bar')
   const before = await bar.evaluate((element) => element.getBoundingClientRect().height)
   const card = page.locator('[data-deck-card-id]').first()
-  await card.hover()
-  await card.getByRole('button', { name: /^Add to plan: / }).click()
+  await pressOption(card.getByRole('button', { name: /^Add to plan: / }))
   await expect(page.getByRole('button', { name: 'Clear plan' })).toBeVisible()
   await expect.poll(() => bar.evaluate((element) => element.getAnimations({ subtree: true }).length)).toBe(0)
   expect(await bar.evaluate((element) => element.getBoundingClientRect().height)).toBe(before)
@@ -253,7 +252,7 @@ for (const size of ['wide', 'narrow'] as const) {
       await page.getByRole('button', { name: 'Show the date ideas' }).click()
       await expect.poll(() => scaleOf(page.getByRole('region', { name: 'Your plan' }))).toBe('0.2')
     }
-    await page.waitForTimeout(800)
+    await expectStill(page)
 
     const places = await pickAndWatch(page, {
       random: '.random-pick',
@@ -363,17 +362,8 @@ async function narrowPlanOfThree(page: Page, width: number) {
   // Last used the plan, so it's in use once the window is narrow.
   await page.setViewportSize({ width, height: 900 })
   await expect.poll(() => scaleOf(page.getByRole('region', { name: 'Your plan' }))).toBe('1')
-  await page.waitForTimeout(700)
+  await expectStill(page)
 }
-
-/** @see docs/card-layout.md § "Narrow screens" - the plan in a grid */
-test('on a narrow screen with room, the plan in use is a grid like the deck', async ({ page }) => {
-  await narrowPlanOfThree(page, 860)
-  const boxes = await planCardBoxes(page)
-  // Side by side, like the deck when it's in use.
-  expect(boxes[1].y).toBe(boxes[0].y)
-  expect(boxes[1].x).toBeGreaterThan(boxes[0].x)
-})
 
 /** @see docs/card-layout.md § "Narrow screens" - the plan in a grid */
 test('on a narrow screen without room, the plan in use is one column', async ({ page }) => {
@@ -425,7 +415,7 @@ test('scrolling over the plan scrolls the page when it fits, and the plan first 
     await page.getByRole('button', { name: 'Draw random card' }).click()
     await expect(page.locator('[data-card-id]')).toHaveCount(picked)
   }
-  await page.waitForTimeout(800)
+  await expectStill(page)
   await column.evaluate((element) => {
     element.scrollTop = 0
     window.scrollTo(0, element.getBoundingClientRect().top + window.scrollY)
@@ -463,7 +453,7 @@ for (const opened of ['as picked', 'after a reload, with the picks kept']) {
       await page.reload()
       await expect(page.locator('[data-card-id]')).toHaveCount(4)
     }
-    await page.waitForTimeout(800)
+    await expectStill(page)
     const scroller = page.locator('.plan-scroll')
     const title = page.getByRole('heading', { name: 'The Plan' })
     // Stuck at the top of the window, the title above the plan.
@@ -492,17 +482,28 @@ for (const opened of ['as picked', 'after a reload, with the picks kept']) {
     await expect(title).toBeVisible()
     expect((await title.boundingBox())?.y).toBe(titleAt)
 
-    // At the end, only the top.
-    await scroller.evaluate((element) => {
-      element.scrollTop = element.scrollHeight
-    })
-    await expect.poll(ends).toEqual({ above: true, below: false })
+    // At the end, only the top. Scrolled there again on each look, in case
+    // the plan is still growing (its fonts, say, landing late on a busy
+    // machine), which rightly leaves more below until it's scrolled again.
+    await expect
+      .poll(async () => {
+        await scroller.evaluate((element) => {
+          element.scrollTop = element.scrollHeight
+        })
+        return ends()
+      })
+      .toEqual({ above: true, below: false })
     await expect.poll(() => fade('--fade-bottom')).toBe('0px')
   })
 }
 
-/** @see docs/card-layout.md § "The grid of cards" */
-test("a line of cards that isn't full is in the middle, and Draw random card sits a little apart", async ({ page }) => {
+/**
+ * @see docs/card-layout.md § "The grid of cards"
+ * @see docs/card-layout.md § "Narrow screens" - the plan in a grid
+ */
+test("on a narrow screen with room, the plan in use is a grid like the deck, a line of cards that isn't full is in the middle, and Draw random card sits a little apart", async ({
+  page,
+}) => {
   await narrowPlanOfThree(page, 860)
   const columns = await page
     .locator('.plan-track')
@@ -513,9 +514,12 @@ test("a line of cards that isn't full is in the middle, and Draw random card sit
     await page.getByRole('button', { name: 'Draw random card' }).click()
     await expect(page.locator('[data-card-id]')).toHaveCount(picked)
   }
-  await page.waitForTimeout(800)
+  await expectStill(page)
   const boxes = await planCardBoxes(page)
+  // Side by side, like the deck when it's in use.
   expect(columns).toBeGreaterThan(1)
+  expect(boxes[1].y).toBe(boxes[0].y)
+  expect(boxes[1].x).toBeGreaterThan(boxes[0].x)
   const last = boxes[columns]
   expect(last.y).toBeGreaterThan(boxes[0].y)
   const track = await page
@@ -548,7 +552,7 @@ test('with the plan shrunk, a second card picked makes room by sliding the first
     )
   await pick()
   await expect(page.locator('[data-card-id]')).toHaveCount(1)
-  await page.waitForTimeout(900)
+  await expectStill(page)
   expect(
     await page
       .locator('.plan-track')
@@ -576,4 +580,41 @@ test('with the plan shrunk, a second card picked makes room by sliding the first
   expect(xs[xs.length - 1]).toBeLessThan(xs[0])
   // Only ever to the left, without overshooting its place.
   expect(xs).toEqual([...xs].sort((a, b) => b - a))
+})
+
+/** @see docs/card-layout.md § "The plan column" - flying in: if that place is below what the column is showing, the column scrolls to it first */
+test("a card picked into a plan that's scrolled away from its end scrolls the plan to it", async ({ page }) => {
+  await page.setViewportSize({ width: 1280, height: 800 })
+  await page.goto('/sample')
+  const labels = await page
+    .locator('[data-deck-card-id]')
+    .evaluateAll((cards) => cards.slice(0, 5).map((card) => card.querySelector('button')?.ariaLabel ?? ''))
+  for (const label of labels.slice(0, 4)) {
+    await pressOption(page.getByRole('button', { name: label }))
+    await expect(page.getByRole('button', { name: label.replace(/^Add to plan: /, 'Discard: ') })).toBeAttached()
+  }
+
+  // The column stuck to the top of the window, scrolled back to its top.
+  const column = page.locator('.plan-scroll')
+  await column.evaluate((element) => {
+    window.scrollTo(0, element.getBoundingClientRect().top + window.scrollY)
+    element.scrollTop = 0
+  })
+  expect(await column.evaluate((element) => element.scrollHeight > element.clientHeight + 200)).toBe(true)
+
+  const last = labels[4]
+  await pressOption(page.getByRole('button', { name: last }))
+  const picked = page.getByRole('button', { name: last.replace(/^Add to plan: /, 'Discard: ') })
+  await expect(picked).toBeAttached()
+  // In what the column shows, once it has flown there.
+  await expect
+    .poll(() =>
+      picked.evaluate((button) => {
+        const card = button.closest('[data-card-id]')?.getBoundingClientRect()
+        const shown = document.querySelector('.plan-scroll')?.getBoundingClientRect()
+        return Boolean(card && shown && card.top >= shown.top - 1 && card.bottom <= shown.bottom + 1)
+      }),
+    )
+    .toBe(true)
+  expect(await column.evaluate((element) => element.scrollTop)).toBeGreaterThan(100)
 })

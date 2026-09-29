@@ -59,7 +59,7 @@ import { readPicks, writePicks } from './keptPicks'
 import { DragStandIn, PlanCard, usePlanDrag } from './PlanCard'
 import SharePreviewRefresher, { type PreviewProps } from './SharePreviewRefresher'
 import Stars from './Stars'
-import { shrinkOf } from './shrink'
+import { shrinkOf, switchOver } from './shrink'
 import type { Box } from './tilt'
 
 type PlanBuilderProps = {
@@ -206,7 +206,7 @@ export default function PlanBuilder({
   useGridShuffle(builderReference, {
     disabled: Boolean(reduceMotion),
     holdKey: `${narrow}-${narrow ? active : ''}`,
-    holdFor: switchDuration,
+    holdUntil: switchOver,
   })
   const drag = usePlanDrag({
     container: planReference,
@@ -348,9 +348,11 @@ export default function PlanBuilder({
   // How much room the plan's column keeps for its scrollbar, on each side,
   // which the shrunk plan makes up with padding (styles.css,
   // .builder[data-active='deck'] .plan-section). It depends on the browser
-  // and system, so it's measured on a stand-in with the same scrollbar. Again
-  // whenever the builder is laid out afresh for kept picks, which replaces
-  // it.
+  // and system, so it's measured on a stand-in with the same scrollbar. The
+  // root layout has already measured it before the page was first drawn
+  // (measureScrollbarGutter in src/app/layout.tsx); this sets it on the
+  // builder too, and again whenever the builder is laid out afresh for kept
+  // picks, which replaces it.
   // biome-ignore lint/correctness/useExhaustiveDependencies: the builder is replaced when layoutGeneration changes
   useLayoutEffect(() => {
     const builder = builderReference.current
@@ -381,9 +383,12 @@ export default function PlanBuilder({
       return
     }
     builder.dataset.switching = ''
-    const timer = setTimeout(() => delete builder.dataset.switching, switchDuration)
+    let current = true
+    switchOver(builder).then(() => {
+      if (current) delete builder.dataset.switching
+    })
     return () => {
-      clearTimeout(timer)
+      current = false
       delete builder.dataset.switching
     }
   }, [active])
@@ -448,10 +453,13 @@ export default function PlanBuilder({
       window.scrollTo(0, deckTop() + offset * shrinkOf(section as Element))
     }
     keep()
-    const until = performance.now() + switchDuration
-    let frame = requestAnimationFrame(function follow(time) {
+    let over = false
+    const builder = builderReference.current
+    if (builder) switchOver(builder).then(() => (over = true))
+    else over = true
+    let frame = requestAnimationFrame(function follow() {
       keep()
-      if (time < until) frame = requestAnimationFrame(follow)
+      if (!over) frame = requestAnimationFrame(follow)
     })
     return () => cancelAnimationFrame(frame)
   }, [active])
@@ -1089,10 +1097,6 @@ function BarFade({ reduceMotion, children }: { reduceMotion: boolean; children: 
 // Below this width only one column is in use at a time. The same width as the
 // media query in styles.css.
 const narrowScreen = '(max-width: 899px)'
-
-// How long a column takes to grow or shrink, a little over the transition
-// on .builder in styles.css.
-const switchDuration = 600
 
 function useNarrowScreen() {
   return useSyncExternalStore(

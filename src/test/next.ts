@@ -30,3 +30,10 @@ export const revalidatePath = vi.fn()
 export const headers = vi.fn(async () => new Headers())
 
 export const connection = vi.fn(async () => {})
+
+// For client components a page renders, which go places with the router.
+export const router = { push: vi.fn(), replace: vi.fn(), refresh: vi.fn() }
+
+export function useRouter() {
+  return router
+}

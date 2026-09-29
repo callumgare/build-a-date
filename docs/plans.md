@@ -72,7 +72,7 @@ There's no link to open the plan, since that's the page it's on. While saving, t
 
 Before saving, the builder draws the plan's link preview, the picture a messaging app shows with its link, and sends it with the plan, so it's ready to share ([share-previews.md](share-previews.md) § "When it's drawn"). If it can't be drawn within 3 seconds, the plan saves without it and the plan page draws it.
 
-The builder goes to `/p/<planId>?share`, and the plan page opens the dialog when it sees `share` (`openOnLoad` on `SharePlanButton`). The dialog then takes `?share` off the address, so a reload doesn't open it again. The link it shares never includes it either.
+The builder goes to `/p/<planId>?share`, and the plan page opens the dialog when it sees `share` (`openOnLoad` on `SharePlanButton`). The dialog then takes `?share` off the address, so a reload doesn't open it again. It does it with Next's `router.replace`, not the browser's history: on a slow device the plan page can show before Next has finished going to it, and Next would then set the address back to the one with `?share`. Next's router does one navigation after another, so the replace comes after. The link it shares never includes it either.
 
 ## Deleting a plan
 

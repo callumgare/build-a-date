@@ -838,7 +838,8 @@ h1 {
      as one column grows and the other shrinks, on the same curve as
      --shrink. Then a column's width over --shrink stays the same all the
      way through, so nothing in it is laid out afresh part way.
-     switchDuration in PlanBuilder.tsx is a little longer. */
+     The switch is over when these transitions finish (switchOver in
+     shrink.ts). */
   .builder {
     --switch: 0.5s cubic-bezier(0.3, 0.7, 0.2, 1);
     grid-template-columns: calc((100% - 12px) * 5 / 6) calc((100% - 12px) / 6);

@@ -219,6 +219,40 @@ describe('PlanBuilder', () => {
         expect(card.dataset.side).toBeUndefined()
       })
     })
+
+    /** @see docs/card-layout.md § "Reordering the plan" - only the grip, on a touch screen */
+    describe('on a touch screen', () => {
+      // A touch pressed on something in a card, then moved well past where
+      // a drag starts.
+      function swipe(from: Element) {
+        fireEvent.pointerDown(from, { pointerType: 'touch', pointerId: 7, button: 0, clientX: 50, clientY: 50 })
+        fireEvent.pointerMove(window, { pointerType: 'touch', pointerId: 7, clientX: 50, clientY: 120 })
+      }
+      const dragging = (container: HTMLElement) =>
+        container.querySelector('.plan-scroll')?.hasAttribute('data-dragging')
+
+      it("doesn't drag a card from anywhere but its grip, so a swipe still scrolls the plan", async () => {
+        keepPicks(['picnic', 'museum'])
+        const { container } = renderBuilder()
+        await screen.findByRole('button', { name: 'Move Museum' })
+        swipe(container.querySelector('[data-card-id="museum"] [class*="title"]') as Element)
+        expect(dragging(container)).toBe(false)
+        fireEvent.pointerUp(window, { pointerType: 'touch', pointerId: 7 })
+      })
+
+      it('drags a card from its grip', async () => {
+        keepPicks(['picnic', 'museum'])
+        const { container } = renderBuilder()
+        swipe(await screen.findByRole('button', { name: 'Move Museum' }))
+        expect(dragging(container)).toBe(true)
+        fireEvent.pointerUp(window, { pointerType: 'touch', pointerId: 7 })
+        // Settled, and past the moment after it where the drag swallows the
+        // click its letting go makes, which would otherwise swallow the next
+        // test's first click.
+        await waitFor(() => expect(dragging(container)).toBe(false))
+        await act(() => new Promise((resolve) => setTimeout(resolve, 0)))
+      })
+    })
   })
 
   /** @see docs/plans.md § "Groups" */

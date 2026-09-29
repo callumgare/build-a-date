@@ -4,6 +4,9 @@ import userEvent from '@testing-library/user-event'
 import { CELEBRATE_EVENT } from './galaxy/sparkle'
 import SharePlanButton from './SharePlanButton'
 
+const { router } = vi.hoisted(() => ({ router: { replace: vi.fn() } }))
+vi.mock('next/navigation', () => ({ useRouter: () => router }))
+
 function setShare(share: Navigator['share'] | undefined) {
   Object.defineProperty(navigator, 'share', { value: share, configurable: true })
 }
@@ -18,6 +21,7 @@ async function shareSettled(share: ReturnType<typeof vi.fn>) {
 
 beforeEach(() => {
   setShare(undefined)
+  router.replace.mockReset()
   window.history.replaceState(null, '', '/p/plan42')
 })
 
@@ -73,7 +77,9 @@ describe('SharePlanButton', () => {
       render(<SharePlanButton title="Our date" openOnLoad />)
       expect(screen.getByRole('dialog')).toHaveAttribute('open')
       expect(screen.getByRole('button', { name: 'Copy link' })).toBeInTheDocument()
-      expect(window.location.search).toBe('')
+      // Through Next's router, which goes there once it has finished going to
+      // the page with ?share.
+      expect(router.replace).toHaveBeenCalledWith('/p/plan42', { scroll: false })
       expect(screen.queryByRole('link', { name: 'Open your plan' })).not.toBeInTheDocument()
     })
 

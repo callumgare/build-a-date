@@ -1,5 +1,5 @@
 import { expect, newVisitor, test } from './fixtures'
-import { addVirtualAuthenticator, closeShareDialog, latestSignInLink, uniqueEmail } from './helpers'
+import { addVirtualAuthenticator, closeShareDialog, latestSignInLink, pressOption, uniqueEmail } from './helpers'
 
 test('sign up, share a deck, and get a plan back', async ({ page, browser, request }) => {
   const email = uniqueEmail('owner')
@@ -56,8 +56,7 @@ test('sign up, share a deck, and get a plan back', async ({ page, browser, reque
   await expect(guest.getByRole('heading', { name: 'Ideas for Sam' })).toBeVisible()
   // A card shows its options on hover (docs/card-notes.md § "When the options show").
   for (const title of ['Rooftop Dinner', 'Stargazing']) {
-    await guest.locator('[data-deck-card-id]').filter({ hasText: title }).hover()
-    await guest.getByRole('button', { name: `Add to plan: ${title}` }).click()
+    await pressOption(guest.getByRole('button', { name: `Add to plan: ${title}` }))
   }
   await guest.getByRole('button', { name: 'Save plan' }).click()
   await closeShareDialog(guest)

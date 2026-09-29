@@ -27,7 +27,7 @@ vi.mock('@/db', () => import('@/test/cloudflare'))
 vi.mock('@/lib/auth-config', () => import('@/test/session'))
 ```
 
-- **`src/test/next.ts`** stands in for `next/navigation`, `next/headers`, `next/cache` and `next/server`. Like Next's own, `redirect()` and `notFound()` throw, so nothing after them runs. They throw a `RedirectError` whose message is `Redirected to <path>`, and a `NotFoundPage`, so a test can write `await expect(page()).rejects.toThrow('Redirected to /decks')`.
+- **`src/test/next.ts`** stands in for `next/navigation`, `next/headers`, `next/cache` and `next/server`. Like Next's own, `redirect()` and `notFound()` throw, so nothing after them runs. They throw a `RedirectError` whose message is `Redirected to <path>`, and a `NotFoundPage`, so a test can write `await expect(page()).rejects.toThrow('Redirected to /decks')`. Its `useRouter()` hands back `router`, whose `push`, `replace` and `refresh` are `vi.fn`s, for client components the page renders.
 - **`src/test/cloudflare.ts`** stands in for `getCloudflareContext()` and `getDb()`. Its `env` is a local one (`http://localhost:3000`, no Resend key, so emails go to the outbox). `resetEnv({ … })` changes it for one test. For example, a production URL with no key makes `sendEmail` throw. Call `useTestDb(db)` in `beforeEach` to hand code the test database.
 - **`src/test/jpeg.ts`** has `fakeJpeg()` and `fakeJpegBlob()`: just enough of a JPEG (its start, a JFIF header and a start-of-frame with a width and height) for the link preview checks in `src/lib/og/jpeg.ts`. jsdom can't draw, so component tests mock `@/lib/og/client` instead of drawing a real picture.
 - **`src/test/session.ts`** stands in for `createAuth`, so the real `getSession` and `requireUser` run against whoever `signInAs(user)` signed in, or nobody after `signInAs(null)`. Its `api.listPasskeys` is a `vi.fn` to set per test.
@@ -53,11 +53,18 @@ Better Auth itself is only real in `src/lib/auth-config.test.ts` and the e2e tes
 
 - **Use the sample deck when a builder is all a test needs.** `/sample` is the same `PlanBuilder` with the same starter ideas as a new deck, and needs no one to sign up ([sample-deck.md](sample-deck.md)). Sign up and make a deck only for what the sample deck doesn't do: saving a plan or notes, the deck's plans, editing it, or sharing it.
 - **Every test stands alone**, so they all run side by side (`fullyParallel`). Each makes its own accounts (with unique emails, and its own visitor IP, see `e2e/fixtures.ts`) or uses the sample deck. The server starts from an empty database each run.
-- **It's a busy machine.** A test can take 60s before it times out, as the longest flows (sign up, share, save a plan, edit it) can take more than 30s when everything else is running too.
+- **It's a busy machine.** A test can take 60s before it times out, and a check (`expect`) 15s, as the longest flows (sign up, share, save a plan, edit it) take longer when everything else is running too. Passing checks still return straight away. Adding workers (`--workers=10`) should only make the run faster or slower, never fail it.
+- **No WebGL, unless the test is about the background.** The test browsers draw WebGL in software (SwiftShader), and the galaxy background kept each page's main thread busy a third of the time; with several browsers at once, pages starved and tests timed out. The fixtures turn WebGL off, so the background is its plain colour ([background.md](background.md) § "Fallback"). `test.use({ galaxy: true })`, or `newVisitor(browser, { galaxy: true })`, turns it back on, as `background.spec.ts` does.
+- **Press a card's options with `pressOption`** (`e2e/helpers.ts`), from the keyboard, rather than hovering the card and clicking. Hovering tilts the card, and Playwright waits for it to hold still before clicking; on a page drawing few frames that can take longer than the test has. Tests about using a card with the mouse still hover and click.
 
 ### Waiting for the page's script
 
-A page does nothing when clicked until React has taken it over, which on a busy machine can be seconds after it loads, and the click is lost. `HydratedMark` in the root layout marks `<html data-hydrated>` once it has, and the `goto` and `reload` of every page from the fixtures in `e2e/fixtures.ts` wait for it (import `test` and `newVisitor` from there, not from `@playwright/test`). Clicking a link to another page in the app needs no wait, since React is already running.
+A page does nothing when clicked until React has taken it over, which on a busy machine can be seconds after it loads, and the click is lost. `HydratedMark` in the root layout marks `<html data-hydrated>` once it has, and the fixtures in `e2e/fixtures.ts` wait for it (import `test` and `newVisitor` from there, not from `@playwright/test`):
+
+- `goto` and `reload` return once the page has taken over.
+- A page loaded any other way (a form sent before the page had taken over, a redirect) is covered by an invisible layer, outside `<body>`, until it has. A click or hover waits for it, as Playwright waits for anything covering what it's about to press.
+
+Clicking a link to another page in the app needs no wait, since React is already running.
 
 ### Checking animation
 
@@ -66,7 +73,7 @@ Tests that watch something move record it frame by frame with `requestAnimationF
 - **Press the button from inside the page**, in the same `evaluate` that starts watching, so no frame is missed.
 - **Don't ask for a number of frames.** Ask for a few part way, that an animation was running (`element.getAnimations()`), or for where it started and ended.
 - **Compare with where things are on the same frame.** Things around the moving element can move afterwards.
-- **Wait for the page to be still before measuring where something starts**, e.g. the same box on every frame for half a second. Things can still be settling after the page's script takes over.
+- **Wait for the page to be still, rather than sleeping**, before measuring where something starts or once it should have finished: `expectStill(page)` in `e2e/helpers.ts` waits until no switch between columns is under way, no CSS transition or animation is running in the builder, and every card has been in the same place for several frames (Motion's springs and slides are only seen that way). A fixed sleep is only for watching that something *doesn't* happen for a while.
 
 ### Known bugs
 
