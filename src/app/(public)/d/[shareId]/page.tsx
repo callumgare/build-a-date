@@ -4,7 +4,7 @@ import { connection } from 'next/server'
 import PlanBuilder from '@/components/PlanBuilder'
 import { getDb } from '@/db'
 import { getSession } from '@/lib/auth'
-import { getAccessState, getSharedDeck, listPlanSummaries, NotFoundError } from '@/lib/decks'
+import { getAccessState, getSharedDeck, listPlannedCardIds, listPlanSummaries, NotFoundError } from '@/lib/decks'
 import { shareMetadata } from '@/lib/og/metadata'
 import { previewAddress } from '@/lib/og/serve'
 import { getDeckSort } from '@/lib/preferences'
@@ -55,6 +55,10 @@ export default async function SharedDeck({ params }: PageProps<'/d/[shareId]'>) 
       editHref={canEdit ? `/decks/${deck.id}` : undefined}
       deckId={canEdit ? deck.id : undefined}
       plans={canEdit ? await listPlanSummaries(getDb(), deck.id) : undefined}
+      // The ideas the deck's saved plans have used, for anyone building
+      // another one, so the Not in plan filter can hide them
+      // (docs/deck-filters.md § "Not in plan").
+      plannedCardIds={await listPlannedCardIds(getDb(), deck.id)}
       // Only they can change the deck, so only they redraw its link preview
       // (docs/share-previews.md § "When it's drawn").
       preview={

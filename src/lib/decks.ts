@@ -317,6 +317,15 @@ export async function listPlanSummaries(db: Database, deckId: string) {
   }))
 }
 
+// Every card picked into one of the deck's saved plans, first rows and groups
+// alike, so the deck's filters can hide the ideas a plan has already used
+// (docs/deck-filters.md § "Not in plan"). Unlike the list above, this is for
+// anyone building a plan, not only the owner and editors.
+export async function listPlannedCardIds(db: Database, deckId: string) {
+  const rows = await listPlans(db, deckId)
+  return [...new Set(rows.flatMap((row) => pickedIds(row)))].sort()
+}
+
 // What someone looking at a shared deck can do with it besides build a plan.
 export type AccessState = DeckRole | 'pending' | 'none'
 

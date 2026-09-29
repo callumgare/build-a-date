@@ -4,7 +4,14 @@ import { connection } from 'next/server'
 import PlanBuilder from '@/components/PlanBuilder'
 import { getDb } from '@/db'
 import { getSession } from '@/lib/auth'
-import { getAccessState, getPlan, getSharedDeck, listPlanSummaries, NotFoundError } from '@/lib/decks'
+import {
+  getAccessState,
+  getPlan,
+  getSharedDeck,
+  listPlannedCardIds,
+  listPlanSummaries,
+  NotFoundError,
+} from '@/lib/decks'
 import { keepCards } from '@/lib/plan-picks'
 import { getDeckSort } from '@/lib/preferences'
 
@@ -51,6 +58,9 @@ export default async function EditPlan({ params }: PageProps<'/p/[planId]/edit'>
       editHref={canEdit ? `/decks/${deck.id}` : undefined}
       deckId={canEdit ? deck.id : undefined}
       plans={canEdit ? await listPlanSummaries(getDb(), deck.id) : undefined}
+      // The ideas the deck's saved plans have used, this plan among them, for
+      // the Not in plan filter (docs/deck-filters.md § "Not in plan").
+      plannedCardIds={await listPlannedCardIds(getDb(), deck.id)}
       plan={{ id: plan.id, ...picks }}
     />
   )

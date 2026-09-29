@@ -63,6 +63,14 @@ describe('the edit plan page', () => {
     expect((await generateMetadata(props(plan.id))).openGraph).toBeUndefined()
   })
 
+  /** @see docs/deck-filters.md § "Not in plan" - the planned ideas go to anyone, the plan being edited among them */
+  it("hands the ideas the deck's saved plans have used to anyone", async () => {
+    await decks.savePlan(db, deck.shareId, [picnic.id])
+    const plan = await decks.savePlan(db, deck.shareId, [hike.id])
+
+    expect((await open(plan.id)).plannedCardIds).toEqual([hike.id, picnic.id].sort())
+  })
+
   it('leaves out cards deleted since the plan was saved', async () => {
     const plan = await decks.savePlan(db, deck.shareId, [hike.id, picnic.id])
     await decks.deleteCard(db, 'owner', deck.id, hike.id)

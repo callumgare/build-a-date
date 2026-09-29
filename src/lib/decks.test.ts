@@ -16,6 +16,7 @@ import {
   leaveDeck,
   listDeckAccess,
   listDecks,
+  listPlannedCardIds,
   listPlanSummaries,
   listPlans,
   listSharedDecks,
@@ -144,6 +145,30 @@ describe('plans', () => {
       .where(eq(plan.id, first.id))
 
     expect((await listPlans(db, deck.id)).map((row) => row.id)).toEqual([second.id, first.id])
+  })
+
+  /** @see docs/deck-filters.md § "Not in plan" - every card in every saved plan, once each */
+  it('collects the cards of every saved plan, first rows and groups alike', async () => {
+    const deck = await createDeck(db, owner, { name: 'Deck', template: 'empty' })
+    const other = await createDeck(db, stranger, { name: 'Other', template: 'empty' })
+    const a = await saveCard(db, owner, deck.id, null, { title: 'A' })
+    const b = await saveCard(db, owner, deck.id, null, { title: 'B' })
+    const c = await saveCard(db, owner, deck.id, null, { title: 'C' })
+    const foreign = await saveCard(db, stranger, other.id, null, { title: 'Foreign' })
+
+    await savePlan(db, deck.shareId, [a.id, b.id])
+    await savePlan(db, deck.shareId, [], [{ id: 'g', title: 'Out', notes: '', cardIds: [c.id, b.id] }])
+    await savePlan(db, other.shareId, [foreign.id])
+
+    expect(await listPlannedCardIds(db, deck.id)).toEqual([a.id, b.id, c.id].sort())
+    expect(await listPlannedCardIds(db, other.id)).toEqual([foreign.id])
+  })
+
+  /** @see docs/deck-filters.md § "Not in plan" - nothing until a plan has been saved */
+  it('collects nothing from a deck with no plans', async () => {
+    const deck = await createDeck(db, owner, { name: 'Deck', template: 'empty' })
+    await saveCard(db, owner, deck.id, null, { title: 'A' })
+    expect(await listPlannedCardIds(db, deck.id)).toEqual([])
   })
 
   it('refuses a plan with no cards from the deck', async () => {

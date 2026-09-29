@@ -83,6 +83,10 @@ type PlanBuilderProps = {
   plan?: { id: string } & PlanPicks
   // The deck's plans, only for owners and editors, as on the deck's page.
   plans?: PlanSummary[]
+  // Every idea picked into one of the deck's saved plans, which the Not in
+  // plan filter hides (docs/deck-filters.md § "Not in plan"). Nothing is
+  // passed when no plan has been saved, which leaves the filter out.
+  plannedCardIds?: string[]
   // The sample deck, which isn't saved anywhere, so it can't save a plan or
   // notes (docs/sample-deck.md).
   sample?: boolean
@@ -103,6 +107,7 @@ export default function PlanBuilder({
   remembersSort = false,
   plan,
   plans,
+  plannedCardIds = [],
   sample = false,
   preview,
 }: PlanBuilderProps) {
@@ -142,6 +147,9 @@ export default function PlanBuilder({
   const [deleting, setDeleting] = useState(false)
   const [saveError, setSaveError] = useState<string | null>(null)
   const [activeTags, setActiveTags] = useState<Set<string>>(() => new Set())
+  // The Not in plan filter, which hides the ideas a saved plan has already
+  // used (docs/deck-filters.md § "Not in plan").
+  const [notInPlan, setNotInPlan] = useState(false)
   // Cards flying from the deck into the plan, or back (docs/card-layout.md
   // § "Flying cards"), at most one flight for each card.
   const [flights, setFlights] = useState<Flight[]>([])
@@ -209,9 +217,16 @@ export default function PlanBuilder({
 
   const tags = useMemo(() => [...new Set(deckCards.flatMap((card) => card.tags))].sort(), [deckCards])
   const cardEditor = useCardEditor(deckId, tags)
+  // The ideas some saved plan has already used, as a set, for the Not in plan
+  // filter. Empty until the deck has a saved plan, which leaves the filter
+  // out (docs/deck-filters.md § "Not in plan").
+  const inSavedPlans = useMemo(() => new Set(plannedCardIds), [plannedCardIds])
 
   const availableCards = cards.filter(
-    (card) => !selectedIds.includes(card.id) && [...activeTags].every((tag) => card.tags.includes(tag)),
+    (card) =>
+      !selectedIds.includes(card.id) &&
+      [...activeTags].every((tag) => card.tags.includes(tag)) &&
+      (!notInPlan || !inSavedPlans.has(card.id)),
   )
 
   // Each column's height at full size, which a shrunk one takes back most of
@@ -473,6 +488,14 @@ export default function PlanBuilder({
     })
   }
 
+  // All clears every filter, Not in plan among them. It in turn turns All
+  // off, but leaves the tag filters as they were: it rules out All, not the
+  // tags (docs/deck-filters.md § "Not in plan").
+  function clearFilters() {
+    setActiveTags(new Set())
+    setNotInPlan(false)
+  }
+
   // Saving happens in the background. If it fails, the sort still applies on
   // this visit; it just isn't remembered for the next one.
   function chooseSort(nextSort: DeckSort) {
@@ -707,16 +730,29 @@ export default function PlanBuilder({
             onFocusCapture={() => used('deck')}
           >
             <section className="deck-section" aria-label="Date ideas" inert={deckShrunk}>
-              <fieldset className="filters" aria-label="Filter ideas by tag">
+              <fieldset className="filters" aria-label="Filter ideas">
                 <span className="filter-label">Show</span>
                 <button
                   className="filter-button"
-                  data-active={activeTags.size === 0}
+                  data-active={activeTags.size === 0 && !notInPlan}
                   type="button"
-                  onClick={() => setActiveTags(new Set())}
+                  onClick={clearFilters}
                 >
                   All
                 </button>
+                {/* Only once a plan has been saved is there anything for the
+                    filter to hide (docs/deck-filters.md § "Not in plan"). */}
+                {inSavedPlans.size > 0 && (
+                  <button
+                    className="filter-button plan-filter"
+                    data-active={notInPlan}
+                    type="button"
+                    onClick={() => setNotInPlan((on) => !on)}
+                    aria-pressed={notInPlan}
+                  >
+                    Not in plan
+                  </button>
+                )}
                 {tags.map((tag) => (
                   <button
                     className="filter-button"
@@ -800,8 +836,8 @@ export default function PlanBuilder({
 
               {availableCards.length === 0 && (
                 <div className="empty-results">
-                  <p>No ideas match every selected tag.</p>
-                  <button className="text-action" type="button" onClick={() => setActiveTags(new Set())}>
+                  <p>No ideas match the filters.</p>
+                  <button className="text-action" type="button" onClick={clearFilters}>
                     Show all ideas
                   </button>
                 </div>

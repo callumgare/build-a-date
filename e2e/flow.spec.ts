@@ -67,6 +67,15 @@ test('sign up, share a deck, and get a plan back', async ({ page, browser, reque
   const plan = guest.getByRole('region', { name: 'The plan' })
   await expect(plan.getByText('Rooftop Dinner')).toBeVisible()
   await expect(plan.getByText('Stargazing')).toBeVisible()
+
+  // Back on the deck, the ideas the plan used can be filtered out
+  // (docs/deck-filters.md § "Not in plan").
+  await guest.goto(shareUrl)
+  await expect(guest.getByRole('heading', { name: 'Ideas for Sam' })).toBeVisible()
+  await guest.getByRole('button', { name: 'Not in plan' }).click()
+  await expect(guest.getByText('Rooftop Dinner')).toBeHidden()
+  await expect(guest.getByText('Stargazing')).toBeHidden()
+  await expect(guest.getByText('Picnic in the Park')).toBeVisible()
   await guestContext.close()
 
   // The owner sees it on their deck.

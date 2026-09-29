@@ -87,6 +87,14 @@ describe('the shared deck page', () => {
     expect((await open()).plans).toBeUndefined()
   })
 
+  /** @see docs/deck-filters.md § "Not in plan" - the planned ideas go to anyone building a plan */
+  it("hands the ideas the deck's saved plans have used to anyone", async () => {
+    const [picnic] = (await open()).cards
+    await decks.savePlan(db, deck.shareId, [], [{ id: 'g', title: 'Out', notes: '', cardIds: [picnic.id] }])
+
+    expect((await open()).plannedCardIds).toEqual([picnic.id])
+  })
+
   /** @see docs/card-notes.md § "Editing a card" - only people who can edit get the deck's id */
   it('lets owners and editors edit cards from the page, and only them', async () => {
     await decks.requestEditAccess(db, 'helper', deck.shareId)

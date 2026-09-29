@@ -970,7 +970,8 @@ fieldset.filters {
 .filters {
   display: flex;
   flex-wrap: wrap;
-  gap: 8px;
+  --filter-gap: 8px;
+  gap: var(--filter-gap);
   margin-bottom: 28px;
   align-items: center;
   justify-content: center;
@@ -993,6 +994,13 @@ fieldset.filters {
   border-color: var(--accent);
   color: #173847;
   background: var(--accent);
+}
+
+/* The Not in plan filter isn't a tag, so the gap after it is twice the row's,
+   setting the tags off as a group of their own (docs/deck-filters.md
+   § "Not in plan"). */
+.plan-filter {
+  margin-right: var(--filter-gap);
 }
 
 /* The sort options sit just under the tag filters, as a second row. */

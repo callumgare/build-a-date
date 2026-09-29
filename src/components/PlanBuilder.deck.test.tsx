@@ -31,7 +31,7 @@ afterEach(() => vi.restoreAllMocks())
 describe('PlanBuilder', () => {
   describe('filtering by several tags', () => {
     function filterButton(name: string) {
-      return within(screen.getByRole('group', { name: 'Filter ideas by tag' })).getByRole('button', { name })
+      return within(screen.getByRole('group', { name: 'Filter ideas' })).getByRole('button', { name })
     }
 
     it('shows only the ideas with every selected tag', async () => {
@@ -51,7 +51,7 @@ describe('PlanBuilder', () => {
 
       await user.click(filterButton('culture'))
       await user.click(filterButton('active'))
-      expect(screen.getByText('No ideas match every selected tag.')).toBeInTheDocument()
+      expect(screen.getByText('No ideas match the filters.')).toBeInTheDocument()
 
       await user.click(screen.getByRole('button', { name: 'Show all ideas' }))
       for (const card of cards)
@@ -68,6 +68,85 @@ describe('PlanBuilder', () => {
       for (const card of cards)
         expect(await screen.findByRole('button', { name: `Add to plan: ${card.title}` })).toBeInTheDocument()
       expect(filterButton('culture')).toHaveAttribute('aria-pressed', 'false')
+    })
+  })
+
+  /** @see docs/deck-filters.md § "Not in plan" */
+  describe('the Not in plan filter', () => {
+    function filterButton(name: string) {
+      return within(screen.getByRole('group', { name: 'Filter ideas' })).getByRole('button', { name })
+    }
+
+    it('hides the ideas a saved plan has already used', async () => {
+      const user = userEvent.setup({ delay: null })
+      renderBuilder({ plannedCardIds: ['picnic'] })
+
+      await user.click(filterButton('Not in plan'))
+      await waitFor(() => expect(screen.queryByRole('button', { name: 'Add to plan: Picnic' })).not.toBeInTheDocument())
+      expect(screen.getByRole('button', { name: 'Add to plan: Museum' })).toBeInTheDocument()
+      expect(screen.getByRole('button', { name: 'Add to plan: Hike' })).toBeInTheDocument()
+    })
+
+    it('keeps a tag filter alongside it', async () => {
+      const user = userEvent.setup({ delay: null })
+      renderBuilder({ plannedCardIds: ['picnic'] })
+
+      await user.click(filterButton('Not in plan'))
+      await user.click(filterButton('outside'))
+      await waitFor(() => expect(screen.queryByRole('button', { name: 'Add to plan: Picnic' })).not.toBeInTheDocument())
+      await waitFor(() => expect(screen.queryByRole('button', { name: 'Add to plan: Museum' })).not.toBeInTheDocument())
+      expect(screen.getByRole('button', { name: 'Add to plan: Hike' })).toBeInTheDocument()
+    })
+
+    it('rules out All, and is ruled out by it, without touching the tags', async () => {
+      const user = userEvent.setup({ delay: null })
+      renderBuilder({ plannedCardIds: ['picnic'] })
+
+      await user.click(filterButton('outside'))
+      await user.click(filterButton('Not in plan'))
+      expect(filterButton('All')).toHaveAttribute('data-active', 'false')
+      expect(filterButton('outside')).toHaveAttribute('aria-pressed', 'true')
+
+      await user.click(filterButton('Not in plan'))
+      expect(filterButton('All')).toHaveAttribute('data-active', 'false')
+
+      await user.click(filterButton('Not in plan'))
+      await user.click(filterButton('All'))
+      expect(filterButton('Not in plan')).toHaveAttribute('aria-pressed', 'false')
+      expect(filterButton('outside')).toHaveAttribute('aria-pressed', 'false')
+      for (const card of cards)
+        expect(await screen.findByRole('button', { name: `Add to plan: ${card.title}` })).toBeInTheDocument()
+    })
+
+    it("isn't offered until the deck has a saved plan", () => {
+      renderBuilder()
+      expect(screen.queryByRole('button', { name: 'Not in plan' })).not.toBeInTheDocument()
+    })
+
+    /** @see docs/deck-filters.md § "Not in plan" - it sits after All, before the tags */
+    it('sits after All and before the tag filters', () => {
+      renderBuilder({ plannedCardIds: ['picnic'] })
+      const buttons = within(screen.getByRole('group', { name: 'Filter ideas' })).getAllByRole('button')
+      expect(buttons.map((button) => button.textContent)).toEqual([
+        'All',
+        'Not in plan',
+        'active',
+        'culture',
+        'outside',
+      ])
+    })
+
+    it('says when every idea has been planned, and can show them all again', async () => {
+      const user = userEvent.setup({ delay: null })
+      renderBuilder({ plannedCardIds: ['picnic', 'museum', 'hike'] })
+
+      await user.click(filterButton('Not in plan'))
+      expect(screen.getByText('No ideas match the filters.')).toBeInTheDocument()
+
+      await user.click(screen.getByRole('button', { name: 'Show all ideas' }))
+      expect(filterButton('Not in plan')).toHaveAttribute('aria-pressed', 'false')
+      for (const card of cards)
+        expect(await screen.findByRole('button', { name: `Add to plan: ${card.title}` })).toBeInTheDocument()
     })
   })
 
@@ -121,7 +200,7 @@ describe('PlanBuilder', () => {
       const { container } = renderBuilder()
 
       await user.click(
-        within(screen.getByRole('group', { name: 'Filter ideas by tag' })).getByRole('button', { name: 'outside' }),
+        within(screen.getByRole('group', { name: 'Filter ideas' })).getByRole('button', { name: 'outside' }),
       )
       await user.click(screen.getByRole('button', { name: 'Date added' }))
       await waitFor(() => expect(deckOrder(container)).toEqual(['hike', 'picnic']))
@@ -182,7 +261,7 @@ describe('PlanBuilder', () => {
       renderBuilder()
 
       await user.click(
-        within(screen.getByRole('group', { name: 'Filter ideas by tag' })).getByRole('button', { name: 'culture' }),
+        within(screen.getByRole('group', { name: 'Filter ideas' })).getByRole('button', { name: 'culture' }),
       )
       await user.click(screen.getByRole('button', { name: 'Draw random card' }))
       expect(await screen.findByRole('button', { name: 'Discard: Museum' })).toBeInTheDocument()

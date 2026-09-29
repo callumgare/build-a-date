@@ -1,6 +1,6 @@
 # Deck sorting
 
-On a shared deck (`/d/…`), the ideas that aren't in the plan can be put in a different order. The **Sort by** buttons sit in a row under the tag filters, which are labelled **Show**.
+On a shared deck (`/d/…`), the ideas that aren't in the plan can be put in a different order. The **Sort by** buttons sit in a row under the deck's filters, which are labelled **Show** ([deck-filters.md](deck-filters.md)).
 
 ## Sort options
 
@@ -16,7 +16,7 @@ On a shared deck (`/d/…`), the ideas that aren't in the plan can be put in a d
 
 ## How it fits with filters and the plan
 
-- Sorting and the tag filters work together: the filters pick which ideas show, the sort puts them in order.
+- Sorting and the deck filters work together: the filters pick which ideas show, the sort puts them in order.
 - Sorting only changes the deck. Cards in the plan stay in the order they were picked, or were dragged into (see [card-layout.md](card-layout.md) § "Reordering the plan"), and **Draw random card** still picks at random from the ideas the filters show.
 
 ## Remembering the choice

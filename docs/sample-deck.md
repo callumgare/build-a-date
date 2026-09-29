@@ -22,6 +22,7 @@ Everything works as on a shared deck (`/d/…`): picking, discarding, reordering
 - **No saving a plan.** In place of **Save plan** it says **To save a plan**, followed by a **Create your own deck** button, which goes to `/sign-up`, the same place as **Make your own deck** on the home page. It shows when **Save plan** would (once something is in the plan), beside **Clear plan**. Sign-up sends someone already signed in on to `/decks`.
 - **Notes aren't saved.** Ratings and notes can be set, and are jotted on the card as usual ([card-notes.md](card-notes.md) § "Rating and notes on the card"), but only for as long as the page is open. Nothing says **Saving…** or **Saved**. `CardNotes` saves nothing when it's given no `shareId`.
 - **No footer.** There's no **Request edit access** or **Edit this deck**, as there's no deck to edit.
+- **No Not in plan filter.** It only shows once a deck has a saved plan, and the sample deck can't have one ([deck-filters.md](deck-filters.md) § "Not in plan").
 - **The sort isn't remembered**, even for someone signed in ([deck-sorting.md](deck-sorting.md) § "Remembering the choice").
 
 The picks in progress are kept in the browser as on any deck ([plans.md](plans.md) § "Picks are kept in the browser"), under `build-a-date:picks:deck:sample`.

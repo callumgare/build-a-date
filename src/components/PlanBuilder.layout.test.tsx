@@ -115,14 +115,12 @@ describe('PlanBuilder', () => {
       renderBuilder()
 
       await user.click(
-        within(screen.getByRole('group', { name: 'Filter ideas by tag' })).getByRole('button', { name: 'culture' }),
+        within(screen.getByRole('group', { name: 'Filter ideas' })).getByRole('button', { name: 'culture' }),
       )
       await user.click(screen.getByRole('button', { name: 'Add to plan: Museum' }))
       expect(screen.queryByRole('button', { name: 'Draw random card' })).not.toBeInTheDocument()
 
-      await user.click(
-        within(screen.getByRole('group', { name: 'Filter ideas by tag' })).getByRole('button', { name: 'All' }),
-      )
+      await user.click(within(screen.getByRole('group', { name: 'Filter ideas' })).getByRole('button', { name: 'All' }))
       expect(screen.getByRole('button', { name: 'Draw random card' })).toBeInTheDocument()
     })
   })

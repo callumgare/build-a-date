@@ -4,6 +4,7 @@
 // file still mocks the modules itself, and calls resetPlanBuilder() before
 // each test.
 import { render } from '@testing-library/react'
+import type { ComponentProps } from 'react'
 import PlanBuilder from '@/components/PlanBuilder'
 import type { DateCard, PlanGroup, PlanPicks } from '@/types'
 import * as mocks from './plan-builder-mocks'
@@ -31,8 +32,8 @@ export const cards: DateCard[] = [
   { id: 'hike', title: 'Hike', description: '', tags: ['outside', 'active'] },
 ]
 
-export function renderBuilder() {
-  return render(<PlanBuilder deckName="Test deck" shareId="share123" cards={cards} seed={1} />)
+export function renderBuilder(props: Partial<ComponentProps<typeof PlanBuilder>> = {}) {
+  return render(<PlanBuilder deckName="Test deck" shareId="share123" cards={cards} seed={1} {...props} />)
 }
 
 export const deckPicks = 'build-a-date:picks:deck:share123'
