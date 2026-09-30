@@ -6,10 +6,17 @@ import type { DeckRole } from '@/lib/decks'
 import type { DateCard } from '@/types'
 import Card from '../Card'
 import cardStyles from '../Card.module.css'
+import CardGrid from '../CardGrid'
 import { frameFor } from '../frames'
 import SharePreviewRefresher, { type PreviewProps } from '../SharePreviewRefresher'
+import Button from '../ui/Button'
+import { FormError, Input } from '../ui/Form'
+import Heading, { Subheading } from '../ui/Heading'
+import { PageSection, SectionActions, SectionHeading } from '../ui/PageSection'
+import Panel from '../ui/Panel'
 import AddCardControls from './AddCardControls'
 import { AccessRequests, type DeckPerson, Editors } from './DeckAccess'
+import styles from './DeckEditor.module.css'
 import PlanList, { type PlanSummary } from './PlanList'
 import { useCardEditor } from './useCardEditor'
 
@@ -74,42 +81,41 @@ export default function DeckEditor({ deck, role, access, shareUrl, cards, plans,
   }
 
   return (
-    <section className="app-section">
+    <PageSection>
       {preview && <SharePreviewRefresher {...preview} />}
-      <div className="section-heading">
+      <SectionHeading>
         {renaming ? (
-          <form className="rename-form" onSubmit={rename}>
-            <input
+          <form className={styles.renameForm} onSubmit={rename}>
+            <Input
               name="name"
               defaultValue={deck.name}
               required
               maxLength={80}
               aria-label="Deck name"
-              // biome-ignore lint/a11y/noAutofocus: the field the Rename button just revealed
+              // Focused: the field the Rename button just revealed.
               autoFocus
             />
-            <button className="done-button" type="submit" disabled={pending}>
+            <Button type="submit" disabled={pending}>
               Save
-            </button>
-            <button className="text-action" type="button" onClick={() => setRenaming(false)}>
+            </Button>
+            <Button variant="text" onClick={() => setRenaming(false)}>
               Cancel
-            </button>
+            </Button>
           </form>
         ) : (
           <>
-            <h2>{deck.name}</h2>
+            <Heading size="section">{deck.name}</Heading>
             {role === 'owner' ? (
-              <div className="section-actions">
-                <button className="text-action" type="button" onClick={() => setRenaming(true)}>
+              <SectionActions>
+                <Button variant="text" onClick={() => setRenaming(true)}>
                   Rename
-                </button>
-                <button className="text-action" type="button" onClick={remove} disabled={pending}>
+                </Button>
+                <Button variant="text" onClick={remove} disabled={pending}>
                   Delete deck
-                </button>
-              </div>
+                </Button>
+              </SectionActions>
             ) : (
               <form
-                className="section-actions"
                 action={leaveDeck.bind(null, deck.id)}
                 onSubmit={(event) => {
                   if (!window.confirm(`Stop editing "${deck.name}"? You'd need to ask again to get back in.`)) {
@@ -117,42 +123,36 @@ export default function DeckEditor({ deck, role, access, shareUrl, cards, plans,
                   }
                 }}
               >
-                <button className="text-action" type="submit">
-                  Leave deck
-                </button>
+                <SectionActions>
+                  <Button variant="text" type="submit">
+                    Leave deck
+                  </Button>
+                </SectionActions>
               </form>
             )}
           </>
         )}
-      </div>
-      {error && (
-        <p className="form-error" role="alert">
-          {error}
-        </p>
-      )}
+      </SectionHeading>
+      <FormError>{error}</FormError>
 
-      <div className="panel share-panel">
+      <Panel as="div" className={styles.sharePanel}>
         <p>
           <strong>Share this link</strong> with whoever you&apos;re planning a date with. They don&apos;t need an
           account to build a plan.
         </p>
-        <div className="share-row">
-          <input readOnly value={shareUrl} aria-label="Share link" onFocus={(event) => event.target.select()} />
-          <button className="done-button" type="button" onClick={copyLink}>
-            {copied ? 'Copied!' : 'Copy'}
-          </button>
-          <a className="text-action" href={`/d/${deck.shareId}`} target="_blank" rel="noreferrer">
+        <div className={styles.shareRow}>
+          <Input readOnly value={shareUrl} aria-label="Share link" onFocus={(event) => event.target.select()} />
+          <Button onClick={copyLink}>{copied ? 'Copied!' : 'Copy'}</Button>
+          <Button variant="text" href={`/d/${deck.shareId}`} native target="_blank" rel="noreferrer">
             Open
-          </a>
+          </Button>
         </div>
-      </div>
+      </Panel>
 
       {role === 'owner' && <AccessRequests deckId={deck.id} people={access} />}
 
-      <h3 className="subheading">
-        Ideas <small>({cards.length})</small>
-      </h3>
-      <div className="card-grid editor-grid">
+      <Subheading count={cards.length}>Ideas</Subheading>
+      <CardGrid>
         <AddCardControls onAdd={cardEditor.addCard} onQuickAdd={cardEditor.quickAdd} />
         {newestFirst.map((card) => (
           // biome-ignore lint/a11y/useSemanticElements: a div so descriptions can hold links (see clickOnActivationKey)
@@ -168,13 +168,13 @@ export default function DeckEditor({ deck, role, access, shareUrl, cards, plans,
             <Card card={card} frame={frameFor(card.id)} />
           </div>
         ))}
-      </div>
+      </CardGrid>
 
       <PlanList plans={plans} />
 
       {role === 'owner' && <Editors deckId={deck.id} people={access} />}
 
       {cardEditor.dialogs}
-    </section>
+    </PageSection>
   )
 }

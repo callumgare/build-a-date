@@ -48,8 +48,8 @@ test('the plan is a column to the right of the deck, and stays in the window as 
   await page.mouse.wheel(0, 1500)
   // Stuck to the top of the window, while the bar with Save plan scrolls
   // away with the page.
-  await expect.poll(async () => (await page.locator('.plan-column').boundingBox())?.y).toBe(0)
-  expect((await page.locator('.builder-bar').boundingBox())?.y).toBeLessThan(-100)
+  await expect.poll(async () => (await page.locator('[data-column="plan"]').boundingBox())?.y).toBe(0)
+  expect((await page.locator('[data-builder] [data-plan-bar]').boundingBox())?.y).toBeLessThan(-100)
 })
 
 /** @see docs/card-layout.md § "The plan column" - the page's title */
@@ -59,8 +59,8 @@ test('the title and what is under it are centred, one above the other, and so is
   await page.setViewportSize({ width: 1280, height: 800 })
   await page.goto('/sample')
   const middle = (box: { x: number; width: number } | null) => (box ? box.x + box.width / 2 : Number.NaN)
-  const title = await page.locator('.hero h1').boundingBox()
-  const lede = await page.locator('.hero .lede').boundingBox()
+  const title = await page.locator('[data-hero] h1').boundingBox()
+  const lede = await page.locator('[data-hero] p').boundingBox()
   const pageBox = await page.locator('main').boundingBox()
   if (!title || !lede || !pageBox) throw new Error('Hero has no size')
   expect(lede.y).toBeGreaterThanOrEqual(title.y + title.height - 1)
@@ -70,15 +70,17 @@ test('the title and what is under it are centred, one above the other, and so is
   // docs/plans.md § "Groups" - the title and notes centred above its cards.
   await page.getByRole('button', { name: 'Add group' }).click()
   const group = page.getByRole('region', { name: 'Group 1' })
-  const track = await group.locator('.plan-group-track').boundingBox()
+  const track = await group.locator('[data-plan-row]').boundingBox()
   for (const part of [
     group.getByRole('textbox', { name: 'Title of Group 1' }),
     group.getByRole('button', { name: 'Remove Group 1' }),
   ]) {
     expect(Math.abs(middle(await part.boundingBox()) - middle(track))).toBeLessThan(2)
   }
-  for (const field of ['.plan-group-title', '.plan-group-notes']) {
-    expect(await group.locator(field).evaluate((element) => getComputedStyle(element).textAlign)).toBe('center')
+  for (const field of [/^Title of/, /^Notes on/]) {
+    expect(
+      await group.getByRole('textbox', { name: field }).evaluate((element) => getComputedStyle(element).textAlign),
+    ).toBe('center')
   }
 })
 
@@ -97,7 +99,7 @@ test('on a narrow screen one column is in use, and a click on the other puts it 
 
   // A click right on the card in the shrunk plan puts the plan in use,
   // rather than discarding the card, growing it bit by bit.
-  await expect(page.locator('.plan-column [data-card-id]')).toBeVisible()
+  await expect(page.locator('[data-column="plan"] [data-card-id]')).toBeVisible()
   const cardBox = await page.locator('[data-card-id]').boundingBox()
   if (!cardBox) throw new Error('Card has no size')
   expect(
@@ -111,7 +113,7 @@ test('on a narrow screen one column is in use, and a click on the other puts it 
   // And back, from a click on the shrunk deck, once the switch is over and
   // the page has stopped keeping the deck's place.
   await expectStill(page)
-  const deckBox = await page.locator('.deck-column').boundingBox()
+  const deckBox = await page.locator('[data-column="deck"]').boundingBox()
   if (!deckBox) throw new Error('Deck has no size')
   expect(await shrinkAnimatesAfterClick(page, plan, deckBox.x + deckBox.width / 2, Math.max(deckBox.y, 0) + 40)).toBe(
     true,
@@ -134,7 +136,7 @@ test('on a narrow screen a click under the shrunk plan puts it in use, and the d
   await expect.poll(() => page.evaluate(() => window.scrollY)).toBe(3000)
 
   // Well under the shrunk plan's slot, near the bottom of the window.
-  const columnBox = await page.locator('.plan-column').boundingBox()
+  const columnBox = await page.locator('[data-column="plan"]').boundingBox()
   const planBox = await plan.boundingBox()
   if (!columnBox || !planBox) throw new Error('Plan has no size')
   expect(planBox.y + planBox.height).toBeLessThan(800)
@@ -157,8 +159,8 @@ test('on a narrow screen a shrunk deck takes up only the room it is drawn in', a
   await page.getByRole('button', { name: 'Show your plan' }).click()
   await expect.poll(() => deck.evaluate((element) => getComputedStyle(element).scale)).toBe('0.2')
   await expect.poll(() => deck.evaluate((element) => element.getAnimations({ subtree: true }).length)).toBe(0)
-  const shrunk = await page.locator('.deck-column').evaluate((column) => ({
-    drawn: (column.querySelector('.deck-section') as Element).getBoundingClientRect().height,
+  const shrunk = await page.locator('[data-column="deck"]').evaluate((column) => ({
+    drawn: (column.querySelector('[aria-label="Date ideas"]') as Element).getBoundingClientRect().height,
     column: column.getBoundingClientRect().height,
   }))
   expect(shrunk.drawn).toBeCloseTo(inUse / 5, 0)
@@ -189,7 +191,7 @@ test('narrowing the window keeps the column used last in use', async ({ page }) 
 test("the bar keeps its height when the buttons come in, so the page doesn't move", async ({ page }) => {
   await page.setViewportSize({ width: 1280, height: 860 })
   await page.goto('/sample')
-  const bar = page.locator('.builder-bar')
+  const bar = page.locator('[data-builder] [data-plan-bar]')
   const before = await bar.evaluate((element) => element.getBoundingClientRect().height)
   const card = page.locator('[data-deck-card-id]').first()
   await pressOption(card.getByRole('button', { name: /^Add to plan: / }))
@@ -201,7 +203,7 @@ test("the bar keeps its height when the buttons come in, so the page doesn't mov
 /** @see docs/card-layout.md § "Save plan and Clear plan" - readable */
 test('the bar above the columns has no background, and its words have the halo', async ({ page }) => {
   await page.goto('/sample')
-  const bar = page.locator('.builder-bar')
+  const bar = page.locator('[data-builder] [data-plan-bar]')
   const style = (locator: Locator) =>
     locator.evaluate((element) => {
       const computed = getComputedStyle(element)
@@ -255,9 +257,9 @@ for (const size of ['wide', 'narrow'] as const) {
     await expectStill(page)
 
     const places = await pickAndWatch(page, {
-      random: '.random-pick',
-      group: '.plan-column .plan-group',
-      addGroup: '.plan-group-add',
+      random: '[data-random-pick]',
+      group: '[data-column="plan"] [data-group-id]',
+      addGroup: '[data-group-add]',
     })
     for (const [name, { before, ys }] of Object.entries(places)) {
       const distinct = new Set(ys.map(Math.round))
@@ -305,9 +307,9 @@ test('the prompt and the buttons fade into each other', async ({ page }) => {
             ;[...document.querySelectorAll<HTMLElement>('button')].find((each) => each.textContent === button)?.click()
             const until = performance.now() + 1500
             requestAnimationFrame(function watch(time) {
-              const contents = [...document.querySelectorAll('.builder-bar-content')]
-              const prompt = contents.find((each) => each.querySelector('.plan-prompt'))
-              const buttons = contents.find((each) => each.querySelector('.plan-actions'))
+              const contents = [...document.querySelectorAll('[data-bar-content]')]
+              const prompt = contents.find((each) => each.querySelector('[data-plan-prompt]'))
+              const buttons = contents.find((each) => each.querySelector('[data-plan-actions]'))
               seen.prompt.push(opacity(prompt))
               seen.buttons.push(opacity(buttons))
               fading.prompt ||= fadingNow(prompt)
@@ -340,7 +342,7 @@ test('the prompt and the buttons fade into each other', async ({ page }) => {
 // Where each card in the plan's first row is drawn.
 function planCardBoxes(page: Page) {
   return page
-    .locator('.plan-track')
+    .locator('[data-plan-row]')
     .first()
     .locator(':scope > [data-card-id]')
     .evaluateAll((cards) =>
@@ -399,7 +401,7 @@ test('a card is dragged along a line of the plan when it is a grid', async ({ pa
 test('scrolling over the plan scrolls the page when it fits, and the plan first when it does not', async ({ page }) => {
   await page.setViewportSize({ width: 1280, height: 800 })
   await page.goto('/sample')
-  const column = page.locator('.plan-scroll')
+  const column = page.locator('[data-plan-scroll]')
   const box = await column.boundingBox()
   if (!box) throw new Error('No plan column')
   const scrollY = () => page.evaluate(() => window.scrollY)
@@ -454,7 +456,7 @@ for (const opened of ['as picked', 'after a reload, with the picks kept']) {
       await expect(page.locator('[data-card-id]')).toHaveCount(4)
     }
     await expectStill(page)
-    const scroller = page.locator('.plan-scroll')
+    const scroller = page.locator('[data-plan-scroll]')
     const title = page.getByRole('heading', { name: 'The Plan' })
     // Stuck at the top of the window, the title above the plan.
     await scroller.evaluate((element) => {
@@ -506,7 +508,7 @@ test("on a narrow screen with room, the plan in use is a grid like the deck, a l
 }) => {
   await narrowPlanOfThree(page, 860)
   const columns = await page
-    .locator('.plan-track')
+    .locator('[data-plan-row]')
     .first()
     .evaluate((element) => Number.parseInt(getComputedStyle(element).getPropertyValue('--columns'), 10))
   // One more card than fits on a line, so the last is alone on the next.
@@ -523,7 +525,7 @@ test("on a narrow screen with room, the plan in use is a grid like the deck, a l
   const last = boxes[columns]
   expect(last.y).toBeGreaterThan(boxes[0].y)
   const track = await page
-    .locator('.plan-track')
+    .locator('[data-plan-row]')
     .first()
     .evaluate((element) => (element as HTMLElement).offsetWidth)
   const width = await page
@@ -534,9 +536,9 @@ test("on a narrow screen with room, the plan in use is a grid like the deck, a l
 
   // More room above Draw random card than between the cards.
   const gap = await page.evaluate(() => {
-    const cards = [...document.querySelectorAll<HTMLElement>('.plan-track [data-card-id]')]
+    const cards = [...document.querySelectorAll<HTMLElement>('[data-plan-row] [data-card-id]')]
     const lastCard = cards[cards.length - 1].getBoundingClientRect()
-    const link = (document.querySelector('.random-pick') as HTMLElement).getBoundingClientRect()
+    const link = (document.querySelector('[data-random-pick]') as HTMLElement).getBoundingClientRect()
     return link.top - lastCard.bottom
   })
   expect(gap).toBeGreaterThan(20)
@@ -555,7 +557,7 @@ test('with the plan shrunk, a second card picked makes room by sliding the first
   await expectStill(page)
   expect(
     await page
-      .locator('.plan-track')
+      .locator('[data-plan-row]')
       .first()
       .evaluate((element) => Number.parseInt(getComputedStyle(element).getPropertyValue('--columns'), 10)),
   ).toBeGreaterThan(1)
@@ -595,7 +597,7 @@ test("a card picked into a plan that's scrolled away from its end scrolls the pl
   }
 
   // The column stuck to the top of the window, scrolled back to its top.
-  const column = page.locator('.plan-scroll')
+  const column = page.locator('[data-plan-scroll]')
   await column.evaluate((element) => {
     window.scrollTo(0, element.getBoundingClientRect().top + window.scrollY)
     element.scrollTop = 0
@@ -611,7 +613,7 @@ test("a card picked into a plan that's scrolled away from its end scrolls the pl
     .poll(() =>
       picked.evaluate((button) => {
         const card = button.closest('[data-card-id]')?.getBoundingClientRect()
-        const shown = document.querySelector('.plan-scroll')?.getBoundingClientRect()
+        const shown = document.querySelector('[data-plan-scroll]')?.getBoundingClientRect()
         return Boolean(card && shown && card.top >= shown.top - 1 && card.bottom <= shown.bottom + 1)
       }),
     )

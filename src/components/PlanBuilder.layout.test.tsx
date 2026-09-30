@@ -37,7 +37,7 @@ describe('PlanBuilder', () => {
   describe('the bar above the columns', () => {
     it('says how to start a plan until there is one, in place of the buttons', () => {
       const { container } = renderBuilder()
-      const bar = container.querySelector('.builder-bar') as HTMLElement
+      const bar = container.querySelector('[data-plan-bar]') as HTMLElement
       expect(within(bar).getByText('Pick a card from the deck')).toBeInTheDocument()
       expect(within(bar).queryByRole('button', { name: 'Save plan' })).not.toBeInTheDocument()
       expect(within(bar).queryByRole('button', { name: 'Clear plan' })).not.toBeInTheDocument()
@@ -48,14 +48,14 @@ describe('PlanBuilder', () => {
       const { container } = renderBuilder()
       await user.click(screen.getByRole('button', { name: 'Draw random card' }))
 
-      const bar = container.querySelector('.builder-bar') as HTMLElement
+      const bar = container.querySelector('[data-plan-bar]') as HTMLElement
       expect(within(bar).queryByText('Pick a card from the deck')).not.toBeInTheDocument()
       expect(within(bar).getByRole('button', { name: 'Save plan' })).toBeEnabled()
       expect(within(bar).getByRole('button', { name: 'Save plan' }).closest('[inert]')).toBeNull()
       expect(within(bar).getByRole('button', { name: 'Clear plan' })).toBeInTheDocument()
       // Cancel is only for editing a saved plan.
       expect(within(bar).queryByRole('link', { name: 'Cancel' })).not.toBeInTheDocument()
-      expect(bar.closest('.builder-column')).toBeNull()
+      expect(bar.closest('[data-column]')).toBeNull()
     })
   })
 
@@ -63,7 +63,7 @@ describe('PlanBuilder', () => {
   describe('the slot in the plan', () => {
     it('is a blank slot, with Draw random card, until something is picked', () => {
       const { container } = renderBuilder()
-      const slot = container.querySelector('.plan-track .empty-slot')
+      const slot = container.querySelector('[data-plan-row] [data-empty-slot]')
       expect(slot).toBeInTheDocument()
       expect(slot).toHaveTextContent('')
       expect(screen.getByRole('button', { name: 'Draw random card' })).toBeInTheDocument()
@@ -79,17 +79,17 @@ describe('PlanBuilder', () => {
       fireEvent.click(screen.getByRole('button', { name: 'Add to plan: Museum' }))
       const flying = document.body.querySelector(':scope > [aria-hidden="true"]') as HTMLElement
       expect(within(flying).getByText('Museum')).toBeInTheDocument()
-      expect(container.querySelector('.plan-track .empty-slot')).toHaveAttribute('data-covered', 'true')
+      expect(container.querySelector('[data-plan-row] [data-empty-slot]')).toHaveAttribute('data-covered', 'true')
 
       await waitFor(() => expect(flying).not.toBeInTheDocument())
-      expect(container.querySelector('.plan-track .empty-slot')).not.toBeInTheDocument()
+      expect(container.querySelector('[data-plan-row] [data-empty-slot]')).not.toBeInTheDocument()
     })
 
     it('goes once something is picked, leaving Draw random card, which picks another', async () => {
       keepPicks(['museum'])
       const user = userEvent.setup({ delay: null })
       const { container } = renderBuilder()
-      expect(container.querySelector('.plan-track .empty-slot')).not.toBeInTheDocument()
+      expect(container.querySelector('[data-plan-row] [data-empty-slot]')).not.toBeInTheDocument()
 
       await user.click(screen.getByRole('button', { name: 'Draw random card' }))
       expect(container.querySelectorAll('[data-card-id]')).toHaveLength(2)
@@ -98,7 +98,7 @@ describe('PlanBuilder', () => {
     it('goes when every card is in a group too', () => {
       keepPicks(picks([], [{ id: 'g', title: 'Later', notes: '', cardIds: ['hike'] }]))
       const { container } = renderBuilder()
-      expect(container.querySelector('.plan-track .empty-slot')).not.toBeInTheDocument()
+      expect(container.querySelector('[data-plan-row] [data-empty-slot]')).not.toBeInTheDocument()
       expect(screen.getByRole('button', { name: 'Draw random card' })).toBeInTheDocument()
     })
 
@@ -229,7 +229,7 @@ describe('PlanBuilder', () => {
 
     it('starts with the deck in use and the plan shrunk', () => {
       const { container } = renderBuilder()
-      expect(container.querySelector('.builder')).toHaveAttribute('data-active', 'deck')
+      expect(container.querySelector('[data-builder]')).toHaveAttribute('data-active', 'deck')
       expect(screen.getByRole('region', { name: 'Your plan' })).toHaveAttribute('inert')
       expect(screen.getByRole('region', { name: 'Date ideas' })).not.toHaveAttribute('inert')
       expect(screen.getByRole('button', { name: 'Show your plan' })).toBeInTheDocument()
@@ -242,14 +242,14 @@ describe('PlanBuilder', () => {
       const { container } = renderBuilder()
 
       await user.click(screen.getByRole('button', { name: 'Show your plan' }))
-      expect(container.querySelector('.builder')).toHaveAttribute('data-active', 'plan')
+      expect(container.querySelector('[data-builder]')).toHaveAttribute('data-active', 'plan')
       expect(screen.getByRole('region', { name: 'Your plan' })).not.toHaveAttribute('inert')
       expect(screen.getByRole('region', { name: 'Date ideas' })).toHaveAttribute('inert')
       // The card in the plan survived the switch.
       expect(screen.getByRole('button', { name: 'Discard: Museum' })).toBeInTheDocument()
 
       await user.click(screen.getByRole('button', { name: 'Show the date ideas' }))
-      expect(container.querySelector('.builder')).toHaveAttribute('data-active', 'deck')
+      expect(container.querySelector('[data-builder]')).toHaveAttribute('data-active', 'deck')
       expect(screen.getByRole('region', { name: 'Your plan' })).toHaveAttribute('inert')
     })
   })

@@ -2,6 +2,8 @@
 
 import { useState } from 'react'
 import { authClient, passkeyName, wasCancelled } from '@/lib/auth-client'
+import Button from '../ui/Button'
+import { FormError } from '../ui/Form'
 
 type AddPasskeyButtonProps = {
   label?: string
@@ -28,14 +30,10 @@ export default function AddPasskeyButton({ label = 'Create a passkey', onAdded }
 
   return (
     <>
-      <button className="done-button" type="button" onClick={add} disabled={pending}>
+      <Button onClick={add} disabled={pending}>
         {pending ? 'Waiting for your device…' : label}
-      </button>
-      {error && (
-        <p className="form-error" role="alert">
-          {error}
-        </p>
-      )}
+      </Button>
+      <FormError>{error}</FormError>
     </>
   )
 }

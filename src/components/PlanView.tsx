@@ -5,6 +5,7 @@ import { useCallback, useRef, useState } from 'react'
 import type { DateCard } from '@/types'
 import Card from './Card'
 import cardStyles from './Card.module.css'
+import CardGrid from './CardGrid'
 import CardNotes, { type Notes } from './CardNotes'
 import {
   CardActions,
@@ -19,6 +20,7 @@ import {
 import { useCardEditor } from './decks/useCardEditor'
 import { frameFor } from './frames'
 import { useGridShuffle } from './gridShuffle'
+import { groupTrack, PlanGroupSection } from './PlanGroup'
 import type { Box } from './tilt'
 
 type PlanViewProps = {
@@ -108,18 +110,12 @@ export default function PlanView({ shareId, cards, groups = [], deckId, deckTags
     // and notes are above its cards (docs/card-layout.md § "The plan page's
     // grids").
     <div ref={viewReference}>
-      {cards.length > 0 && <div className="card-grid">{cards.map(renderCard)}</div>}
+      {cards.length > 0 && <CardGrid>{cards.map(renderCard)}</CardGrid>}
 
       {groups.map((group) => (
-        <section className="plan-group" key={group.id} aria-label={group.title || 'A group'}>
-          {(group.title || group.notes) && (
-            <div className="plan-group-info">
-              {group.title && <h2 className="plan-group-heading">{group.title}</h2>}
-              {group.notes && <p className="plan-group-text">{group.notes}</p>}
-            </div>
-          )}
-          {group.cards.length > 0 && <div className="card-grid plan-group-track">{group.cards.map(renderCard)}</div>}
-        </section>
+        <PlanGroupSection key={group.id} title={group.title} notes={group.notes}>
+          {group.cards.length > 0 && <CardGrid className={groupTrack}>{group.cards.map(renderCard)}</CardGrid>}
+        </PlanGroupSection>
       ))}
 
       {notesOpen && notesCard && (

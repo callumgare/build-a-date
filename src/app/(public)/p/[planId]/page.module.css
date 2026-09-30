@@ -1,0 +1,14 @@
+/* Around the bar: as far below the title as the builder's bar, which has
+   the builder's padding above it too. */
+.bar {
+  margin-top: 24px;
+}
+
+/* The padding leaves room for a hovered card as it grows and tilts
+   (docs/card-layout.md § "Tilting on hover"). A container, so the grids work
+   out their columns from its width. */
+.plan {
+  position: relative;
+  container-type: inline-size;
+  padding: 16px 14px 32px;
+}

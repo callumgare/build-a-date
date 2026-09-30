@@ -1,10 +1,14 @@
 'use client'
 
-import { type FormEvent, useRef, useState, useTransition } from 'react'
+import { type FormEvent, useState, useTransition } from 'react'
 import { createDeck } from '@/lib/actions/decks'
+import Button from '../ui/Button'
+import Dialog from '../ui/Dialog'
+import { Choice, ChoiceGroup, Field, Form, FormError, Input } from '../ui/Form'
+import Heading from '../ui/Heading'
 
 export default function NewDeckButton({ label = 'New deck' }: { label?: string }) {
-  const dialogReference = useRef<HTMLDialogElement>(null)
+  const [open, setOpen] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [pending, startTransition] = useTransition()
 
@@ -24,46 +28,32 @@ export default function NewDeckButton({ label = 'New deck' }: { label?: string }
 
   return (
     <>
-      <button className="done-button" type="button" onClick={() => dialogReference.current?.showModal()}>
-        {label}
-      </button>
-      <dialog className="share-dialog form-dialog" ref={dialogReference} aria-labelledby="new-deck-title">
-        <form className="form" onSubmit={submit}>
-          <h2 id="new-deck-title">New deck</h2>
-          <label className="field">
-            <span>Name</span>
-            <input name="name" required maxLength={80} placeholder="Date ideas for Sam" />
-          </label>
-          <fieldset className="choice-group">
-            <legend>Start with</legend>
-            <label className="choice">
-              <input type="radio" name="template" value="suggestions" defaultChecked />
-              <span>
-                <strong>Suggestions</strong>
-                <small>About 30 ideas that work anywhere, to edit or delete as you like</small>
-              </span>
-            </label>
-            <label className="choice">
-              <input type="radio" name="template" value="empty" />
-              <span>
-                <strong>An empty deck</strong>
-                <small>Add every idea yourself</small>
-              </span>
-            </label>
-          </fieldset>
-          {error && (
-            <p className="form-error" role="alert">
-              {error}
-            </p>
-          )}
-          <button className="done-button" type="submit" disabled={pending}>
+      <Button onClick={() => setOpen(true)}>{label}</Button>
+      <Dialog size="form" open={open} onClose={() => setOpen(false)} aria-labelledby="new-deck-title">
+        <Form onSubmit={submit}>
+          <Heading id="new-deck-title">New deck</Heading>
+          <Field label="Name">
+            <Input name="name" required maxLength={80} placeholder="Date ideas for Sam" />
+          </Field>
+          <ChoiceGroup legend="Start with">
+            <Choice
+              name="template"
+              value="suggestions"
+              defaultChecked
+              title="Suggestions"
+              hint="About 30 ideas that work anywhere, to edit or delete as you like"
+            />
+            <Choice name="template" value="empty" title="An empty deck" hint="Add every idea yourself" />
+          </ChoiceGroup>
+          <FormError>{error}</FormError>
+          <Button type="submit" disabled={pending}>
             {pending ? 'Creating…' : 'Create deck'}
-          </button>
-          <button className="text-action" type="button" onClick={() => dialogReference.current?.close()}>
+          </Button>
+          <Button variant="text" onClick={() => setOpen(false)}>
             Cancel
-          </button>
-        </form>
-      </dialog>
+          </Button>
+        </Form>
+      </Dialog>
     </>
   )
 }

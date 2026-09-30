@@ -21,7 +21,7 @@ async function tiles(page: Page): Promise<Tile[]> {
   return page.evaluate(() => {
     // A count kept on the window, so a tile made later never reuses an id.
     const ids = window as unknown as { e2eTileIds?: number }
-    return [...document.querySelectorAll<HTMLCanvasElement>('.galaxy-background canvas')].map((tile) => {
+    return [...document.querySelectorAll<HTMLCanvasElement>('[data-galaxy] canvas')].map((tile) => {
       ids.e2eTileIds ??= 0
       tile.dataset.e2eId ??= String(ids.e2eTileIds++)
       const box = tile.getBoundingClientRect()
@@ -44,11 +44,11 @@ async function covered(page: Page) {
   await expect
     .poll(() =>
       page.evaluate(() => {
-        const tops = [...document.querySelectorAll<HTMLCanvasElement>('.galaxy-background canvas')].map((tile) =>
+        const tops = [...document.querySelectorAll<HTMLCanvasElement>('[data-galaxy] canvas')].map((tile) =>
           Number.parseFloat(tile.style.top),
         )
         const height =
-          document.querySelector<HTMLCanvasElement>('.galaxy-background canvas')?.getBoundingClientRect().height ?? 0
+          document.querySelector<HTMLCanvasElement>('[data-galaxy] canvas')?.getBoundingClientRect().height ?? 0
         if (!height) return false
         for (let y = window.scrollY; y < window.scrollY + window.innerHeight; y += height) {
           if (!tops.some((top) => top <= y && y < top + height)) return false
@@ -69,7 +69,7 @@ async function looks(page: Page) {
     let gold = 0
     let pixels = 0
     const pictures: string[] = []
-    for (const tile of document.querySelectorAll<HTMLCanvasElement>('.galaxy-background canvas')) {
+    for (const tile of document.querySelectorAll<HTMLCanvasElement>('[data-galaxy] canvas')) {
       const box = tile.getBoundingClientRect()
       if (box.bottom <= 0 || box.top >= window.innerHeight) continue
       const { data } = tile.getContext('2d')?.getImageData(0, 0, tile.width, tile.height) ?? { data: [] }
@@ -224,12 +224,12 @@ test.describe('sparkle', () => {
   test('glints land on gold in the painting', async ({ page }) => {
     await page.goto('/')
     await covered(page)
-    const glint = page.locator('.galaxy-glint').first()
+    const glint = page.locator('[data-sparkle="glint"]').first()
     await expect(glint).toBeAttached()
     const onGold = await glint.evaluate((element) => {
       const x = Number.parseFloat(element.style.left) + Number.parseFloat(element.style.width) / 2
       const y = Number.parseFloat(element.style.top) + Number.parseFloat(element.style.height) / 2
-      const tile = [...document.querySelectorAll<HTMLCanvasElement>('.galaxy-background canvas')].find((canvas) => {
+      const tile = [...document.querySelectorAll<HTMLCanvasElement>('[data-galaxy] canvas')].find((canvas) => {
         const top = Number.parseFloat(canvas.style.top)
         return top <= y && y < top + Number.parseFloat(canvas.style.height)
       })
@@ -264,8 +264,8 @@ test.describe('sparkle', () => {
     await page.goto('/')
     await covered(page)
     await page.evaluate(() => window.dispatchEvent(new Event('galaxy:celebrate')))
-    await expect(page.locator('.galaxy-shooting-star')).toHaveCount(1)
-    await expect.poll(() => page.locator('.galaxy-glint').count()).toBeGreaterThan(3)
+    await expect(page.locator('[data-sparkle="shooting-star"]')).toHaveCount(1)
+    await expect.poll(() => page.locator('[data-sparkle="glint"]').count()).toBeGreaterThan(3)
   })
 
   /** @see docs/background.md § "Sparkle" */
@@ -282,8 +282,7 @@ test.describe('sparkle', () => {
       new MutationObserver((changes) => {
         for (const change of changes)
           for (const node of change.addedNodes)
-            if (node instanceof Element && node.matches('.galaxy-glint, .galaxy-shooting-star'))
-              seen.push(node.className)
+            if (node instanceof Element && node.matches('[data-sparkle]')) seen.push(node.className)
       }).observe(document.body, { childList: true, subtree: true })
       window.dispatchEvent(new Event('galaxy:celebrate'))
     })

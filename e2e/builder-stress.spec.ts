@@ -48,14 +48,14 @@ function isNarrow(page: Page) {
 }
 
 async function activeColumn(page: Page) {
-  return page.locator('.builder').getAttribute('data-active')
+  return page.locator('[data-builder]').getAttribute('data-active')
 }
 
 async function switchTo(page: Page, column: 'plan' | 'deck') {
   if (!isNarrow(page) || (await activeColumn(page)) === column) return
   await page.getByRole('button', { name: column === 'plan' ? 'Show your plan' : 'Show the date ideas' }).click()
   await expect.poll(() => activeColumn(page)).toBe(column)
-  await expect(page.locator('.builder')).not.toHaveAttribute('data-switching')
+  await expect(page.locator('[data-builder]')).not.toHaveAttribute('data-switching')
 }
 
 async function add(page: Page, id: string) {
@@ -233,7 +233,7 @@ for (const size of ['wide', 'narrow', 'narrow with room for columns'] as const) 
   test(`on a ${size} screen the first card picked flies onto the blank slot and covers it`, async ({ page }) => {
     await page.setViewportSize(size === 'wide' ? wide : size === 'narrow' ? narrow : { width: 860, height: 900 })
     await page.goto('/sample')
-    const slot = page.locator('.plan-track .empty-slot')
+    const slot = page.locator('[data-plan-row] [data-empty-slot]')
     const card = page.locator('[data-deck-card-id]').first()
     const add = card.getByRole('button', { name: /^Add to plan: / })
     // Hovered first, which can scroll the page, then the slot measured once
@@ -285,7 +285,7 @@ for (const size of ['wide', 'narrow', 'narrow with room for columns'] as const) 
                 flying++
                 const box = stand.getBoundingClientRect()
                 flyer = { x: box.x, y: box.y, width: box.width }
-                const slotNow = document.querySelector('.plan-track .empty-slot')
+                const slotNow = document.querySelector('[data-plan-row] [data-empty-slot]')
                 const slotBox = slotNow?.getBoundingClientRect()
                 const row = slotNow?.parentElement?.getBoundingClientRect()
                 // Within its row, as the page can scroll when a card leaves
@@ -405,7 +405,7 @@ test('the plan in use on a narrow screen shuffles its cards into place when it l
   await expect
     .poll(() =>
       page
-        .locator('.plan-track')
+        .locator('[data-plan-row]')
         .first()
         .locator(':scope > [data-card-id]')
         .evaluateAll((cards) => new Set(cards.map((card) => (card as HTMLElement).offsetTop)).size),
@@ -441,7 +441,7 @@ for (const layout of ['wide', 'narrow, plan in use', 'narrow, deck in use'] as c
       .first()
       .focus()
     for (let step = 0; step < 3; step++) await page.keyboard.press('ArrowDown')
-    await expect(page.locator('.plan-column .plan-group [data-card-id]')).toHaveCount(1)
+    await expect(page.locator('[data-column="plan"] [data-group-id] [data-card-id]')).toHaveCount(1)
     await expectSettled(page, (await builderState(page)).plan, 32)
     expect([...(await builderState(page)).plan].sort()).toEqual([...planned].sort())
     if (layout !== 'wide') {
@@ -544,7 +544,7 @@ for (const width of [420, 860]) {
     // Each grid's columns and layout width, every frame, through switches
     // both ways.
     await page.evaluate(() => {
-      const grids = { deck: '.deck-section .card-grid', plan: '.plan-track' }
+      const grids = { deck: '[aria-label="Date ideas"] [data-card-grid]', plan: '[data-plan-row]' }
       const seen: Record<string, Set<string>> = { deck: new Set(), plan: new Set() }
       ;(window as unknown as { seen: typeof seen }).seen = seen
       // Until the test has seen both switches over, however long they take.

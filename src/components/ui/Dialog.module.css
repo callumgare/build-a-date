@@ -1,0 +1,32 @@
+/* A surface: its text has no halo (docs/ui-components.md § "The text halo"). */
+.dialog {
+  --text-halo: none;
+  width: min(92vw, 460px);
+  padding: 30px 28px 24px;
+  border: 1px solid var(--accent);
+  border-radius: 8px;
+  color: var(--cream);
+  text-align: left;
+  background: var(--surface-raised);
+}
+
+.dialog::backdrop {
+  background: var(--scrim);
+}
+
+.small {
+  width: min(92vw, 360px);
+  text-align: center;
+}
+
+.wide {
+  width: min(92vw, 760px);
+  max-height: 92vh;
+}
+
+/* The cross in its top corner. */
+.close {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+}

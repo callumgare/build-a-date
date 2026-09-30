@@ -80,7 +80,11 @@ test('sign up, share a deck, and get a plan back', async ({ page, browser, reque
   // The owner sees it on their deck.
   await page.reload()
   await expect(page.getByRole('heading', { name: 'Plans (1)' })).toBeVisible()
-  await page.locator('.plan-list a').first().click()
+  await page
+    .getByRole('link')
+    .filter({ has: page.locator('time') })
+    .first()
+    .click()
   await expect(page).toHaveURL(planUrl)
 
   expect(consoleErrors).toEqual([])

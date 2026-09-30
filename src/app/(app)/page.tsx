@@ -1,10 +1,13 @@
-import Link from 'next/link'
 import { redirect } from 'next/navigation'
 import Card from '@/components/Card'
 import cardStyles from '@/components/Card.module.css'
 import { frameFor } from '@/components/frames'
+import Button from '@/components/ui/Button'
+import Hero, { Lede } from '@/components/ui/Hero'
+import Muted from '@/components/ui/Muted'
 import { starterCards } from '@/data/starter-cards'
 import { getSession } from '@/lib/auth'
+import styles from './page.module.css'
 
 const samples = [0, 4, 6, 10].map((index) => ({
   ...starterCards[index],
@@ -18,27 +21,21 @@ export default async function Home() {
 
   return (
     <>
-      <header className="hero">
-        <h1>Build-a-Date</h1>
-      </header>
-      <p className="lede">
+      <Hero title="Build-a-Date" />
+      <Lede>
         Make a deck of date ideas and share it (it's free!). Whoever you send it to picks the cards they like and sends
         a plan back.
-      </p>
-      <div className="hero-actions">
-        <Link className="done-button" href="/sample">
-          Try a sample deck
-        </Link>
-        <span className="muted">- or -</span>
-        <Link className="done-button" href="/sign-up">
-          Make your own deck
-        </Link>
-        <Link className="text-action" href="/sign-in">
+      </Lede>
+      <div className={styles.actions}>
+        <Button href="/sample">Try a sample deck</Button>
+        <Muted>- or -</Muted>
+        <Button href="/sign-up">Make your own deck</Button>
+        <Button variant="text" href="/sign-in">
           Sign in
-        </Link>
+        </Button>
       </div>
 
-      <div className="sample-cards" aria-hidden="true">
+      <div className={styles.samples} aria-hidden="true">
         {samples.map((card) => (
           <div className={cardStyles.card} key={card.id}>
             <Card card={card} frame={frameFor(card.id)} />

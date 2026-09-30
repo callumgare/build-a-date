@@ -1,12 +1,18 @@
 'use client'
 
-import { type FormEvent, useEffect, useRef, useState, useTransition } from 'react'
+import { type FormEvent, useState, useTransition } from 'react'
 import { deleteCard, saveCard } from '@/lib/actions/decks'
 import type { CardDraft } from '@/lib/quick-add'
 import type { DateCard } from '@/types'
 import Card from '../Card'
 import cardStyles from '../Card.module.css'
 import { frameFor } from '../frames'
+import Button from '../ui/Button'
+import { Chip, ChipGroup } from '../ui/Chip'
+import Dialog from '../ui/Dialog'
+import { Field, FormActions, FormError, FormStack, Input, TextArea } from '../ui/Form'
+import Heading from '../ui/Heading'
+import styles from './CardEditor.module.css'
 
 type CardEditorProps = {
   deckId: string
@@ -27,17 +33,10 @@ function parseTags(text: string) {
 }
 
 export default function CardEditor({ deckId, card, draft, deckTags, onClose }: CardEditorProps) {
-  const dialogReference = useRef<HTMLDialogElement>(null)
   const open = card !== undefined
 
-  useEffect(() => {
-    const dialog = dialogReference.current
-    if (open && !dialog?.open) dialog?.showModal()
-    if (!open && dialog?.open) dialog.close()
-  }, [open])
-
   return (
-    <dialog className="share-dialog editor-dialog" ref={dialogReference} onClose={onClose} aria-label="Edit idea">
+    <Dialog size="wide" open={open} onClose={onClose} aria-label="Edit idea">
       {/* Keyed so each opening starts from that card's saved values. */}
       {open && (
         <CardForm
@@ -49,7 +48,7 @@ export default function CardEditor({ deckId, card, draft, deckTags, onClose }: C
           onDone={onClose}
         />
       )}
-    </dialog>
+    </Dialog>
   )
 }
 
@@ -112,73 +111,52 @@ function CardForm({
   }
 
   return (
-    <form className="editor-layout" onSubmit={submit}>
-      <div className="form">
-        <h2>{card ? 'Edit idea' : 'New idea'}</h2>
-        <label className="field">
-          <span>Title</span>
-          <input value={title} onChange={(event) => setTitle(event.target.value)} required maxLength={80} />
-        </label>
-        <label className="field">
-          <span>
-            Description <small>Markdown works, e.g. [More info](https://…)</small>
-          </span>
-          <textarea
+    <form className={styles.layout} onSubmit={submit}>
+      <FormStack>
+        <Heading>{card ? 'Edit idea' : 'New idea'}</Heading>
+        <Field label="Title">
+          <Input value={title} onChange={(event) => setTitle(event.target.value)} required maxLength={80} />
+        </Field>
+        <Field label="Description" hint="Markdown works, e.g. [More info](https://…)">
+          <TextArea
             value={description}
             onChange={(event) => setDescription(event.target.value)}
             rows={4}
             maxLength={1000}
           />
-        </label>
-        <label className="field">
-          <span>
-            When <small>Optional, e.g. &ldquo;Fridays until March&rdquo;</small>
-          </span>
-          <input value={date} onChange={(event) => setDate(event.target.value)} maxLength={80} />
-        </label>
-        <label className="field">
-          <span>
-            Tags <small>Separated by commas</small>
-          </span>
-          <input value={tagText} onChange={(event) => setTagText(event.target.value)} />
-        </label>
+        </Field>
+        <Field label="When" hint={<>Optional, e.g. &ldquo;Fridays until March&rdquo;</>}>
+          <Input value={date} onChange={(event) => setDate(event.target.value)} maxLength={80} />
+        </Field>
+        <Field label="Tags" hint="Separated by commas">
+          <Input value={tagText} onChange={(event) => setTagText(event.target.value)} />
+        </Field>
         {deckTags.length > 0 && (
-          <fieldset className="filters tag-picker" aria-label="Tags used in this deck">
+          <ChipGroup name="Tags used in this deck" align="start" className={styles.tagPicker}>
             {deckTags.map((tag) => (
-              <button
-                className="filter-button"
-                data-active={tags.includes(tag)}
-                aria-pressed={tags.includes(tag)}
-                type="button"
-                key={tag}
-                onClick={() => toggleTag(tag)}
-              >
+              <Chip pressed={tags.includes(tag)} key={tag} onClick={() => toggleTag(tag)}>
                 {tag}
-              </button>
+              </Chip>
             ))}
-          </fieldset>
+          </ChipGroup>
         )}
-        {error && (
-          <p className="form-error" role="alert">
-            {error}
-          </p>
-        )}
-        <div className="editor-actions">
-          <button className="done-button" type="submit" disabled={pending}>
+        <FormError>{error}</FormError>
+        <FormActions>
+          <Button type="submit" disabled={pending}>
             {pending ? 'Saving…' : 'Save'}
-          </button>
+          </Button>
           {card && (
-            <button className="text-action" type="button" onClick={remove} disabled={pending}>
+            <Button variant="text" onClick={remove} disabled={pending}>
               Delete
-            </button>
+            </Button>
           )}
-          <button className="text-action" type="button" onClick={onDone}>
+          <Button variant="text" onClick={onDone}>
             Cancel
-          </button>
-        </div>
-      </div>
+          </Button>
+        </FormActions>
+      </FormStack>
 
-      <div className="editor-preview" aria-hidden="true">
+      <div className={styles.preview} aria-hidden="true">
         <div className={cardStyles.card}>
           <Card card={preview} frame={frameFor(preview.id)} />
         </div>

@@ -1,24 +1,36 @@
 import Link from 'next/link'
 import { getSession } from '@/lib/auth'
+import styles from './SiteHeader.module.css'
+import Button from './ui/Button'
 
+// The slim bar above the app's own pages. Marked data-site-header, which the
+// stars look for (docs/ui-components.md § "Page frame").
 export default async function SiteHeader() {
   const session = await getSession()
 
   return (
-    <nav className="site-header" aria-label="Main">
-      <Link className="site-brand" href={session ? '/decks' : '/'}>
+    <nav className={styles.header} aria-label="Main" data-site-header>
+      <Link className={styles.brand} href={session ? '/decks' : '/'}>
         Build-a-Date
       </Link>
-      <div className="site-links">
+      <div className={styles.links}>
         {session ? (
           <>
-            <Link href="/decks">Your decks</Link>
-            <Link href="/settings">Settings</Link>
+            <Button variant="text" tone="subtle" href="/decks">
+              Your decks
+            </Button>
+            <Button variant="text" tone="subtle" href="/settings">
+              Settings
+            </Button>
           </>
         ) : (
           <>
-            <Link href="/sign-in">Sign in</Link>
-            <Link href="/sign-up">Sign up</Link>
+            <Button variant="text" tone="subtle" href="/sign-in">
+              Sign in
+            </Button>
+            <Button variant="text" tone="subtle" href="/sign-up">
+              Sign up
+            </Button>
           </>
         )}
       </div>

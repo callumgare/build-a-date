@@ -1,8 +1,11 @@
 'use client'
 
 import { useRouter } from 'next/navigation'
-import { useEffect, useId, useRef, useState } from 'react'
+import { useEffect, useId, useState } from 'react'
 import { celebrate } from './galaxy/sparkle'
+import styles from './SharePlanButton.module.css'
+import Button from './ui/Button'
+import Dialog from './ui/Dialog'
 
 // The plan's own address, without ?share or anything else added to it.
 function planUrl() {
@@ -17,7 +20,7 @@ type SharePlanButtonProps = {
 }
 
 export default function SharePlanButton({ title, openOnLoad = false }: SharePlanButtonProps) {
-  const dialogReference = useRef<HTMLDialogElement>(null)
+  const [open, setOpen] = useState(false)
   const [linkCopied, setLinkCopied] = useState(false)
   // Only known in the browser, so the first render matches the server's.
   const [canShare, setCanShare] = useState(false)
@@ -27,7 +30,7 @@ export default function SharePlanButton({ title, openOnLoad = false }: SharePlan
   useEffect(() => {
     setCanShare(typeof navigator.share === 'function')
     if (!openOnLoad) return
-    dialogReference.current?.showModal()
+    setOpen(true)
     // Just saved (docs/background.md § "Bursts").
     celebrate()
     // So a reload, or the address bar copied by hand, doesn't open it again.
@@ -46,14 +49,14 @@ export default function SharePlanButton({ title, openOnLoad = false }: SharePlan
       try {
         await navigator.share({ title, url: planUrl() })
         celebrate()
-        if (fromDialog) dialogReference.current?.close()
+        if (fromDialog) setOpen(false)
         return
       } catch (error) {
         if (error instanceof DOMException && error.name === 'AbortError') return
       }
     }
     setLinkCopied(false)
-    if (!dialogReference.current?.open) dialogReference.current?.showModal()
+    setOpen(true)
   }
 
   async function copyLink() {
@@ -66,43 +69,31 @@ export default function SharePlanButton({ title, openOnLoad = false }: SharePlan
     }
   }
 
+  function close() {
+    setOpen(false)
+    setLinkCopied(false)
+  }
+
   return (
     <>
-      <button className="done-button" type="button" onClick={() => share()}>
-        Share
-      </button>
-      <dialog
-        className="share-dialog"
-        ref={dialogReference}
-        aria-labelledby={headingId}
-        onClose={() => setLinkCopied(false)}
-      >
-        <button
-          className="share-dialog-close"
-          type="button"
-          aria-label="Close"
-          onClick={() => dialogReference.current?.close()}
-        >
-          <svg viewBox="0 0 16 16" aria-hidden="true">
-            <path d="M4 4 L12 12 M12 4 L4 12" />
-          </svg>
-        </button>
-        <p id={headingId}>Share this date plan</p>
-        <div className="share-dialog-actions">
-          <button className="done-button" type="button" onClick={copyLink}>
-            {linkCopied ? 'Copied!' : 'Copy link'}
-          </button>
+      <Button onClick={() => share()}>Share</Button>
+      <Dialog open={open} onClose={close} closeButton aria-labelledby={headingId}>
+        <p className={styles.heading} id={headingId}>
+          Share this date plan
+        </p>
+        <div className={styles.actions}>
+          <Button onClick={copyLink}>{linkCopied ? 'Copied!' : 'Copy link'}</Button>
           {canShare && (
-            <button className="text-action" type="button" onClick={() => share({ fromDialog: true })}>
+            <Button variant="text" onClick={() => share({ fromDialog: true })}>
               Share…
-            </button>
+            </Button>
           )}
           {/* Closes it, onto the plan behind (docs/plans.md § "Sharing a plan"). */}
-          <button className="text-action" type="button" onClick={() => dialogReference.current?.close()}>
+          <Button variant="text" onClick={close}>
             View
-          </button>
+          </Button>
         </div>
-      </dialog>
+      </Dialog>
     </>
   )
 }

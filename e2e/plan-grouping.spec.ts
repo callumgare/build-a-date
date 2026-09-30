@@ -74,7 +74,10 @@ test('someone groups cards in their plan, gives the group a title and notes, and
   // Centred over the cards, and closer to them than to the first row above.
   const headingBox = await savedGroup.getByRole('heading', { name: 'After dark' }).boundingBox()
   const groupBox = await savedGroup.boundingBox()
-  const firstRowCardBox = await guest.locator('.plan-section > div > .card-grid [data-card-id]').first().boundingBox()
+  const firstRowCardBox = await guest
+    .locator('[aria-label="The plan"] > div > [data-card-grid] [data-card-id]')
+    .first()
+    .boundingBox()
   if (!headingBox || !groupBox || !notesBox || !savedCardBox || !firstRowCardBox) throw new Error('Not laid out')
   expect(Math.abs(headingBox.x + headingBox.width / 2 - (groupBox.x + groupBox.width / 2))).toBeLessThan(2)
   const gapAbove = headingBox.y - (firstRowCardBox.y + firstRowCardBox.height)
@@ -85,7 +88,7 @@ test('someone groups cards in their plan, gives the group a title and notes, and
   await guest.getByRole('link', { name: 'Edit plan' }).click()
   const editingGroup = guest.getByRole('region', { name: 'After dark' })
   await expect(editingGroup.locator('[data-card-id]')).toContainText('Stargazing')
-  const firstRow = guest.locator('.plan-track').first()
+  const firstRow = guest.locator('[data-plan-row]').first()
   // Tried again until it takes, as the edit page may still be hydrating.
   await expect(async () => {
     await dragCard(guest, editingGroup.locator('[data-card-id]').first(), firstRow.locator('[data-card-id]').first(), {

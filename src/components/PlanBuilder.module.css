@@ -1,0 +1,233 @@
+/* The builder on /d/…: the deck on the left, and the plan in a thin column
+   on the right, running down (docs/card-layout.md § "The plan column"). */
+.builder {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) clamp(200px, 22vw, 270px);
+  gap: 0 clamp(20px, 3vw, 40px);
+  align-items: start;
+  padding-top: 24px;
+}
+
+/* Save plan and Clear plan, above both columns. */
+.bar {
+  grid-column: 1 / -1;
+}
+
+/* Positioned, so the switch over it while it's shrunk covers it. */
+.deckColumn {
+  position: relative;
+}
+
+/* Stays in the window as the deck scrolls past it: the title, and under it
+   the plan, which scrolls on its own when it's taller than the room left.
+   Always the window's height, not just at most: while things slide up
+   after a card leaves, their old places still count towards what the plan
+   holds, and a column the height of the plan would briefly overflow and
+   show a scrollbar. */
+.planColumn {
+  position: sticky;
+  top: 0;
+  display: flex;
+  flex-direction: column;
+  height: 100vh;
+  /* biome-ignore lint/suspicious/noDuplicateProperties: 100vh is the fallback */
+  height: 100dvh;
+}
+
+.planHeading {
+  flex: none;
+  margin: 0;
+  padding: 12px 14px 4px;
+  color: var(--accent);
+  font-family: var(--font-display);
+  font-size: clamp(1.8rem, 3vw, 2.4rem);
+  font-weight: 400;
+  line-height: 1.2;
+  text-align: center;
+}
+
+/* How far each end of the plan fades out: none, until there's something
+   scrolled out of sight past it (data-more-above and data-more-below, set
+   by PlanBuilder). Registered, so the fades ease in and out. */
+@property --fade-top {
+  syntax: '<length>';
+  inherits: false;
+  initial-value: 0px;
+}
+
+@property --fade-bottom {
+  syntax: '<length>';
+  inherits: false;
+  initial-value: 0px;
+}
+
+.planScroll {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  mask-image: linear-gradient(
+    to bottom,
+    transparent,
+    #000 var(--fade-top),
+    #000 calc(100% - var(--fade-bottom)),
+    transparent
+  );
+  transition:
+    --fade-top 0.2s ease,
+    --fade-bottom 0.2s ease;
+  /* Room for a scrollbar that takes up space is always kept, so the plan
+     starting or stopping scrolling doesn't change the cards' width. It
+     would re-wrap their text, and cards a little narrower are a little
+     shorter too, so the scrollbar could come and go (docs/card-layout.md
+     § "The plan column" - stays in the window). */
+  /* On both sides, so the cards stay in the middle, under the title. */
+  scrollbar-gutter: stable both-edges;
+  scrollbar-width: thin;
+  scrollbar-color: var(--accent) transparent;
+}
+
+.planScroll[data-more-above] {
+  --fade-top: 48px;
+}
+
+.planScroll[data-more-below] {
+  --fade-bottom: 48px;
+}
+
+/* The padding leaves room for a hovered card as it grows and tilts
+   (docs/card-layout.md § "Tilting on hover"). */
+.planSection {
+  position: relative;
+  container-type: inline-size;
+  padding: 16px 14px 32px;
+}
+
+/* Both sections are positioned, so their grids' places are measured within
+   them, in their own units even while shrunk (docs/card-layout.md
+   § "Shuffling to a new number of columns"). */
+.deckSection {
+  position: relative;
+  container-type: inline-size;
+  padding: 16px 0 44px;
+}
+
+/* Under the cards, a little apart from them. */
+.randomPick {
+  display: flex;
+  justify-content: center;
+  margin-top: 12px;
+}
+
+/* The slot the first card picked is flying onto, left where it was under
+   the card's place at the top of the row, the only card there and so in the
+   middle, until the card lands and covers it. */
+.coveredSlot {
+  position: absolute;
+  top: 8px;
+  left: 50%;
+  translate: -50% 0;
+}
+
+.groupAdd {
+  display: flex;
+  justify-content: center;
+  margin-top: 12px;
+}
+
+/* How much a column is shrunk on a narrow screen: 1 in use, 0.2 shrunk.
+   Registered, so it animates, and everything that goes along with it (the
+   column's scale, its width and the room it takes up) moves on the same
+   curve. */
+@property --shrink {
+  syntax: '<number>';
+  inherits: false;
+  initial-value: 1;
+}
+
+/* On a narrow screen one column is in use and the other is shrunk to a
+   fifth of its size, everything in it included, until it's clicked
+   (docs/card-layout.md § "Narrow screens"). The width is the same as
+   narrowScreen in PlanBuilder.tsx. */
+@media (max-width: 899px) {
+  /* The shrunk column is a fifth as wide as the one in use, and drawn at a
+     fifth of its size, so it's laid out just as wide as it is in use: the
+     same columns of cards, only smaller (§ "Narrow screens" - the whole
+     column shrinks). The widths are lengths rather than fr, so they animate
+     as one column grows and the other shrinks, on the same curve as
+     --shrink. Then a column's width over --shrink stays the same all the
+     way through, so nothing in it is laid out afresh part way.
+     The switch is over when these transitions finish (switchOver in
+     shrink.ts). */
+  .builder {
+    --switch: 0.5s cubic-bezier(0.3, 0.7, 0.2, 1);
+    grid-template-columns: calc((100% - 12px) * 5 / 6) calc((100% - 12px) / 6);
+    gap: 0 12px;
+    transition: grid-template-columns var(--switch);
+  }
+
+  .builder[data-active='plan'] {
+    grid-template-columns: calc((100% - 12px) / 6) calc((100% - 12px) * 5 / 6);
+  }
+
+  .planHeading,
+  .planSection,
+  .deckSection {
+    transition: --shrink var(--switch);
+  }
+
+  .builder[data-active='deck'] :is(.planHeading, .planSection),
+  .builder[data-active='plan'] .deckSection {
+    --shrink: 0.2;
+  }
+
+  /* Shrunk, or growing or shrinking, a column is laid out as wide as it is
+     in use and scaled down from its top left corner. A transform, not CSS
+     zoom: Safari won't draw text under 9px on screen in a zoomed element,
+     so a zoomed column's text came out several times too big. A transform
+     still takes up the room of the column at full size, so the bottom
+     margin takes back what it no longer needs, from its height at full
+     size (--layout-height, kept by PlanBuilder; the title's is a line and
+     its padding until then). Only while shrunk or switching, so a column
+     in use isn't a stacking context for what's in it. */
+  .builder[data-active='deck'] :is(.planHeading, .planSection),
+  .builder[data-active='plan'] .deckSection,
+  .builder[data-switching] :is(.planHeading, .planSection, .deckSection) {
+    width: calc(100% / var(--shrink));
+    margin-bottom: calc(var(--layout-height, 0px) * (var(--shrink) - 1));
+    scale: var(--shrink);
+    transform-origin: 0 0;
+  }
+
+  .builder[data-active='deck'] .planHeading,
+  .builder[data-switching] .planHeading {
+    margin-bottom: calc(var(--layout-height, 1lh + 16px) * (var(--shrink) - 1));
+  }
+
+  /* At least the window's height, so a click on the space under a shrunk
+     column's cards puts it in use too. */
+  .deckColumn {
+    min-height: 100vh;
+    /* biome-ignore lint/suspicious/noDuplicateProperties: 100vh is the fallback */
+    min-height: 100dvh;
+  }
+
+  /* Covered by its switch, which doesn't scroll with it. With no scrollbar,
+     it keeps no room for one either: that room isn't shrunk with the rest,
+     so it would take a much bigger share of the strip. Its width is padding
+     on each side instead (--scrollbar-gutter, measured by PlanBuilder), in
+     the shrunk plan's own units, so its cards are laid out just as wide as
+     when it's in use. */
+  .builder[data-active='deck'] .planScroll,
+  .builder[data-switching] .planScroll {
+    overflow: hidden;
+    scrollbar-width: none;
+  }
+
+  /* The same while it grows or shrinks, until it's in use at full size:
+     room for the scrollbar kept while it's still small would cost a much
+     bigger share of it, and the cards would narrow part way. */
+  .builder[data-active='deck'] .planSection,
+  .builder[data-switching] .planSection {
+    padding-inline: calc(14px + var(--scrollbar-gutter, 0px));
+  }
+}

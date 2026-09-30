@@ -3,6 +3,9 @@
 import { useRouter } from 'next/navigation'
 import { useEffect, useState } from 'react'
 import { authClient, wasCancelled } from '@/lib/auth-client'
+import Button from '../ui/Button'
+import Divider from '../ui/Divider'
+import { FormError, FormStack } from '../ui/Form'
 import EmailLinkForm from './EmailLinkForm'
 
 export default function SignInForm({ linkFailed = false, next }: { linkFailed?: boolean; next?: string }) {
@@ -42,20 +45,14 @@ export default function SignInForm({ linkFailed = false, next }: { linkFailed?: 
   }
 
   return (
-    <div className="form">
-      <button className="done-button" type="button" onClick={signInWithPasskey}>
-        Sign in with a passkey
-      </button>
-      {error && (
-        <p className="form-error" role="alert">
-          {error}
-        </p>
-      )}
+    <FormStack>
+      <Button onClick={signInWithPasskey}>Sign in with a passkey</Button>
+      <FormError>{error}</FormError>
 
-      <p className="or-divider">or</p>
+      <Divider>or</Divider>
 
       {/* For anyone who skipped making a passkey, or lost theirs. */}
       <EmailLinkForm submitLabel="Email me a sign-in link" offerPasskeys next={next} />
-    </div>
+    </FormStack>
   )
 }

@@ -1,0 +1,31 @@
+/* The card form, with how the card will look beside it. */
+.layout {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 240px;
+  gap: 28px;
+  align-items: start;
+}
+
+/* Only to look at, so it doesn't read as something to click. */
+.preview {
+  position: sticky;
+  top: 0;
+  pointer-events: none;
+}
+
+.tagPicker {
+  margin-top: -4px;
+}
+
+@media (max-width: 640px) {
+  .layout {
+    grid-template-columns: 1fr;
+  }
+
+  .preview {
+    position: static;
+    width: min(100%, 150px);
+    margin: 0 auto;
+    order: -1;
+  }
+}

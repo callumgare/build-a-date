@@ -3,6 +3,12 @@
 import { useState, useTransition } from 'react'
 import { removeEditor, respondToAccessRequest } from '@/lib/actions/decks'
 import type { ActionResult } from '@/lib/actions/result'
+import Button from '../ui/Button'
+import { FormError } from '../ui/Form'
+import { Subheading } from '../ui/Heading'
+import { ItemList, ItemRow } from '../ui/ItemList'
+import Muted from '../ui/Muted'
+import { SectionActions } from '../ui/PageSection'
 
 export type DeckPerson = {
   userId: string
@@ -23,11 +29,7 @@ function useAccessAction() {
     })
   }
 
-  const errorMessage = error && (
-    <p className="form-error" role="alert">
-      {error}
-    </p>
-  )
+  const errorMessage = <FormError>{error}</FormError>
   return { run, pending, errorMessage }
 }
 
@@ -35,7 +37,7 @@ function Person({ person }: { person: DeckPerson }) {
   return (
     <span>
       {person.name || person.email}
-      {person.name && <small className="muted"> · {person.email}</small>}
+      {person.name && <Muted as="small"> · {person.email}</Muted>}
     </span>
   )
 }
@@ -49,36 +51,31 @@ export function AccessRequests({ deckId, people }: { deckId: string; people: Dec
 
   return (
     <section aria-label="Edit requests">
-      <h3 className="subheading">
-        Asking to edit <small>({requests.length})</small>
-      </h3>
-      <ul className="plan-list">
+      <Subheading count={requests.length}>Asking to edit</Subheading>
+      <ItemList>
         {requests.map((person) => (
-          <li key={person.userId}>
+          <ItemRow key={person.userId}>
             <Person person={person} />
-            <span className="section-actions">
-              <button
-                className="done-button"
-                type="button"
+            <SectionActions as="span">
+              <Button
                 disabled={pending}
                 onClick={() => run(() => respondToAccessRequest(deckId, person.userId, true))}
                 aria-label={`Accept ${person.name || person.email}`}
               >
                 Accept
-              </button>
-              <button
-                className="text-action"
-                type="button"
+              </Button>
+              <Button
+                variant="text"
                 disabled={pending}
                 onClick={() => run(() => respondToAccessRequest(deckId, person.userId, false))}
                 aria-label={`Decline ${person.name || person.email}`}
               >
                 Decline
-              </button>
-            </span>
-          </li>
+              </Button>
+            </SectionActions>
+          </ItemRow>
         ))}
-      </ul>
+      </ItemList>
       {errorMessage}
     </section>
   )
@@ -95,31 +92,28 @@ export function Editors({ deckId, people }: { deckId: string; people: DeckPerson
 
   return (
     <section aria-label="Editors">
-      <h3 className="subheading">
-        Editors <small>({editors.length})</small>
-      </h3>
+      <Subheading count={editors.length}>Editors</Subheading>
       {editors.length === 0 ? (
-        <p className="muted">
+        <Muted as="p">
           Anyone with the share link can ask to help edit this deck. You&apos;ll get an email, and can say yes or no
           here.
-        </p>
+        </Muted>
       ) : (
-        <ul className="plan-list">
+        <ItemList>
           {editors.map((person) => (
-            <li key={person.userId}>
+            <ItemRow key={person.userId}>
               <Person person={person} />
-              <button
-                className="text-action"
-                type="button"
+              <Button
+                variant="text"
                 disabled={pending}
                 onClick={() => remove(person)}
                 aria-label={`Remove ${person.name || person.email}`}
               >
                 Remove
-              </button>
-            </li>
+              </Button>
+            </ItemRow>
           ))}
-        </ul>
+        </ItemList>
       )}
       {errorMessage}
     </section>

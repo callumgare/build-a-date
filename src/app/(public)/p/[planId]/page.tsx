@@ -1,17 +1,21 @@
 import type { Metadata } from 'next'
-import Link from 'next/link'
 import { notFound } from 'next/navigation'
 import ForgetPlanEdits from '@/components/ForgetPlanEdits'
+import PageShell from '@/components/PageShell'
+import { PlanActions, PlanBar } from '@/components/PlanBar'
 import PlanView from '@/components/PlanView'
 import SharePlanButton from '@/components/SharePlanButton'
 import SharePreviewRefresher from '@/components/SharePreviewRefresher'
-import Stars from '@/components/Stars'
+import Button from '@/components/ui/Button'
+import EmptyResults from '@/components/ui/EmptyResults'
+import Hero, { Lede } from '@/components/ui/Hero'
 import { getDb } from '@/db'
 import { getSession } from '@/lib/auth'
 import { getAccessState, getPlan, getSharedDeck, NotFoundError } from '@/lib/decks'
 import { shareMetadata } from '@/lib/og/metadata'
 import { previewAddress } from '@/lib/og/serve'
 import { deckPreviewInput, getPreviewKey, planPreviewInput } from '@/lib/previews'
+import styles from './page.module.css'
 
 async function findPlan(planId: string) {
   try {
@@ -47,7 +51,7 @@ export default async function PlanPage({ params, searchParams }: PageProps<'/p/[
   const deckTags = deckCards ? [...new Set(deckCards.flatMap((card) => card.tags))].sort() : undefined
 
   return (
-    <main className="page-shell">
+    <PageShell>
       <ForgetPlanEdits planId={plan.id} />
       {/* Anyone with the link can change the plan, so anyone can redraw its
           link preview (docs/share-previews.md § "When it's drawn"). */}
@@ -67,29 +71,27 @@ export default async function PlanPage({ params, searchParams }: PageProps<'/p/[
           stored={await getPreviewKey(getDb(), 'deck', deck.id)}
         />
       )}
-      <Stars />
-      <header className="hero">
-        <h1>{deck.name}</h1>
-        <p className="lede">Here&apos;s the plan</p>
-      </header>
+      <Hero title={deck.name}>
+        <Lede>Here&apos;s the plan</Lede>
+      </Hero>
 
-      {/* Laid out as the builder's bar is, so the title, the words under it
-          and the buttons are spaced the same as when editing the plan. */}
-      <div className="builder-bar plan-page-bar">
-        <div className="plan-actions" data-visible="true">
-          <SharePlanButton title={deck.name} openOnLoad={justSaved} />
-          <Link className="text-action" href={`/p/${plan.id}/edit`}>
-            Edit plan
-          </Link>
-          <Link className="text-action" href={`/d/${deck.shareId}`}>
-            Create new plan
-          </Link>
-        </div>
+      <div className={styles.bar}>
+        <PlanBar>
+          <PlanActions>
+            <SharePlanButton title={deck.name} openOnLoad={justSaved} />
+            <Button variant="text" href={`/p/${plan.id}/edit`}>
+              Edit plan
+            </Button>
+            <Button variant="text" href={`/d/${deck.shareId}`}>
+              Create new plan
+            </Button>
+          </PlanActions>
+        </PlanBar>
       </div>
 
-      <section className="plan-section" aria-label="The plan">
+      <section className={styles.plan} aria-label="The plan">
         {cards.length === 0 && groups.every((group) => group.cards.length === 0) ? (
-          <p className="empty-results">The ideas in this plan have since been removed from the deck.</p>
+          <EmptyResults message="The ideas in this plan have since been removed from the deck." />
         ) : (
           <PlanView
             shareId={deck.shareId}
@@ -100,6 +102,6 @@ export default async function PlanPage({ params, searchParams }: PageProps<'/p/[
           />
         )}
       </section>
-    </main>
+    </PageShell>
   )
 }

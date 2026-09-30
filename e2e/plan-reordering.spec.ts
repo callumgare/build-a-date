@@ -274,7 +274,7 @@ for (const end of ['bottom', 'top'] as const) {
     // The page scrolled down until the plan's column stays put at the top of
     // the window, and the column scrolled all the way away from the end the
     // card is taken to.
-    const column = page.locator('.plan-scroll')
+    const column = page.locator('[data-plan-scroll]')
     const scrollTop = () => column.evaluate((element) => element.scrollTop)
     const furthest = await column.evaluate((element, end) => {
       window.scrollTo(0, element.getBoundingClientRect().top + window.scrollY)
@@ -311,7 +311,7 @@ test("dragging a card down while the plan's bottom is below the window scrolls t
   // At the top of the page, where the column hasn't stuck to the top of the
   // window yet, so it runs on below the window.
   await page.evaluate(() => window.scrollTo(0, 0))
-  const columnBox = await page.locator('.plan-column').boundingBox()
+  const columnBox = await page.locator('[data-column="plan"]').boundingBox()
   if (!columnBox) throw new Error('Plan has no size')
   expect(columnBox.y + columnBox.height).toBeGreaterThan(800)
 

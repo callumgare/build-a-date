@@ -1,0 +1,35 @@
+/* The deck's name as a field, with Save and Cancel, in place of its heading. */
+.renameForm {
+  display: flex;
+  flex: 1;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 12px;
+}
+
+.renameForm input {
+  flex: 1;
+  min-width: min(100%, 220px);
+  font-size: 1.4rem;
+}
+
+.sharePanel p {
+  margin-top: 0;
+}
+
+.shareRow {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+}
+
+.shareRow input {
+  flex: 1;
+  min-width: 0;
+}
+
+@media (max-width: 640px) {
+  .shareRow {
+    flex-wrap: wrap;
+  }
+}

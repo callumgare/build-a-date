@@ -1,25 +1,24 @@
 'use client'
 
-import Link from 'next/link'
-import Stars from '@/components/Stars'
+import PageShell from '@/components/PageShell'
+import Button from '@/components/ui/Button'
+import Heading from '@/components/ui/Heading'
+import Panel from '@/components/ui/Panel'
 
 // Shown in place of a page that threw while rendering, for example when the
 // session can't be read, instead of leaving a blank screen. `retry` fetches
 // the page from the server again, which `reset` alone wouldn't.
 export default function ErrorPage({ retry }: { error: Error & { digest?: string }; retry: () => void }) {
   return (
-    <main className="page-shell">
-      <Stars />
-      <section className="panel narrow">
-        <h2>Something went wrong</h2>
+    <PageShell>
+      <Panel narrow>
+        <Heading>Something went wrong</Heading>
         <p>We couldn&apos;t load this page. It&apos;s probably not you, so try again in a moment.</p>
-        <button className="done-button" type="button" onClick={retry}>
-          Try again
-        </button>
-        <Link className="text-action" href="/">
+        <Button onClick={retry}>Try again</Button>
+        <Button variant="text" href="/">
           Go to Build-a-Date
-        </Link>
-      </section>
-    </main>
+        </Button>
+      </Panel>
+    </PageShell>
   )
 }

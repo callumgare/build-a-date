@@ -1,0 +1,45 @@
+.header {
+  position: relative;
+  z-index: 3;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 12px 24px;
+  margin-top: -40px;
+  margin-bottom: 32px;
+}
+
+.brand {
+  color: var(--accent);
+  font-family: var(--font-display);
+  font-size: 1.3rem;
+  text-decoration: none;
+}
+
+/* A page with its own big title (Hero) already says the site's name, so the
+   header doesn't too. */
+.header:has(~ [data-hero]) {
+  justify-content: right;
+}
+
+.header:has(~ [data-hero]) .brand {
+  display: none;
+}
+
+.links {
+  display: flex;
+  gap: 20px;
+}
+
+/* Flush with the brand's baseline: the text buttons' padding, there to make
+   them easier to press, would make the bar taller. */
+.links > a {
+  padding: 0;
+}
+
+@media (max-width: 640px) {
+  .header {
+    margin-top: 0;
+  }
+}

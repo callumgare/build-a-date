@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react'
 import styles from './InstallHint.module.css'
+import CloseButton from './ui/CloseButton'
 
 const dismissedKey = 'install-hint-dismissed'
 
@@ -58,11 +59,7 @@ export default function InstallHint() {
         </span>
         , then <strong>Add to Home Screen</strong>.
       </p>
-      <button className={styles.dismiss} type="button" onClick={dismiss} aria-label="Dismiss">
-        <svg viewBox="0 0 16 16" aria-hidden="true">
-          <path d="M4 4 L12 12 M12 4 L4 12" />
-        </svg>
-      </button>
+      <CloseButton label="Dismiss" onClick={dismiss} />
     </aside>
   )
 }

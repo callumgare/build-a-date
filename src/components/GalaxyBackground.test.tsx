@@ -81,11 +81,11 @@ function fakePainter(): Painter {
 }
 
 function glints() {
-  return [...layer().querySelectorAll<HTMLElement>('.galaxy-glint')]
+  return [...layer().querySelectorAll<HTMLElement>('[data-sparkle="glint"]')]
 }
 
 function shootingStars() {
-  return layer().querySelectorAll('.galaxy-shooting-star')
+  return layer().querySelectorAll('[data-sparkle="shooting-star"]')
 }
 
 function setHidden(hidden: boolean) {
@@ -96,7 +96,7 @@ function setHidden(hidden: boolean) {
 }
 
 function layer() {
-  const element = document.querySelector('.galaxy-background')
+  const element = document.querySelector('[data-galaxy]')
   if (!(element instanceof HTMLElement)) throw new Error('No background layer')
   return element
 }
@@ -366,10 +366,10 @@ describe('GalaxyBackground', () => {
         vi.advanceTimersByTime(600)
       })
       const layerElement = layer()
-      expect(layerElement.querySelectorAll('.galaxy-glint, .galaxy-shooting-star').length).toBeGreaterThan(0)
+      expect(layerElement.querySelectorAll('[data-sparkle]').length).toBeGreaterThan(0)
       const started = animations.length
       unmount()
-      expect(layerElement.querySelectorAll('.galaxy-glint, .galaxy-shooting-star')).toHaveLength(0)
+      expect(layerElement.querySelectorAll('[data-sparkle]')).toHaveLength(0)
       // Nothing more of the burst starts after it's gone.
       act(() => vi.advanceTimersByTime(60_000))
       expect(animations).toHaveLength(started)

@@ -1,0 +1,123 @@
+.shell {
+  /* In container units, which measure .app-root, so it leaves out a desktop
+     scrollbar. */
+  --page-width: min(1240px, 100cqw - 40px);
+  position: relative;
+  width: var(--page-width);
+  margin: 0 auto;
+  padding: 72px 0 96px;
+}
+
+.stars {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+}
+
+.star {
+  position: absolute;
+  pointer-events: none;
+}
+
+.star1 {
+  top: 36px;
+  right: 6%;
+  width: 84px;
+}
+
+/* Clear of the site's header, and of a page's title (data-site-header and
+   data-hero, docs/ui-components.md § "Page frame"). */
+.shell:has([data-site-header]) .star1 {
+  top: 100px;
+  right: 35%;
+}
+
+.shell:has([data-hero]) .star1 {
+  top: 30px;
+  right: 35%;
+}
+
+.star2 {
+  top: 150px;
+  right: 22%;
+  width: 48px;
+}
+
+.star3 {
+  bottom: 24px;
+  left: 8%;
+  width: 40px;
+}
+
+.star4 {
+  bottom: 18%;
+  left: -24px;
+  width: 60px;
+  z-index: 2;
+}
+
+.star5 {
+  bottom: 32%;
+  right: -24px;
+  width: 60px;
+  z-index: 2;
+}
+
+.star6 {
+  top: 210px;
+  left: 6%;
+  width: 34px;
+}
+
+.star7 {
+  bottom: 56px;
+  right: 12%;
+  width: 42px;
+}
+
+@media (max-width: 640px) {
+  .shell {
+    --page-width: min(100cqw - 24px, 1240px);
+    padding: 28px 0 64px;
+  }
+
+  .star1 {
+    top: 104px;
+    right: 5%;
+    width: 52px;
+  }
+
+  .star2 {
+    right: unset;
+    left: 5%;
+    top: 140px;
+  }
+
+  .star6 {
+    display: none;
+  }
+
+  .star3 {
+    bottom: 14px;
+    left: 6%;
+    width: 28px;
+  }
+
+  .star4 {
+    bottom: 16%;
+    left: -14px;
+    width: 40px;
+  }
+
+  .star5 {
+    bottom: 32%;
+    right: -14px;
+    width: 40px;
+  }
+
+  .star7 {
+    bottom: 32px;
+    right: 8%;
+    width: 30px;
+  }
+}

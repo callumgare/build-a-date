@@ -1,0 +1,64 @@
+/* The galaxy behind the page. It scrolls with the page: its tiles are
+   placed down this layer, which is as tall as <body> and clips them so they
+   never make the page longer or wider. Its own colour shows wherever a tile
+   isn't painted yet, or can't be (docs/background.md § "Tiles"). */
+.layer {
+  position: absolute;
+  z-index: -1;
+  top: 0;
+  left: 0;
+  width: 100%;
+  min-height: 100vh;
+  /* biome-ignore lint/suspicious/noDuplicateProperties: 100vh is the fallback */
+  min-height: 100lvh;
+  overflow: hidden;
+  background: #0e1a57;
+  pointer-events: none;
+}
+
+.layer canvas {
+  position: absolute;
+  left: 0;
+  display: block;
+  animation: fade-in 0.6s ease;
+}
+
+/* Glints and shooting stars, over the tiles. They're drawn once as
+   gradients, and only their transform and opacity animate, so the
+   compositor moves them without painting anything (docs/background.md §
+   "Sparkle"). */
+.glint,
+.shootingStar {
+  position: absolute;
+  z-index: 1;
+  opacity: 0;
+  will-change: transform, opacity;
+}
+
+/* A bright core with a four-point flare, like a flake catching the light. */
+.glint {
+  background:
+    radial-gradient(circle, rgb(255 250 236) 0 9%, rgb(240 212 150 / 60%) 20%, transparent 45%),
+    linear-gradient(to right, transparent, rgb(255 244 215 / 95%), transparent) center / 100% 1px no-repeat,
+    linear-gradient(to bottom, transparent, rgb(255 244 215 / 95%), transparent) center / 1px 100% no-repeat;
+}
+
+/* A tail fading back from a bright head, which is its right-hand end. */
+.shootingStar {
+  height: 2px;
+  border-radius: 1px;
+  background: linear-gradient(to right, transparent, rgb(229 188 129 / 45%) 55%, rgb(255 250 235));
+  transform-origin: right center;
+}
+
+@keyframes fade-in {
+  from {
+    opacity: 0;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .layer canvas {
+    animation: none;
+  }
+}

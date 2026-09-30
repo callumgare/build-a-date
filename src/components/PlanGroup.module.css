@@ -1,0 +1,77 @@
+.info {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  align-items: baseline;
+  text-align: center;
+}
+
+.title {
+  min-width: 0;
+  margin: 0;
+  color: var(--accent);
+  font-family: var(--font-display);
+  font-size: clamp(1.5rem, 4vw, 2rem);
+  font-weight: 400;
+  line-height: 1.2;
+}
+
+.text {
+  display: block;
+  width: 100%;
+  max-width: 44em;
+  margin: 6px auto 0;
+  color: inherit;
+  font: inherit;
+  line-height: 1.5;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+
+/* The page's: further from the cards above than from its own. */
+.page {
+  margin-top: 48px;
+}
+
+.page .track {
+  padding-top: 16px;
+}
+
+/* The builder's column centres them too, but keeps them closer: its row's
+   own padding (a stacked CardGrid's) is all there is between them. */
+.builder {
+  margin-top: 28px;
+}
+
+/* The title and notes as fields that look like the text they'll be, so
+   they're kept apart from the site's other fields. */
+.field {
+  width: 100%;
+  padding: 2px 0;
+  border: 0;
+  border-bottom: 1px dashed var(--line);
+  border-radius: 0;
+  text-align: center;
+  background: transparent;
+  outline: none;
+}
+
+.field:focus-visible {
+  border-bottom-color: var(--accent);
+  border-bottom-style: solid;
+}
+
+.field::placeholder {
+  color: var(--accent);
+  opacity: 0.55;
+}
+
+.notes {
+  resize: none;
+  field-sizing: content;
+  min-height: calc(1.5em + 4px);
+}
+
+.remove {
+  justify-self: center;
+  margin-top: 6px;
+}

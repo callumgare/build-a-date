@@ -1,4 +1,6 @@
+/* A surface: its text has no halo (docs/ui-components.md § "The text halo"). */
 .card {
+  --text-halo: none;
   container-type: inline-size;
   display: flex;
   flex-direction: column;
@@ -8,12 +10,10 @@
      shrinks to fit instead (see useFitText). */
   min-height: 0;
   padding: 0;
-  border: 1px solid rgba(111, 77, 43, 0.28);
+  border: var(--paper-border);
   border-radius: 6px;
-  color: #183745;
-  background:
-    radial-gradient(ellipse at 50% 30%, rgba(255, 255, 255, 0.35), transparent 70%),
-    linear-gradient(rgba(255, 255, 255, 0.14), rgba(229, 214, 191, 0.12)), #f7f0e4;
+  color: var(--ink);
+  background: var(--paper-background);
   box-shadow: 0 12px 28px rgba(4, 23, 31, 0.18);
   cursor: pointer;
   position: relative;
@@ -378,7 +378,7 @@
 }
 
 .card:focus-visible {
-  outline: 3px solid #fff4df;
+  outline: 3px solid var(--focus-ring);
   outline-offset: 4px;
 }
 
@@ -453,8 +453,8 @@
   display: block;
   max-width: calc(100% + 10 * var(--u));
   margin: 0 calc(-5 * var(--u)) 0.5em;
-  color: #173d4c;
-  font-family: 'Tan Pearl', Georgia, serif;
+  color: var(--ink);
+  font-family: var(--font-display);
   font-size: calc(clamp(0.8rem, 7.3cqw, 1.45rem) * var(--title-fit, 1));
   line-height: 1.5;
   /* Words never break; a word too long for the line shrinks the whole title
@@ -490,7 +490,7 @@
 }
 
 .description a {
-  color: #183745;
+  color: var(--ink);
   text-decoration: underline;
   text-underline-offset: 0.15em;
 }

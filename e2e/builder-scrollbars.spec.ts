@@ -47,14 +47,14 @@ for (const layout of ['wide', 'narrow, plan in use'] as const) {
     }
     if (layout !== 'wide') {
       await page.setViewportSize({ width: 860, height: 900 })
-      await expect.poll(() => page.locator('.builder').getAttribute('data-active')).toBe('plan')
+      await expect.poll(() => page.locator('[data-builder]').getAttribute('data-active')).toBe('plan')
     }
     await page.mouse.move(2, 2)
     await expectStill(page)
 
     const middle = (box: { x: number; width: number } | null) => (box ? box.x + box.width / 2 : Number.NaN)
     const title = middle(await page.getByRole('heading', { name: 'The Plan' }).boundingBox())
-    const cards = middle(await page.locator('.plan-track').first().boundingBox())
+    const cards = middle(await page.locator('[data-plan-row]').first().boundingBox())
     expect(Math.abs(title - cards)).toBeLessThan(1)
   })
 }
@@ -73,7 +73,7 @@ test('picking and discarding a second card never gives the plan a scrollbar it d
     page.evaluate(
       () =>
         new Promise<number>((resolve) => {
-          const column = document.querySelector('.plan-scroll') as HTMLElement
+          const column = document.querySelector('[data-plan-scroll]') as HTMLElement
           const width = column.clientWidth
           let bad = 0
           const until = performance.now() + 900
@@ -102,7 +102,7 @@ test("a shrunk plan is laid out the same before and after the page's script take
     const widths: number[] = []
     ;(window as unknown as { widths: number[] }).widths = widths
     requestAnimationFrame(function watch() {
-      const slot = document.querySelector('.plan-track .empty-slot')
+      const slot = document.querySelector('[data-plan-row] [data-empty-slot]')
       if (slot) widths.push(Math.round(slot.getBoundingClientRect().width * 10) / 10)
       if (widths.length < 120) requestAnimationFrame(watch)
     })

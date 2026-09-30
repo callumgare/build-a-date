@@ -5,6 +5,9 @@ import { useState } from 'react'
 import { signOut } from '@/lib/actions/auth'
 import { authClient } from '@/lib/auth-client'
 import type { PasskeySummary } from '@/lib/passkeys'
+import Button from '../ui/Button'
+import { FormError, FormStack } from '../ui/Form'
+import { ItemList, ItemRow } from '../ui/ItemList'
 import AddPasskeyButton from './AddPasskeyButton'
 
 export default function AccountSettings({ passkeys }: { passkeys: PasskeySummary[] }) {
@@ -32,9 +35,9 @@ export default function AccountSettings({ passkeys }: { passkeys: PasskeySummary
       ) : (
         <>
           <p>Lost a device? Add a passkey on this one, then remove the old one.</p>
-          <ul className="passkey-list">
+          <ItemList>
             {passkeys.map((passkey) => (
-              <li key={passkey.id}>
+              <ItemRow key={passkey.id}>
                 <span>
                   {passkey.name ?? 'Unnamed passkey'}
                   {passkey.createdAt && (
@@ -44,28 +47,24 @@ export default function AccountSettings({ passkeys }: { passkeys: PasskeySummary
                     </small>
                   )}
                 </span>
-                <button className="text-action" type="button" onClick={() => remove(passkey)}>
+                <Button variant="text" onClick={() => remove(passkey)}>
                   Remove
-                </button>
-              </li>
+                </Button>
+              </ItemRow>
             ))}
-          </ul>
+          </ItemList>
         </>
       )}
-      {error && (
-        <p className="form-error" role="alert">
-          {error}
-        </p>
-      )}
-      <div className="form">
+      <FormError>{error}</FormError>
+      <FormStack>
         <AddPasskeyButton label="Add a passkey" onAdded={() => router.refresh()} />
-      </div>
+      </FormStack>
 
       <hr />
       <form action={signOut}>
-        <button className="text-action" type="submit">
+        <Button variant="text" type="submit">
           Sign out
-        </button>
+        </Button>
       </form>
     </>
   )

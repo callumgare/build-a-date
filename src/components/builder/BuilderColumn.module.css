@@ -1,0 +1,28 @@
+/* Positioned by the builder, which puts the switch below over it: the plan's
+   column is sticky, the deck's relative. Not here as well, where it would
+   clash with that. */
+.column {
+  min-width: 0;
+}
+
+/* Over a shrunk column, so a click anywhere on it puts it in use. */
+.switch {
+  position: absolute;
+  z-index: 5;
+  inset: 0;
+  width: 100%;
+  padding: 0;
+  border: 1px solid transparent;
+  border-radius: 6px;
+  background: transparent;
+  cursor: pointer;
+}
+
+.switch:hover {
+  border-color: var(--line);
+  background: var(--accent-wash);
+}
+
+.switch:focus-visible {
+  outline-offset: -3px;
+}

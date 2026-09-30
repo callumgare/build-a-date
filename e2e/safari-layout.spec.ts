@@ -46,7 +46,9 @@ test('in Safari, a shrunk deck has the same text and columns as the deck in use,
 // broken up by the gaps between letters. The page's background is made
 // plain black first.
 async function underlineRows(page: Page, element: Locator) {
-  await page.addStyleTag({ content: 'canvas, .stars { display: none !important } * { background: #000 !important }' })
+  await page.addStyleTag({
+    content: 'canvas, [data-stars] { display: none !important } * { background: #000 !important }',
+  })
   await element.scrollIntoViewIfNeeded()
   const box = await element.boundingBox()
   if (!box) throw new Error('No box')

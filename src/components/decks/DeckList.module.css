@@ -1,0 +1,39 @@
+.list {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(min(100%, 260px), 1fr));
+  gap: 16px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+/* A surface: its text has no halo (docs/ui-components.md § "The text halo"). */
+.tile {
+  --text-halo: none;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  height: 100%;
+  padding: 22px 24px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  color: inherit;
+  text-decoration: none;
+  background: var(--defocused-background-color);
+}
+
+.tile:hover,
+.tile:focus-visible {
+  border-color: var(--accent);
+}
+
+.tile strong {
+  color: var(--accent);
+  font-size: 1.3rem;
+  font-weight: 400;
+}
+
+.tile span {
+  font-size: 0.9rem;
+  opacity: 0.8;
+}

@@ -1,0 +1,15 @@
+/* The sort options sit just under the filters, as a second row. */
+.filters {
+  margin-bottom: 12px;
+}
+
+.sort {
+  margin-bottom: 28px;
+}
+
+/* Not in plan isn't a tag, so the gap after it is twice the row's, setting
+   the tags off as a group of their own (docs/deck-filters.md § "Not in
+   plan"). --chip-gap is the ChipGroup's. */
+.planFilter {
+  margin-right: var(--chip-gap);
+}

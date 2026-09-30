@@ -1,0 +1,110 @@
+.form {
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 14px;
+}
+
+.form > [data-variant='text'] {
+  align-self: center;
+}
+
+.actions {
+  display: flex;
+  align-items: center;
+  gap: 20px;
+}
+
+.field {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  font-size: 0.9rem;
+  text-align: left;
+}
+
+.field small {
+  opacity: 0.7;
+}
+
+/* A surface: its text has no halo (docs/ui-components.md § "The text halo"). */
+.input {
+  --text-halo: none;
+  width: 100%;
+  padding: 9px 11px;
+  border: 1px solid var(--cream-faint);
+  border-radius: 3px;
+  color: var(--cream);
+  font: inherit;
+  font-size: 1rem;
+  background: var(--field-background);
+}
+
+.textArea {
+  resize: vertical;
+}
+
+.input:focus-visible {
+  border-color: var(--accent);
+  outline: 2px solid var(--accent);
+  outline-offset: 1px;
+}
+
+.error {
+  margin: 0;
+  color: var(--danger);
+  text-align: center;
+}
+
+.note {
+  margin: 0;
+  padding: 12px 14px;
+  border-left: 3px solid var(--accent);
+  background: var(--accent-wash);
+  line-height: 1.5;
+  text-align: left;
+}
+
+.choiceGroup {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin: 0;
+  padding: 0;
+  border: 0;
+}
+
+.choiceGroup legend {
+  margin-bottom: 6px;
+  font-size: 0.9rem;
+}
+
+.choice {
+  display: flex;
+  gap: 10px;
+  align-items: flex-start;
+  padding: 10px 12px;
+  border: 1px solid var(--cream-faint);
+  border-radius: 4px;
+  cursor: pointer;
+}
+
+.choice:has(input:checked) {
+  border-color: var(--accent);
+  background: var(--accent-wash);
+}
+
+.choice input {
+  margin-top: 4px;
+  accent-color: var(--accent);
+}
+
+.choice span {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.choice small {
+  opacity: 0.75;
+}

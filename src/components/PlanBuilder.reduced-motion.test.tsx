@@ -38,7 +38,7 @@ describe('PlanBuilder with reduced motion', () => {
 
     fireEvent.click(screen.getByRole('button', { name: 'Add to plan: Museum' }))
     expect(flyingCards()).toHaveLength(0)
-    expect(container.querySelector('.plan-track .empty-slot')).not.toBeInTheDocument()
+    expect(container.querySelector('[data-plan-row] [data-empty-slot]')).not.toBeInTheDocument()
     expect(container.querySelector('[data-card-id="museum"]')).toBeInTheDocument()
   })
 

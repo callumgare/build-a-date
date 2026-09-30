@@ -1,4 +1,6 @@
+/* A surface: its text has no halo (docs/ui-components.md § "The text halo"). */
 .hint {
+  --text-halo: none;
   position: relative;
   z-index: 3;
   display: flex;
@@ -9,7 +11,7 @@
   padding: 9px 8px 9px 16px;
   border: 1px solid var(--line);
   border-radius: 6px;
-  color: #f8f2e8;
+  color: var(--cream);
   background: var(--defocused-background-color);
   -webkit-backdrop-filter: blur(6px);
   backdrop-filter: blur(6px);
@@ -45,31 +47,4 @@
   stroke-width: 1.8;
   stroke-linecap: round;
   stroke-linejoin: round;
-}
-
-.dismiss {
-  display: grid;
-  flex: none;
-  place-items: center;
-  width: 32px;
-  height: 32px;
-  padding: 0;
-  border: 0;
-  border-radius: 4px;
-  color: rgba(255, 249, 239, 0.7);
-  background: transparent;
-  cursor: pointer;
-}
-
-.dismiss:hover {
-  color: #fff9ef;
-}
-
-.dismiss svg {
-  width: 14px;
-  height: 14px;
-  fill: none;
-  stroke: currentColor;
-  stroke-width: 1.6;
-  stroke-linecap: round;
 }

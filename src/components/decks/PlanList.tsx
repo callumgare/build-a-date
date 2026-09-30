@@ -1,3 +1,8 @@
+import Button from '../ui/Button'
+import { Subheading } from '../ui/Heading'
+import { ItemList, ItemRow } from '../ui/ItemList'
+import Muted from '../ui/Muted'
+
 export type PlanSummary = { id: string; createdAt: Date; cards: number }
 
 // The plans built from a deck, newest first, for its owner and editors: on the
@@ -6,16 +11,14 @@ export type PlanSummary = { id: string; createdAt: Date; cards: number }
 export default function PlanList({ plans }: { plans: PlanSummary[] }) {
   return (
     <>
-      <h3 className="subheading">
-        Plans <small>({plans.length})</small>
-      </h3>
+      <Subheading count={plans.length}>Plans</Subheading>
       {plans.length === 0 ? (
-        <p className="muted">When someone builds a plan from your link and presses Save plan, it shows up here.</p>
+        <Muted as="p">When someone builds a plan from your link and presses Save plan, it shows up here.</Muted>
       ) : (
-        <ul className="plan-list">
+        <ItemList>
           {plans.map((plan) => (
-            <li key={plan.id}>
-              <a className="text-action" href={`/p/${plan.id}`}>
+            <ItemRow key={plan.id}>
+              <Button variant="text" href={`/p/${plan.id}`} native>
                 {/* Formatted in the viewer's time zone once in the browser. */}
                 <time dateTime={plan.createdAt.toISOString()} suppressHydrationWarning>
                   {plan.createdAt.toLocaleString(undefined, {
@@ -23,13 +26,13 @@ export default function PlanList({ plans }: { plans: PlanSummary[] }) {
                     timeStyle: 'short',
                   })}
                 </time>
-              </a>
-              <span className="muted">
+              </Button>
+              <Muted>
                 {plan.cards} {plan.cards === 1 ? 'idea' : 'ideas'}
-              </span>
-            </li>
+              </Muted>
+            </ItemRow>
           ))}
-        </ul>
+        </ItemList>
       )}
     </>
   )

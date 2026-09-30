@@ -1,6 +1,8 @@
 import type { Metadata } from 'next'
 import AccountSettings from '@/components/auth/AccountSettings'
 import NameForm from '@/components/auth/NameForm'
+import Heading from '@/components/ui/Heading'
+import Panel from '@/components/ui/Panel'
 import { requireUser } from '@/lib/auth'
 import { listPasskeys } from '@/lib/passkeys'
 
@@ -11,13 +13,13 @@ export default async function Settings() {
   const passkeys = await listPasskeys()
 
   return (
-    <section className="panel narrow">
-      <h2>Settings</h2>
+    <Panel narrow>
+      <Heading>Settings</Heading>
       <p>
         Signed in as <strong>{user.email}</strong>
       </p>
       <NameForm name={user.name} />
       <AccountSettings passkeys={passkeys} />
-    </section>
+    </Panel>
   )
 }

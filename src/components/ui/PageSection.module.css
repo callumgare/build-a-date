@@ -1,0 +1,24 @@
+.section {
+  position: relative;
+  z-index: 1;
+  /* A container, so the grid of cards inside the deck editor works out its
+     columns from the section's width (the page's, up to --page-width) rather
+     than from .app-root, which is the whole viewport and would make many
+     narrow columns share a narrower page (docs/card-layout.md
+     § "The grid of cards"). */
+  container-type: inline-size;
+}
+
+.heading {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px 24px;
+  margin-bottom: 20px;
+}
+
+.actions {
+  display: flex;
+  gap: 18px;
+}

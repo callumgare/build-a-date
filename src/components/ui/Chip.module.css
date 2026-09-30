@@ -1,0 +1,67 @@
+.group {
+  /* Read by anything that wants to space a chip further from the next. */
+  --chip-gap: 8px;
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--chip-gap);
+  align-items: center;
+  justify-content: center;
+  min-width: 0;
+  max-width: 900px;
+  /* Only sideways, so a caller can space it above and below (a fieldset
+     has no margin above or below of its own). */
+  margin-inline: auto;
+  padding: 0;
+  border: 0;
+}
+
+.start {
+  justify-content: flex-start;
+}
+
+.label {
+  margin-right: 2px;
+  color: var(--cream);
+  font-size: 0.8rem;
+  font-style: italic;
+  letter-spacing: 0.03em;
+}
+
+/* A surface: its text has no halo (docs/ui-components.md § "The text halo"). */
+.chip {
+  --text-halo: none;
+  padding: 8px 13px 7px;
+  border: 1px solid var(--cream-faint);
+  border-radius: 3px;
+  color: var(--cream-soft);
+  font-size: 0.72rem;
+  letter-spacing: 0.07em;
+  text-transform: capitalize;
+  background: var(--defocused-background-color);
+  cursor: pointer;
+}
+
+.chip[aria-pressed='true'] {
+  border-color: var(--accent);
+  color: var(--ink);
+  background: var(--accent);
+}
+
+/* Hover and focus only hint at the accent, so they never read as on. Hover is
+   limited to real pointers, where it doesn't stick after a tap. */
+.chip:focus-visible:not([aria-pressed='true']) {
+  border-color: var(--accent);
+  color: var(--accent);
+}
+
+@media (hover: hover) {
+  .chip:hover:not([aria-pressed='true']) {
+    border-color: var(--accent);
+    color: var(--accent);
+  }
+
+  .chip[aria-pressed='true']:hover {
+    border-color: var(--accent-hover);
+    background: var(--accent-hover);
+  }
+}

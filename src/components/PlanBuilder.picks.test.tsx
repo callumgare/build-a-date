@@ -229,7 +229,7 @@ describe('PlanBuilder', () => {
         fireEvent.pointerMove(window, { pointerType: 'touch', pointerId: 7, clientX: 50, clientY: 120 })
       }
       const dragging = (container: HTMLElement) =>
-        container.querySelector('.plan-scroll')?.hasAttribute('data-dragging')
+        container.querySelector('[data-plan-scroll]')?.hasAttribute('data-dragging')
 
       it("doesn't drag a card from anywhere but its grip, so a swipe still scrolls the plan", async () => {
         keepPicks(['picnic', 'museum'])

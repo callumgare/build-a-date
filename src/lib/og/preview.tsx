@@ -13,7 +13,7 @@ export type PreviewInput = {
   layout: 'grid' | 'fan'
 }
 
-// --background-text-shadow from src/styles.css, the halo headings on the site
+// --text-halo from src/styles.css, the halo headings on the site
 // have. Satori can't read CSS variables, so it's copied here.
 const BACKGROUND_TEXT_SHADOW = [
   '2px 2px 4px',

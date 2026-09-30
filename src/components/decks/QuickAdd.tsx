@@ -1,8 +1,12 @@
 'use client'
 
-import { type FormEvent, useEffect, useRef, useState, useTransition } from 'react'
+import { type FormEvent, useState, useTransition } from 'react'
 import { quickAddCard } from '@/lib/actions/decks'
 import type { CardDraft } from '@/lib/quick-add'
+import Button from '../ui/Button'
+import Dialog from '../ui/Dialog'
+import { Field, Form, FormActions, FormError, TextArea } from '../ui/Form'
+import Heading from '../ui/Heading'
 
 type QuickAddProps = {
   deckId: string
@@ -13,19 +17,11 @@ type QuickAddProps = {
 }
 
 export default function QuickAdd({ deckId, open, onClose, onDraft }: QuickAddProps) {
-  const dialogReference = useRef<HTMLDialogElement>(null)
-
-  useEffect(() => {
-    const dialog = dialogReference.current
-    if (open && !dialog?.open) dialog?.showModal()
-    if (!open && dialog?.open) dialog.close()
-  }, [open])
-
   return (
-    <dialog className="share-dialog quick-add-dialog" ref={dialogReference} onClose={onClose} aria-label="Quick Add">
+    <Dialog size="form" open={open} onClose={onClose} aria-label="Quick Add">
       {/* Only mounted while open, so each opening starts empty. */}
       {open && <QuickAddForm deckId={deckId} onCancel={onClose} onDraft={onDraft} />}
-    </dialog>
+    </Dialog>
   )
 }
 
@@ -53,13 +49,10 @@ function QuickAddForm({
   }
 
   return (
-    <form className="form" onSubmit={submit}>
-      <h2>Quick Add</h2>
-      <label className="field">
-        <span>
-          Describe the idea <small>A name, a link, or both</small>
-        </span>
-        <textarea
+    <Form onSubmit={submit}>
+      <Heading>Quick Add</Heading>
+      <Field label="Describe the idea" hint="A name, a link, or both">
+        <TextArea
           value={text}
           onChange={(event) => setText(event.target.value)}
           rows={5}
@@ -67,23 +60,19 @@ function QuickAddForm({
           required
           disabled={pending}
           placeholder="Boat hire at Fairfield Boathouse, open on Wednesdays https://…"
-          // biome-ignore lint/a11y/noAutofocus: the field the Quick Add button just opened
+          // Focused: the field the Quick Add button just opened.
           autoFocus
         />
-      </label>
-      {error && (
-        <p className="form-error" role="alert">
-          {error}
-        </p>
-      )}
-      <div className="editor-actions">
-        <button className="done-button" type="submit" disabled={pending}>
+      </Field>
+      <FormError>{error}</FormError>
+      <FormActions>
+        <Button type="submit" disabled={pending}>
           {pending ? 'Filling in…' : 'Fill in the details'}
-        </button>
-        <button className="text-action" type="button" onClick={onCancel}>
+        </Button>
+        <Button variant="text" onClick={onCancel}>
           Cancel
-        </button>
-      </div>
-    </form>
+        </Button>
+      </FormActions>
+    </Form>
   )
 }

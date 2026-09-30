@@ -1,0 +1,75 @@
+/* How many columns a grid of cards has, worked out to a whole number by the
+   browser, so code can read it too (columnCount in gridShuffle.ts). */
+@property --columns {
+  syntax: '<integer>';
+  inherits: true;
+  initial-value: 1;
+}
+
+/* As many 200px columns as fit its section, each card stretching to share the
+   line, up to 250px; past that the grid stops widening and centres, so the
+   spare room goes to the outside edges rather than between the cards. It's
+   lines of cards that wrap rather than a CSS grid, so a last line that isn't
+   full is centred (docs/card-layout.md § "The grid of cards"). */
+.grid {
+  --gap: 16px;
+  /* tan(atan2(a, b)) is a / b as a plain number, for browsers that can't
+     divide one length by another. */
+  --columns: max(1, round(down, tan(atan2(100cqw + var(--gap), 200px + var(--gap)))));
+  /* Holds cards leaving the deck in place while they fade (AnimatePresence's
+     popLayout), and is the offset parent a card flying in or back is
+     measured from (docs/card-layout.md § "Flying cards"). */
+  position: relative;
+  display: flex;
+  flex-flow: row wrap;
+  align-items: center;
+  justify-content: center;
+  gap: var(--gap);
+  width: auto;
+  max-width: calc(var(--columns) * (250px + var(--gap)) - var(--gap));
+  margin-inline: auto;
+}
+
+/* Each a column's width. */
+.grid > * {
+  flex: none;
+  width: calc((100% - (var(--columns) - 1) * var(--gap)) / var(--columns));
+}
+
+/* Across the whole line: Draw random card, and an empty group's Drag ideas
+   here. */
+.grid > [data-full-width] {
+  width: 100%;
+}
+
+/* Real division where it's supported: iOS Safari takes atan2() of lengths
+   as 0. */
+@supports (width: calc(1px / 1px * 1px)) {
+  .grid {
+    --columns: max(1, round(down, (100cqw + var(--gap)) / (200px + var(--gap))));
+  }
+}
+
+@media (max-width: 640px) {
+  .grid {
+    --gap: 10px;
+  }
+}
+
+.stacked {
+  margin-block: 0;
+  padding: 8px 0 12px;
+  overflow: visible;
+}
+
+/* On a wide screen, where the plan is a thin column beside the deck, each
+   row runs down it, one card under the next (docs/card-layout.md § "The
+   plan column"). */
+@media (min-width: 900px) {
+  .stacked {
+    flex-direction: column;
+    gap: 16px;
+    width: min(100%, 250px);
+    max-width: none;
+  }
+}

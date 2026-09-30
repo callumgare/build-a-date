@@ -1,0 +1,29 @@
+/* It sits in the grid where a card would (first on the edit page, last on the
+   shared deck), a column's width, but only its contents' height with padding
+   around, so a line it has to itself isn't a card tall. */
+.controls {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5em;
+  align-items: center;
+  justify-content: center;
+  padding: 27px 24px;
+  color: var(--accent);
+  font-size: clamp(1.25rem, 2.5vw, 1.6rem);
+  text-align: center;
+}
+
+.add {
+  text-wrap: balance;
+}
+
+.quickAdd {
+  margin-top: 0.3em;
+}
+
+@media (max-width: 640px) {
+  .controls {
+    padding: 12px;
+    font-size: 1.2rem;
+  }
+}

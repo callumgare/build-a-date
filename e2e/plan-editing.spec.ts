@@ -19,7 +19,7 @@ async function editPlan(page: Page) {
 function headerGaps(page: Page) {
   return page.evaluate(() => {
     const box = (selector: string) => (document.querySelector(selector) as Element).getBoundingClientRect()
-    const [title, lede, actions] = [box('.hero h1'), box('.hero .lede'), box('.plan-actions')]
+    const [title, lede, actions] = [box('[data-hero] h1'), box('[data-hero] p'), box('[data-plan-actions]')]
     return { underTitle: Math.round(lede.top - title.bottom), aboveButtons: Math.round(actions.top - lede.bottom) }
   })
 }
@@ -329,7 +329,7 @@ test("the plan page's cards shuffle into place when the window loses a column", 
 
   // The last card, where it's drawn within its grid, on every frame from
   // before the window narrows until it has stopped moving.
-  const last = '.card-grid > [data-card-id]:last-child'
+  const last = '[data-card-grid] > [data-card-id]:last-child'
   await guest.evaluate((last) => {
     const seen: { x: number; y: number }[] = []
     ;(window as unknown as { seen: typeof seen }).seen = seen

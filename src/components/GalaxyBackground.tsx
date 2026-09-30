@@ -1,6 +1,7 @@
 'use client'
 
 import { useEffect, useRef } from 'react'
+import styles from './GalaxyBackground.module.css'
 import { createPainter, featureScale, MAX_PIXEL_RATIO, overdrawSize } from './galaxy/render'
 import { between, CELEBRATE_EVENT, pickSite, type Site, shootingStar, type View } from './galaxy/sparkle'
 import { TILE_HEIGHT, tilePlan } from './galaxy/tiles'
@@ -155,7 +156,8 @@ export default function GalaxyBackground() {
     const glint = (site: Site | null, inBurst = false) => {
       if (!site || (!inBurst && glinting.size >= MAX_GLINTS)) return
       const element = document.createElement('span')
-      element.className = 'galaxy-glint'
+      element.className = styles.glint
+      element.dataset.sparkle = 'glint'
       const size = 12 + site.radius * 5
       element.style.left = `${site.x - size / 2}px`
       element.style.top = `${site.y - size / 2}px`
@@ -178,7 +180,8 @@ export default function GalaxyBackground() {
     const fall = () => {
       const star = shootingStar(view(), Math.random)
       const element = document.createElement('span')
-      element.className = 'galaxy-shooting-star'
+      element.className = styles.shootingStar
+      element.dataset.sparkle = 'shooting-star'
       element.style.left = `${star.x - star.length}px`
       element.style.top = `${star.y - 1}px`
       element.style.width = `${star.length}px`
@@ -264,5 +267,5 @@ export default function GalaxyBackground() {
     }
   }, [])
 
-  return <div ref={layerRef} className="galaxy-background" aria-hidden="true" />
+  return <div ref={layerRef} className={styles.layer} data-galaxy aria-hidden="true" />
 }

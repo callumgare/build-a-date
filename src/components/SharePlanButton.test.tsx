@@ -100,7 +100,7 @@ describe('SharePlanButton', () => {
 
       await user.click(screen.getByRole('button', { name: 'Share…' }))
       expect(share).toHaveBeenCalledWith({ title: 'Our date', url: `${window.location.origin}/p/plan42` })
-      expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
+      await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument())
     })
 
     it('has no Share… without a share sheet', () => {

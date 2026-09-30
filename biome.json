@@ -29,7 +29,11 @@
     "rules": {
       "preset": "recommended",
       "a11y": {
-        "noSvgWithoutTitle": "off"
+        "noSvgWithoutTitle": "off",
+        "noLabelWithoutControl": {
+          "level": "error",
+          "options": { "inputComponents": ["Input", "TextArea"] }
+        }
       },
       "complexity": {
         "noImportantStyles": "off"

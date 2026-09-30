@@ -1,0 +1,51 @@
+/* The accent-filled button. It has a background of its own, so its text has
+   no halo (docs/ui-components.md § "The text halo"). */
+.solid {
+  --text-halo: none;
+  display: inline-block;
+  padding: 9px 12px 8px;
+  border: 1px solid var(--accent);
+  border-radius: 3px;
+  color: var(--ink);
+  font-size: 0.9rem;
+  font-weight: 700;
+  letter-spacing: 0.05em;
+  text-decoration: none;
+  background: var(--accent);
+  cursor: pointer;
+}
+
+.solid:disabled {
+  opacity: 0.6;
+  cursor: progress;
+}
+
+/* Styled as a link, so plain-text actions still read as clickable, and
+   looking the same as one (the `a` rule in styles.css). */
+.text {
+  padding: 4px 2px;
+  border: 0;
+  color: var(--accent);
+  background: transparent;
+  cursor: pointer;
+  text-decoration: underline;
+  text-decoration-color: var(--underline);
+  text-decoration-thickness: 1px;
+  text-underline-offset: 0.25em;
+}
+
+.text:hover {
+  text-decoration-color: currentColor;
+}
+
+.text:disabled {
+  cursor: progress;
+}
+
+.subtle {
+  color: var(--cream-soft);
+}
+
+.subtle:hover {
+  color: var(--accent);
+}

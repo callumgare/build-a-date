@@ -107,7 +107,7 @@ export async function pressOption(option: Locator) {
 // busy machine is sometimes not long enough (docs/testing.md § "Checking
 // animation").
 export async function expectStill(page: Page) {
-  await expect(page.locator('.builder')).not.toHaveAttribute('data-switching')
+  await expect(page.locator('[data-builder]')).not.toHaveAttribute('data-switching')
   await expect
     .poll(() =>
       page.evaluate(
@@ -115,7 +115,7 @@ export async function expectStill(page: Page) {
           new Promise<boolean>((resolve) => {
             const running = document.getAnimations().some((animation) => {
               const target = (animation.effect as KeyframeEffect | null)?.target
-              return target instanceof Element && Boolean(target.closest('.builder, body > [aria-hidden="true"]'))
+              return target instanceof Element && Boolean(target.closest('[data-builder], body > [aria-hidden="true"]'))
             })
             if (running) return resolve(false)
             const places = () =>

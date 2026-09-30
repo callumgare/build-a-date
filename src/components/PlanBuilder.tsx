@@ -1,22 +1,12 @@
 'use client'
 
-import { AnimatePresence, LayoutGroup, motion, useIsPresent, useReducedMotion } from 'motion/react'
+import { AnimatePresence, LayoutGroup, motion, useReducedMotion } from 'motion/react'
 import { nanoid } from 'nanoid'
-import Link from 'next/link'
 import { useRouter } from 'next/navigation'
-import {
-  type ReactNode,
-  useCallback,
-  useEffect,
-  useLayoutEffect,
-  useMemo,
-  useRef,
-  useState,
-  useSyncExternalStore,
-} from 'react'
+import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, useSyncExternalStore } from 'react'
 import { deletePlan, savePlan, updatePlan } from '@/lib/actions/plans'
 import { saveDeckSort } from '@/lib/actions/preferences'
-import { arrangeDeck, type DeckSort, deckSorts, keepArrangement, sortDeck } from '@/lib/deck-order'
+import { arrangeDeck, type DeckSort, keepArrangement, sortDeck } from '@/lib/deck-order'
 import type { AccessState } from '@/lib/decks'
 import { drawPreview, preloadPreview } from '@/lib/og/client'
 import {
@@ -35,8 +25,12 @@ import {
 } from '@/lib/plan-picks'
 import type { SentPreview } from '@/lib/previews'
 import type { DateCard, PlanPicks } from '@/types'
+import BuilderBar, { SampleSave } from './builder/BuilderBar'
+import BuilderColumn from './builder/BuilderColumn'
+import DeckFilters from './builder/DeckFilters'
 import Card from './Card'
 import cardStyles from './Card.module.css'
+import CardGrid from './CardGrid'
 import CardNotes, { type Notes } from './CardNotes'
 import {
   CardActions,
@@ -56,11 +50,20 @@ import { frameFor } from './frames'
 import { useGridShuffle } from './gridShuffle'
 import InstallHint from './InstallHint'
 import { readPicks, writePicks } from './keptPicks'
+import PageShell from './PageShell'
+import { PlanActions } from './PlanBar'
+import styles from './PlanBuilder.module.css'
 import { DragStandIn, PlanCard, usePlanDrag } from './PlanCard'
+import { groupTrack, PlanGroupEditor } from './PlanGroup'
 import SharePreviewRefresher, { type PreviewProps } from './SharePreviewRefresher'
-import Stars from './Stars'
+import SiteFooter from './SiteFooter'
 import { shrinkOf, switchOver } from './shrink'
 import type { Box } from './tilt'
+import Button from './ui/Button'
+import EmptyResults from './ui/EmptyResults'
+import EmptySlot from './ui/EmptySlot'
+import Hero, { Lede } from './ui/Hero'
+import Muted from './ui/Muted'
 
 type PlanBuilderProps = {
   deckName: string
@@ -231,14 +234,14 @@ export default function PlanBuilder({
 
   // Each column's height at full size, which a shrunk one takes back most of
   // with its bottom margin, as its scale doesn't make it take up any less
-  // room (styles.css, --layout-height; docs/card-layout.md § "Narrow
+  // room (PlanBuilder.module.css, --layout-height; docs/card-layout.md § "Narrow
   // screens"). Before the browser paints, and again whenever the builder is
   // laid out afresh for kept picks, which replaces it.
   // biome-ignore lint/correctness/useExhaustiveDependencies: the builder is replaced when layoutGeneration changes
   useLayoutEffect(() => {
     const builder = builderReference.current
     if (!builder) return
-    const sections = [...builder.querySelectorAll<HTMLElement>('.plan-heading, .plan-section, .deck-section')]
+    const sections = [...builder.querySelectorAll<HTMLElement>('[data-shrinks]')]
     function measure() {
       for (const section of sections) section.style.setProperty('--layout-height', `${section.offsetHeight}px`)
     }
@@ -346,8 +349,8 @@ export default function PlanBuilder({
   }
 
   // How much room the plan's column keeps for its scrollbar, on each side,
-  // which the shrunk plan makes up with padding (styles.css,
-  // .builder[data-active='deck'] .plan-section). It depends on the browser
+  // which the shrunk plan makes up with padding (PlanBuilder.module.css,
+  // .builder[data-active='deck'] .planSection). It depends on the browser
   // and system, so it's measured on a stand-in with the same scrollbar. The
   // root layout has already measured it before the page was first drawn
   // (measureScrollbarGutter in src/app/layout.tsx); this sets it on the
@@ -373,7 +376,7 @@ export default function PlanBuilder({
   }, [layoutGeneration])
 
   // Marks the builder while a column grows or shrinks on a narrow screen
-  // (styles.css, .builder[data-switching]). Not when the page first opens.
+  // (PlanBuilder.module.css, .builder[data-switching]). Not when the page first opens.
   const switchedOnce = useRef(false)
   // biome-ignore lint/correctness/useExhaustiveDependencies: only when the column in use changes
   useLayoutEffect(() => {
@@ -445,7 +448,7 @@ export default function PlanBuilder({
   // biome-ignore lint/correctness/useExhaustiveDependencies: only when the column in use changes
   useLayoutEffect(() => {
     const anchor = deckAnchor.current
-    const section = deckReference.current?.querySelector('.deck-section')
+    const section = deckReference.current?.querySelector('[data-shrinks]')
     if (!narrow || anchor === null || !section) return
     if (active === 'deck') deckAnchor.current = null
     const offset = anchor
@@ -641,157 +644,84 @@ export default function PlanBuilder({
   }
 
   return (
-    <main className="page-shell">
+    <PageShell>
       <InstallHint />
       {preview && <SharePreviewRefresher {...preview} />}
 
-      <header className="hero">
-        <h1>{deckName}</h1>
-        {plan && <p className="lede">Editing a plan</p>}
-        {sample && <p className="lede">A sample deck to try out. Pick the ideas you like best to make a plan.</p>}
-      </header>
-
-      <Stars />
+      <Hero title={deckName}>
+        {plan && <Lede>Editing a plan</Lede>}
+        {sample && <Lede>A sample deck to try out. Pick the ideas you like best to make a plan.</Lede>}
+      </Hero>
 
       {/* A new group for kept picks, so the cards that were in the deck have
           nothing to fly in from. */}
       <LayoutGroup id={`date-builder-${layoutGeneration}`} key={layoutGeneration}>
         {/* The deck on the left, and the plan in a column on the right, running
             down (docs/card-layout.md § "The plan column"). */}
-        <div className="builder" data-active={active} ref={builderReference}>
-          {/* Above both columns (docs/card-layout.md § "Save plan and Clear
-              plan"). Always laid out, so the first pick doesn't push the page down.
-              Until there's a plan to act on, it says how to start one. While
+        <div className={styles.builder} data-builder data-active={active} ref={builderReference}>
+          {/* Until there's a plan to act on, it says how to start one. While
               editing a plan the buttons always show, so Cancel is there even
               once it's emptied (docs/plans.md § "Editing a plan"). */}
-          <div className="builder-bar">
-            {/* One fades out as the other fades in, in the same place. */}
-            <div className="builder-bar-swap">
-              <AnimatePresence initial={false}>
-                {showActions ? (
-                  <BarFade key="actions" reduceMotion={Boolean(reduceMotion)}>
-                    <div className="plan-actions">
-                      {sample ? (
-                        // Where Make your own deck goes from the home page
-                        // (docs/sample-deck.md § "What's different").
-                        <span className="plan-sample-save">
-                          <span className="muted">To save a plan</span>
-                          <Link className="done-button" href="/sign-up">
-                            Create your own deck
-                          </Link>
-                        </span>
-                      ) : (
-                        <button
-                          className="done-button"
-                          type="button"
-                          onClick={sharePlan}
-                          disabled={saving || deleting || selectedIds.length === 0}
-                        >
-                          {saving ? 'Saving…' : plan ? 'Update Plan' : 'Save plan'}
-                        </button>
-                      )}
-                      {plan && (
-                        // Unsaved changes are dropped, so the edit page starts from the
-                        // saved plan next time.
-                        <Link
-                          className="text-action"
-                          href={`/p/${plan.id}`}
-                          onClick={() => writePicks(picksPlace, null)}
-                        >
-                          Cancel
-                        </Link>
-                      )}
-                      {plan ? (
-                        <button
-                          className="text-action"
-                          type="button"
-                          onClick={removePlan}
-                          disabled={saving || deleting}
-                        >
-                          {deleting ? 'Deleting…' : 'Delete plan'}
-                        </button>
-                      ) : (
-                        <button className="text-action" type="button" onClick={clearPlan}>
-                          Clear plan
-                        </button>
-                      )}
-                    </div>
-                  </BarFade>
-                ) : (
-                  <BarFade key="prompt" reduceMotion={Boolean(reduceMotion)}>
-                    <p className="plan-prompt">Pick a card from the deck</p>
-                  </BarFade>
-                )}
-              </AnimatePresence>
-            </div>
-            {saveError && (
-              <p className="form-error" role="alert">
-                {saveError}
-              </p>
-            )}
-          </div>
-          <div
-            className="builder-column deck-column"
-            data-shrunk={deckShrunk}
-            ref={deckReference}
-            onPointerDownCapture={() => used('deck')}
-            onFocusCapture={() => used('deck')}
+          <BuilderBar
+            className={styles.bar}
+            showActions={showActions}
+            reduceMotion={Boolean(reduceMotion)}
+            error={saveError}
           >
-            <section className="deck-section" aria-label="Date ideas" inert={deckShrunk}>
-              <fieldset className="filters" aria-label="Filter ideas">
-                <span className="filter-label">Show</span>
-                <button
-                  className="filter-button"
-                  data-active={activeTags.size === 0 && !notInPlan}
-                  type="button"
-                  onClick={clearFilters}
-                >
-                  All
-                </button>
-                {/* Only once a plan has been saved is there anything for the
-                    filter to hide (docs/deck-filters.md § "Not in plan"). */}
-                {inSavedPlans.size > 0 && (
-                  <button
-                    className="filter-button plan-filter"
-                    data-active={notInPlan}
-                    type="button"
-                    onClick={() => setNotInPlan((on) => !on)}
-                    aria-pressed={notInPlan}
-                  >
-                    Not in plan
-                  </button>
-                )}
-                {tags.map((tag) => (
-                  <button
-                    className="filter-button"
-                    data-active={activeTags.has(tag)}
-                    type="button"
-                    key={tag}
-                    onClick={() => toggleTag(tag)}
-                    aria-pressed={activeTags.has(tag)}
-                  >
-                    {tag}
-                  </button>
-                ))}
-              </fieldset>
+            <PlanActions>
+              {sample ? (
+                <SampleSave>
+                  <Muted>To save a plan</Muted>
+                  <Button href="/sign-up">Create your own deck</Button>
+                </SampleSave>
+              ) : (
+                <Button onClick={sharePlan} disabled={saving || deleting || selectedIds.length === 0}>
+                  {saving ? 'Saving…' : plan ? 'Update Plan' : 'Save plan'}
+                </Button>
+              )}
+              {plan && (
+                // Unsaved changes are dropped, so the edit page starts from the
+                // saved plan next time.
+                <Button variant="text" href={`/p/${plan.id}`} onClick={() => writePicks(picksPlace, null)}>
+                  Cancel
+                </Button>
+              )}
+              {plan ? (
+                <Button variant="text" onClick={removePlan} disabled={saving || deleting}>
+                  {deleting ? 'Deleting…' : 'Delete plan'}
+                </Button>
+              ) : (
+                <Button variant="text" onClick={clearPlan}>
+                  Clear plan
+                </Button>
+              )}
+            </PlanActions>
+          </BuilderBar>
 
-              <fieldset className="filters sort-options" aria-label="Sort ideas">
-                <span className="filter-label">Sort by</span>
-                {deckSorts.map((option) => (
-                  <button
-                    className="filter-button"
-                    data-active={sort === option.value}
-                    type="button"
-                    key={option.value}
-                    onClick={() => chooseSort(option.value)}
-                    aria-pressed={sort === option.value}
-                  >
-                    {option.label}
-                  </button>
-                ))}
-              </fieldset>
+          <BuilderColumn
+            column="deck"
+            className={styles.deckColumn}
+            shrunk={deckShrunk}
+            ref={deckReference}
+            onUse={() => used('deck')}
+            switchLabel="Show the date ideas"
+            onSwitch={() => activate('deck')}
+          >
+            <section className={styles.deckSection} data-shrinks aria-label="Date ideas" inert={deckShrunk}>
+              <DeckFilters
+                tags={tags}
+                activeTags={activeTags}
+                // Only once a plan has been saved is there anything for the
+                // filter to hide (docs/deck-filters.md § "Not in plan").
+                notInPlan={inSavedPlans.size > 0 ? notInPlan : undefined}
+                onShowAll={clearFilters}
+                onToggleTag={toggleTag}
+                onToggleNotInPlan={() => setNotInPlan((on) => !on)}
+                sort={sort}
+                onSort={chooseSort}
+              />
 
-              <motion.div className="card-grid" layout {...deckMotion}>
+              <CardGrid layout {...deckMotion}>
                 <AnimatePresence initial={false} mode="popLayout">
                   {availableCards.map((card) => {
                     const actions: SideActions = {
@@ -840,141 +770,121 @@ export default function PlanBuilder({
                     <AddCardControls onAdd={cardEditor.addCard} onQuickAdd={cardEditor.quickAdd} />
                   </motion.div>
                 )}
-              </motion.div>
+              </CardGrid>
 
               {availableCards.length === 0 && (
-                <div className="empty-results">
-                  <p>No ideas match the filters.</p>
-                  <button className="text-action" type="button" onClick={clearFilters}>
+                <EmptyResults message="No ideas match the filters.">
+                  <Button variant="text" onClick={clearFilters}>
                     Show all ideas
-                  </button>
-                </div>
+                  </Button>
+                </EmptyResults>
               )}
             </section>
-            {deckShrunk && <ColumnSwitch label="Show the date ideas" onClick={() => activate('deck')} />}
-          </div>
+          </BuilderColumn>
 
-          <div
-            className="builder-column plan-column"
-            data-shrunk={planShrunk}
-            onPointerDownCapture={() => used('plan')}
-            onFocusCapture={() => used('plan')}
+          <BuilderColumn
+            column="plan"
+            className={styles.planColumn}
+            shrunk={planShrunk}
+            onUse={() => used('plan')}
+            switchLabel="Show your plan"
+            onSwitch={() => activate('plan')}
           >
             {/* Above the plan, not scrolling with it (docs/card-layout.md
                 § "The plan column" - the title). */}
-            <h2 className="plan-heading">The Plan</h2>
-            <div className="plan-scroll" ref={planReference} data-dragging={drag.lifted ? true : undefined}>
-              <section className="plan-section" aria-label="Your plan" inert={planShrunk}>
+            <h2 className={styles.planHeading} data-shrinks>
+              The Plan
+            </h2>
+            <div
+              className={styles.planScroll}
+              data-plan-scroll
+              ref={planReference}
+              data-dragging={drag.lifted ? true : undefined}
+            >
+              <section className={styles.planSection} data-shrinks aria-label="Your plan" inert={planShrunk}>
                 {/* Cards in the plan are dragged to reorder it, or onto another
-              row (docs/card-layout.md § "Reordering the plan"). */}
-                <motion.div
-                  className="plan-track"
+                    row (docs/card-layout.md § "Reordering the plan"). */}
+                <CardGrid
+                  stacked
                   data-plan-row={firstRow}
                   aria-label={picks.groups.length > 0 ? 'Not in a group' : undefined}
                   role={picks.groups.length > 0 ? 'group' : undefined}
                   layoutScroll
                 >
                   {/* No AnimatePresence: a card moved to another row would linger
-                here as it left, and nothing in the plan has an exit animation.
-                A discarded card flies back to the deck as a FlyingCard. */}
+                      here as it left, and nothing in the plan has an exit animation.
+                      A discarded card flies back to the deck as a FlyingCard. */}
                   {/* The first card picked lands on the blank slot and covers it:
-                    the slot stays under it, where it was, until the card has
-                    flown there (docs/card-layout.md § "The plan column" - the
-                    slot). First, so the card is drawn over it. */}
-                  {coveringSlot && <div className="empty-slot" data-covered="true" aria-hidden="true" />}
+                      the slot stays under it, where it was, until the card has
+                      flown there (docs/card-layout.md § "The plan column" - the
+                      slot). First, so the card is drawn over it. */}
+                  {coveringSlot && <EmptySlot className={styles.coveredSlot} data-covered="true" aria-hidden="true" />}
                   {picks.cardIds.map(renderPlanCard)}
                   {/* A blank card-sized slot until something's picked, and a way to
-                    draw a card at random (docs/card-layout.md § "The plan
-                    column"). */}
-                  {selectedIds.length === 0 && (
-                    <motion.div className="empty-slot" aria-hidden="true" layout {...planMotion} />
-                  )}
+                      draw a card at random (docs/card-layout.md § "The plan
+                      column"). */}
+                  {selectedIds.length === 0 && <EmptySlot aria-hidden="true" layout {...planMotion} />}
                   {availableCards.length > 0 && (
                     // Slides down out of the way of a card coming in, rather than
                     // jumping (docs/card-layout.md § "The plan column").
-                    <motion.div className="random-pick" layout="position" {...planMotion}>
-                      <button className="text-action" type="button" onClick={selectRandomCard}>
+                    <motion.div
+                      className={styles.randomPick}
+                      data-random-pick
+                      data-full-width
+                      layout="position"
+                      {...planMotion}
+                    >
+                      <Button variant="text" onClick={selectRandomCard}>
                         Draw random card
-                      </button>
+                      </Button>
                     </motion.div>
                   )}
-                </motion.div>
+                </CardGrid>
 
                 {/* Each group is a row of its own, with a title and notes
-              (docs/plans.md § "Groups"). */}
+                    (docs/plans.md § "Groups"). */}
                 {picks.groups.map((group, index) => {
                   const name = group.title.trim() || `Group ${index + 1}`
                   return (
                     // Slides as the rows above it grow or shrink. Only its place
                     // animates, not its size, which would stretch its fields.
-                    <motion.section
-                      className="plan-group"
+                    <PlanGroupEditor
                       key={group.id}
-                      data-group-id={group.id}
-                      aria-label={name}
+                      id={group.id}
+                      name={name}
+                      placeholder={`Group ${index + 1}`}
+                      title={group.title}
+                      notes={group.notes}
+                      onChange={(change) => setPicks((current) => changeGroup(current, group.id, change))}
+                      onRemove={() => setPicks((current) => removeGroup(current, group.id))}
                       layout="position"
                       {...planMotion}
                     >
-                      {/* Beside the cards on a wide screen, above them otherwise
-                    (docs/plans.md § "Groups"). */}
-                      <div className="plan-group-info">
-                        <input
-                          className="plan-group-title"
-                          type="text"
-                          aria-label={`Title of ${name}`}
-                          placeholder={`Group ${index + 1}`}
-                          maxLength={80}
-                          value={group.title}
-                          onChange={(event) =>
-                            setPicks((current) => changeGroup(current, group.id, { title: event.target.value }))
-                          }
-                        />
-                        <textarea
-                          className="plan-group-notes"
-                          aria-label={`Notes on ${name}`}
-                          placeholder="Notes"
-                          rows={1}
-                          maxLength={2000}
-                          value={group.notes}
-                          onChange={(event) =>
-                            setPicks((current) => changeGroup(current, group.id, { notes: event.target.value }))
-                          }
-                        />
-                        <button
-                          className="text-action plan-group-remove"
-                          type="button"
-                          aria-label={`Remove ${name}`}
-                          onClick={() => setPicks((current) => removeGroup(current, group.id))}
-                        >
-                          Remove group
-                        </button>
-                      </div>
-                      <motion.div className="plan-track plan-group-track" data-plan-row={group.id} layoutScroll>
+                      <CardGrid stacked className={groupTrack} data-plan-row={group.id} layoutScroll>
                         {group.cardIds.map(renderPlanCard)}
                         {group.cardIds.length === 0 && (
-                          <motion.div className="empty-slot group-slot" layout {...planMotion}>
+                          <EmptySlot compact data-full-width layout {...planMotion}>
                             <span>Drag ideas here</span>
-                          </motion.div>
+                          </EmptySlot>
                         )}
-                      </motion.div>
-                    </motion.section>
+                      </CardGrid>
+                    </PlanGroupEditor>
                   )
                 })}
 
-                <motion.div className="plan-group-add" layout="position" {...planMotion}>
-                  <button className="text-action" type="button" onClick={newGroup}>
+                <motion.div className={styles.groupAdd} data-group-add layout="position" {...planMotion}>
+                  <Button variant="text" onClick={newGroup}>
                     Add group
-                  </button>
+                  </Button>
                 </motion.div>
               </section>
             </div>
-            {planShrunk && <ColumnSwitch label="Show your plan" onClick={() => activate('plan')} />}
-          </div>
+          </BuilderColumn>
         </div>
       </LayoutGroup>
 
       {plans && (
-        <section className="deck-plans" aria-label="Plans">
+        <section aria-label="Plans">
           <PlanList plans={plans} />
         </section>
       )}
@@ -1036,20 +946,20 @@ export default function PlanBuilder({
 
       {cardEditor.dialogs}
 
-      <footer className="site-footer">
+      <SiteFooter>
         {sample ? null : editHref ? (
-          <Link className="text-action" href={editHref}>
+          <Button variant="text" href={editHref}>
             Edit this deck
-          </Link>
+          </Button>
         ) : access === 'pending' ? (
-          <span className="muted">You&apos;ve asked to edit this deck</span>
+          <Muted>You&apos;ve asked to edit this deck</Muted>
         ) : (
-          <Link className="text-action" href={`/d/${shareId}/request`}>
+          <Button variant="text" href={`/d/${shareId}/request`}>
             Request edit access
-          </Link>
+          </Button>
         )}
-      </footer>
-    </main>
+      </SiteFooter>
+    </PageShell>
   )
 }
 
@@ -1058,10 +968,8 @@ type Column = 'plan' | 'deck'
 // A card flying from the deck into the plan, or back into the deck.
 type Flight = { id: string; from: Box; to: Column }
 
-const instant = { duration: 0 }
-
 // How much a column is shrunk while it isn't in use on a narrow screen. The
-// same as --shrink in styles.css.
+// same as --shrink in PlanBuilder.module.css.
 const shrunkScale = 0.2
 
 // Motion works out a slide in the screen's pixels, but it's drawn inside the
@@ -1076,26 +984,8 @@ function unshrinkSlide(_: unknown, generated: string) {
   )
 }
 
-// The bar's prompt, or its buttons, fading in and out. Nothing fading out
-// can be pressed.
-function BarFade({ reduceMotion, children }: { reduceMotion: boolean; children: ReactNode }) {
-  const present = useIsPresent()
-  return (
-    <motion.div
-      className="builder-bar-content"
-      initial={{ opacity: 0 }}
-      animate={{ opacity: 1 }}
-      exit={{ opacity: 0 }}
-      transition={reduceMotion ? instant : { duration: 0.25, ease: 'easeOut' }}
-      inert={!present}
-    >
-      {children}
-    </motion.div>
-  )
-}
-
 // Below this width only one column is in use at a time. The same width as the
-// media query in styles.css.
+// media query in PlanBuilder.module.css.
 const narrowScreen = '(max-width: 899px)'
 
 function useNarrowScreen() {
@@ -1108,10 +998,4 @@ function useNarrowScreen() {
     () => window.matchMedia(narrowScreen).matches,
     () => false,
   )
-}
-
-// Covers a shrunk column, so a click anywhere on it puts it in use rather
-// than doing what's under it.
-function ColumnSwitch({ label, onClick }: { label: string; onClick: () => void }) {
-  return <button className="column-switch" type="button" aria-label={label} onClick={onClick} />
 }

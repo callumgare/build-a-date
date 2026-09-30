@@ -1,0 +1,24 @@
+.divider {
+  display: flex;
+  align-items: center;
+  gap: 0.8em;
+  margin: 4px 0;
+  color: var(--accent);
+  font-size: 0.75em;
+  line-height: 1.5;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+}
+
+.divider::before,
+.divider::after {
+  content: '';
+  flex: 1;
+  height: 1px;
+  background: var(--line);
+}
+
+.short {
+  width: min(100%, 7em);
+  margin: 0;
+}

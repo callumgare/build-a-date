@@ -2,6 +2,8 @@
 
 import { useActionState } from 'react'
 import { sendSignInLink } from '@/lib/actions/auth'
+import Button from '../ui/Button'
+import { Field, Form, FormError, FormNote, Input } from '../ui/Form'
 
 type EmailLinkFormProps = {
   askName?: boolean
@@ -24,39 +26,33 @@ export default function EmailLinkForm({
 
   if (sentTo) {
     return (
-      <p className="form-note" role="status">
+      <FormNote>
         Check your inbox. We sent a link to <strong>{sentTo}</strong>. It works once and expires in 5 minutes.
-      </p>
+      </FormNote>
     )
   }
 
   return (
-    <form className="form" action={formAction}>
+    <Form action={formAction}>
       {next && <input type="hidden" name="next" value={next} />}
       {askName && (
-        <label className="field">
-          <span>Your name</span>
-          <input name="name" autoComplete="name" required maxLength={80} defaultValue={name} />
-        </label>
+        <Field label="Your name">
+          <Input name="name" autoComplete="name" required maxLength={80} defaultValue={name} />
+        </Field>
       )}
-      <label className="field">
-        <span>Email</span>
-        <input
+      <Field label="Email">
+        <Input
           name="email"
           type="email"
           autoComplete={offerPasskeys ? 'email webauthn' : 'email'}
           required
           defaultValue={email}
         />
-      </label>
-      {error && (
-        <p className="form-error" role="alert">
-          {error}
-        </p>
-      )}
-      <button className="done-button" type="submit" disabled={pending}>
+      </Field>
+      <FormError>{error}</FormError>
+      <Button type="submit" disabled={pending}>
         {pending ? 'Sending…' : submitLabel}
-      </button>
-    </form>
+      </Button>
+    </Form>
   )
 }

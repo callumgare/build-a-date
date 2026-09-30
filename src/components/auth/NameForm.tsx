@@ -2,36 +2,33 @@
 
 import { useActionState } from 'react'
 import { updateName } from '@/lib/actions/auth'
+import Button from '../ui/Button'
+import { Field, Form, FormError, FormNote, Input } from '../ui/Form'
 
 // Changes the account's name. A form action, so it works without JavaScript.
 export default function NameForm({ name }: { name: string }) {
   const [state, formAction, pending] = useActionState(updateName, {})
 
   return (
-    <form className="form" action={formAction}>
-      <label className="field">
-        <span>Your name</span>
-        <input
+    <Form action={formAction}>
+      <Field label="Your name">
+        <Input
           name="name"
           autoComplete="name"
           required
           maxLength={80}
           defaultValue={state.name ?? state.saved ?? name}
         />
-      </label>
-      {state.error && (
-        <p className="form-error" role="alert">
-          {state.error}
-        </p>
-      )}
+      </Field>
+      <FormError>{state.error}</FormError>
       {state.saved && (
-        <p className="form-note" role="status">
+        <FormNote>
           Saved. You&apos;re now <strong>{state.saved}</strong>.
-        </p>
+        </FormNote>
       )}
-      <button className="done-button" type="submit" disabled={pending}>
+      <Button type="submit" disabled={pending}>
         {pending ? 'Saving…' : 'Save name'}
-      </button>
-    </form>
+      </Button>
+    </Form>
   )
 }

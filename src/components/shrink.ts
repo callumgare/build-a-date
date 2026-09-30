@@ -5,7 +5,7 @@
 // the element itself, which may be tilting or part way through a layout
 // animation.
 export function shrinkOf(element: Element) {
-  const section = element.closest<HTMLElement>('.deck-section, .plan-section, .plan-heading')
+  const section = element.closest<HTMLElement>('[data-shrinks]')
   if (!section?.offsetWidth) return 1
   return section.getBoundingClientRect().width / section.offsetWidth || 1
 }

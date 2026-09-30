@@ -106,11 +106,11 @@ describe('PlanBuilder', () => {
 
       await user.click(filterButton('outside'))
       await user.click(filterButton('Not in plan'))
-      expect(filterButton('All')).toHaveAttribute('data-active', 'false')
+      expect(filterButton('All')).toHaveAttribute('aria-pressed', 'false')
       expect(filterButton('outside')).toHaveAttribute('aria-pressed', 'true')
 
       await user.click(filterButton('Not in plan'))
-      expect(filterButton('All')).toHaveAttribute('data-active', 'false')
+      expect(filterButton('All')).toHaveAttribute('aria-pressed', 'false')
 
       await user.click(filterButton('Not in plan'))
       await user.click(filterButton('All'))
@@ -326,7 +326,7 @@ describe('PlanBuilder', () => {
     it('offers Add an idea and Quick Add in the last spot in the deck', async () => {
       const user = userEvent.setup({ delay: null })
       const { container } = render(renderForEditor())
-      const grid = container.querySelector('.card-grid') as HTMLElement
+      const grid = container.querySelector('[data-card-grid]') as HTMLElement
       expect(grid.lastElementChild).toContainElement(screen.getByRole('button', { name: 'Add an idea' }))
       expect(grid.lastElementChild).toContainElement(screen.getByRole('button', { name: 'Quick Add' }))
 

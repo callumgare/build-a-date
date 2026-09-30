@@ -10,6 +10,8 @@ import cardStyles from './Card.module.css'
 import styles from './CardNotes.module.css'
 import type { Frame } from './frames'
 import type { Box } from './tilt'
+import Button from './ui/Button'
+import { TextArea } from './ui/Form'
 
 export type Notes = { interest: number | null; notes: string }
 
@@ -275,7 +277,7 @@ export default function CardNotes({
 
           <label className={styles.notesField}>
             <span className="visually-hidden">Notes</span>
-            <textarea
+            <TextArea
               value={values.notes}
               maxLength={2000}
               placeholder="What do you think of this idea?"
@@ -290,9 +292,7 @@ export default function CardNotes({
             <span className={styles.status} role="status">
               {status === 'saving' ? 'Saving…' : status === 'saved' ? 'Saved' : ''}
             </span>
-            <button className="done-button" type="button" onClick={close}>
-              Done
-            </button>
+            <Button onClick={close}>Done</Button>
           </div>
           {error && (
             <p className={styles.error} role="alert">

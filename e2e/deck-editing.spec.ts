@@ -19,9 +19,9 @@ test('the deck page keeps its cards their usual size, and the add-card spot no t
 
   const measure = () =>
     page.evaluate(() => {
-      const controls = document.querySelector('.editor-grid .add-card-controls')
+      const controls = document.querySelector('[data-add-card-controls]')
       if (!controls) throw new Error('No add-card controls on the deck page')
-      const grid = controls.closest('.card-grid')
+      const grid = controls.closest('[data-card-grid]')
       if (!grid) throw new Error('The add-card controls are not in a card grid')
       const cards = [...grid.children].filter((el) => !el.contains(controls))
       const children = [...controls.children].map((child) => child.getBoundingClientRect().height)

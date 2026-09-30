@@ -1,13 +1,12 @@
 import type { ReactNode } from 'react'
+import PageShell from '@/components/PageShell'
 import SiteHeader from '@/components/SiteHeader'
-import Stars from '@/components/Stars'
 
 export default function AppLayout({ children }: { children: ReactNode }) {
   return (
-    <main className="page-shell">
-      <Stars />
+    <PageShell>
       <SiteHeader />
       {children}
-    </main>
+    </PageShell>
   )
 }

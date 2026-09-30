@@ -1,0 +1,13 @@
+.empty {
+  padding: 48px 0;
+  color: var(--cream-soft);
+  text-align: center;
+}
+
+.empty p {
+  margin: 0 0 12px;
+}
+
+.empty p:last-child {
+  margin-bottom: 0;
+}

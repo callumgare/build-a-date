@@ -24,7 +24,7 @@ type Place = { x: number; y: number }
 type Tracked = { columns: number; places: WeakMap<HTMLElement, Place> }
 
 // The grids under the root: the deck's, and the plan's rows.
-const gridSelector = '.card-grid, .plan-track'
+const gridSelector = '[data-card-grid]'
 
 // How long a shuffle takes, and how it eases.
 export const shuffleTiming: KeyframeAnimationOptions = {
@@ -33,7 +33,7 @@ export const shuffleTiming: KeyframeAnimationOptions = {
 }
 
 // How many columns a grid of cards is laid out in right now: its --columns,
-// which styles.css registers as a whole number so it can be read here. 1
+// which CardGrid.module.css registers as a whole number so it can be read here. 1
 // for a row of the plan that runs down in a column. Where --columns can't be
 // read as a number, the cards on its first line are counted.
 export function columnCount(grid: HTMLElement) {

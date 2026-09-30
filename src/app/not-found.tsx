@@ -1,17 +1,18 @@
-import Link from 'next/link'
-import Stars from '@/components/Stars'
+import PageShell from '@/components/PageShell'
+import Button from '@/components/ui/Button'
+import Heading from '@/components/ui/Heading'
+import Panel from '@/components/ui/Panel'
 
 export default function NotFound() {
   return (
-    <main className="page-shell">
-      <Stars />
-      <section className="panel narrow">
-        <h2>Nothing here</h2>
+    <PageShell>
+      <Panel narrow>
+        <Heading>Nothing here</Heading>
         <p>This link doesn&apos;t go anywhere. It may have been deleted, or mistyped.</p>
-        <Link className="text-action" href="/">
+        <Button variant="text" href="/">
           Go to Build-a-Date
-        </Link>
-      </section>
-    </main>
+        </Button>
+      </Panel>
+    </PageShell>
   )
 }

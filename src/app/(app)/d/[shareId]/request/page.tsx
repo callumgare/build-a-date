@@ -1,6 +1,10 @@
 import type { Metadata } from 'next'
 import Link from 'next/link'
 import { notFound, redirect } from 'next/navigation'
+import Button from '@/components/ui/Button'
+import { Form } from '@/components/ui/Form'
+import Heading from '@/components/ui/Heading'
+import Panel, { PanelFootnote } from '@/components/ui/Panel'
 import { getDb } from '@/db'
 import { requestEditAccess } from '@/lib/actions/decks'
 import { requireUser } from '@/lib/auth'
@@ -28,8 +32,8 @@ export default async function RequestAccess({ params }: PageProps<'/d/[shareId]/
   if (state === 'owner' || state === 'editor') redirect(`/decks/${found.deck.id}`)
 
   return (
-    <section className="panel narrow">
-      <h2>{found.deck.name}</h2>
+    <Panel narrow>
+      <Heading>{found.deck.name}</Heading>
       {state === 'pending' ? (
         <p role="status">
           You&apos;ve asked to edit this deck. Once its owner says yes, it&apos;ll show up under Shared decks on{' '}
@@ -41,16 +45,14 @@ export default async function RequestAccess({ params }: PageProps<'/d/[shareId]/
             Ask the deck&apos;s owner to let you add and edit its ideas. We&apos;ll email them your name and email
             address so they know who&apos;s asking.
           </p>
-          <form className="form" action={requestEditAccess.bind(null, shareId)}>
-            <button className="done-button" type="submit">
-              Send request
-            </button>
-          </form>
+          <Form action={requestEditAccess.bind(null, shareId)}>
+            <Button type="submit">Send request</Button>
+          </Form>
         </>
       )}
-      <p className="panel-footnote">
+      <PanelFootnote>
         <Link href={`/d/${shareId}`}>Back to the deck</Link>
-      </p>
-    </section>
+      </PanelFootnote>
+    </Panel>
   )
 }
